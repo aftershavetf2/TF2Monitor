@@ -15,6 +15,10 @@ It's purpose is to:
 
 TODO: The above data will be saved in file(a local [SQLite database](https://www.sqlite.org/) file).
 
+# Screenshot
+
+![Alt text](/screenshots/TF2Monitor.png?raw=true "TF2Monitor")
+
 # What about VAC?
 
 This application does not alter any game file or intervene with the TF2 process and memory in any way. This is completely VAC safe.
