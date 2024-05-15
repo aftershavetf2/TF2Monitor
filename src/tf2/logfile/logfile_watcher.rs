@@ -52,7 +52,10 @@ pub struct LogfileWatcher {
 impl LogfileWatcher {
     pub fn run(&mut self) {
         let parser = LogLineParser::default();
-        log::info!("Logfile watcher started");
+        log::info!(
+            "Logfile watcher started. Will monitor file: {}",
+            self.filename
+        );
 
         loop {
             sleep(LOOP_DELAY);
@@ -75,6 +78,7 @@ impl LogfileWatcher {
                 }
             }
         } else {
+            // log::debug!("Error reading new data. Error: {:?}", new_data.err());
             log::error!("Error reading new data. Resetting position to zero.");
             self.last_pos = 0;
         }
@@ -102,7 +106,7 @@ impl LogfileWatcher {
         let mut buf: Vec<u8> = vec![0; len];
         file.read_exact(&mut buf)?;
 
-        let s = String::from_utf8(buf)?;
+        let s = String::from_utf8_lossy(&buf).to_string();
 
         self.last_pos += len as u64;
 
