@@ -63,8 +63,8 @@ impl RconThread {
         log::info!("Rcon background thread started");
 
         loop {
-            self.send_rcon_command("status", false);
             self.send_rcon_command("tf_lobby_debug", true);
+            self.send_rcon_command("status", false);
 
             self.process_bus();
 
