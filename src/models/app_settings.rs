@@ -85,7 +85,7 @@ impl AppSettings {
     pub fn save(&self) {
         let json = serde_json::to_string_pretty(self).unwrap();
         let mut f = File::create(SETTINGS_FILENAME).unwrap();
-        f.write(json.as_bytes()).unwrap();
+        f.write_all(json.as_bytes()).unwrap();
 
         println!("Settings saved to file {}", SETTINGS_FILENAME);
     }

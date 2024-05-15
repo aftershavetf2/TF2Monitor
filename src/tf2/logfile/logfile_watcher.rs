@@ -21,7 +21,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
     let mut watcher = LogfileWatcher {
         filename: settings.log_filename.clone(),
         last_pos: 0,
-        bus: Arc::clone(&bus),
+        bus: Arc::clone(bus),
     };
 
     // remove_log_file(&watcher.filename);

@@ -53,7 +53,7 @@ impl RconThread {
         let rcon_bus_rx = bus.lock().unwrap().rcon_bus.add_rx();
 
         Self {
-            bus: Arc::clone(&bus),
+            bus: Arc::clone(bus),
             rcon_args,
             rcon_bus_rx,
         }
@@ -115,6 +115,6 @@ impl RconThread {
 
         log::debug!("Sending RCON command: {}", cmd);
         let reply = rcon_client.exec_command(cmd)?;
-        return Ok(reply);
+        Ok(reply)
     }
 }

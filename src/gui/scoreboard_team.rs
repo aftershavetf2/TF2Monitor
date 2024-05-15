@@ -1,4 +1,4 @@
-use super::{colors::color_for_flag, player_tooltip::add_player_tooltip};
+use super::player_tooltip::add_player_tooltip;
 use crate::{
     models::steamid::SteamID,
     tf2::lobby::{Player, Team},
@@ -11,7 +11,6 @@ pub fn scoreboard_team(
     self_steamid: SteamID,
     players: &Vec<&Player>,
     team_name: &str,
-    swap_team_colors: &mut bool,
     show_crits: &mut bool,
 ) {
     ui.heading(format!("{} - {} players", title, players.len()));
@@ -59,9 +58,9 @@ pub fn scoreboard_team(
 
         for player in players {
             // Team color box
-            add_team_symbol(ui, self_steamid, &player, *swap_team_colors);
+            add_team_symbol(ui, self_steamid, player);
 
-            add_player_name(ui, &player);
+            add_player_name(ui, player);
 
             // Player kills
             ui.horizontal(|ui| {
@@ -80,7 +79,7 @@ pub fn scoreboard_team(
             });
 
             // add_flags(ui, &player);
-            add_links(ui, &player);
+            add_links(ui, player);
 
             ui.end_row();
         }
@@ -98,7 +97,7 @@ fn add_player_name(ui: &mut Ui, player: &Player) {
     });
 }
 
-fn add_team_symbol(ui: &mut Ui, self_steamid: SteamID, player: &Player, swap_team_colors: bool) {
+fn add_team_symbol(ui: &mut Ui, self_steamid: SteamID, player: &Player) {
     let invader_color = super::colors::TEAM_BLU_COLOR;
     let defender_color = super::colors::TEAM_RED_COLOR;
 

@@ -60,7 +60,6 @@ pub fn add_scoreboard(
             self_steamid,
             &blu,
             "blu",
-            swap_team_colors,
             show_crits,
         );
         scoreboard_team(
@@ -69,7 +68,6 @@ pub fn add_scoreboard(
             self_steamid,
             &red,
             "red",
-            swap_team_colors,
             show_crits,
         );
     });

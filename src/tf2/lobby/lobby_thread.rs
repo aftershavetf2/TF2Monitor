@@ -29,10 +29,10 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 }
 
 impl LobbyThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         Self {
-            bus: Arc::clone(&bus),
+            bus: Arc::clone(bus),
             logfile_bus_rx,
             lobby: Lobby::new(),
         }
@@ -102,7 +102,7 @@ impl LobbyThread {
         // Update last_seen for existing player
         for player in self.lobby.players.iter_mut() {
             if player.steamid == steamid {
-                player.name = name.clone();
+                player.name.clone_from(&name);
                 player.last_seen = when;
                 return;
             }

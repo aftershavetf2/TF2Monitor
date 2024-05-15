@@ -49,9 +49,9 @@ impl eframe::App for AppWin {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
 
-        // add_menu_row(ctx);
+        add_menu_row(ctx);
 
-        // add_status_row(ctx);
+        add_status_row(ctx);
 
         // scoreboard::make_scoreboard(ctx, &self.scores);
 
@@ -66,7 +66,7 @@ impl eframe::App for AppWin {
 
             ui.separator();
 
-            chat::add_chat(ui, &mut self.lobby, &mut self.swap_team_colors);
+            chat::add_chat(ui, &self.lobby, &mut self.swap_team_colors);
         });
 
         ctx.request_repaint();

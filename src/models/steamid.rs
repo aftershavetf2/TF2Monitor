@@ -11,11 +11,11 @@ impl SteamID {
     pub fn from_steam_id32(steamid32: &str) -> Self {
         let steamid32 = steamid32
             .trim_start_matches("[U:1:")
-            .trim_end_matches("]")
+            .trim_end_matches(']')
             .parse::<u64>()
             .unwrap();
 
-        Self::from_u64(steamid32 as u64 + 76561197960265728)
+        Self::from_u64(steamid32 + 76561197960265728)
     }
 
     pub fn steam_history_url(&self) -> String {
