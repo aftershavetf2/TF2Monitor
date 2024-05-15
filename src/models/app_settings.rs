@@ -76,6 +76,9 @@ impl AppSettings {
         f.read_to_string(&mut json)?;
         let preferences: AppSettings = serde_json::from_str(&json).unwrap();
 
+        log::info!("Settings loaded from file {}", SETTINGS_FILENAME);
+        log::info!("\n{}", json);
+
         Ok(preferences)
     }
 
