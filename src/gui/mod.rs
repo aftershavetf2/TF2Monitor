@@ -49,9 +49,9 @@ impl eframe::App for AppWin {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
 
-        add_menu_row(ctx);
+        // add_menu_row(ctx);
 
-        add_status_row(ctx);
+        // add_status_row(ctx);
 
         // scoreboard::make_scoreboard(ctx, &self.scores);
 
