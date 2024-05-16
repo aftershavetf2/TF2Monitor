@@ -124,7 +124,7 @@ fn add_team_symbol(ui: &mut Ui, self_steamid: SteamID, player: &Player) {
             if let Some(steam_info) = &player.steam_info {
                 if steam_info.is_account_new() {
                     let (rect, _response) = ui.allocate_at_least(size, Sense::hover());
-                    ui.painter().rect_filled(rect, 3.0f32, Color32::LIGHT_GREEN);
+                    ui.painter().rect_filled(rect, 3.0f32, Color32::GREEN);
                 }
             }
         });
