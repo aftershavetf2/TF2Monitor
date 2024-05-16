@@ -9,23 +9,18 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
     ui.heading(player.name.clone());
 
     if let Some(steam_info) = &player.steam_info {
-        ui.label(format!("SteamID: {}", steam_info.steamid.to_u64()));
-
-        ui.label(format!(
-            "Account created: {}",
-            steam_info.get_account_created()
-        ));
-
         let image = Image::from_uri(&steam_info.avatarfull)
             .max_width(100.0)
             .rounding(3.0);
 
         ui.add(image);
+        ui.label(format!(
+            "Account created: {}",
+            steam_info.get_account_created()
+        ));
+
+        ui.separator();
     }
-
-    // let image = Image::from_uri(IMAGE_URL).max_width(100.0).rounding(3.0);
-
-    // ui.add(image);
 
     // Get the last 10 kill's weapon names
     let kills: Vec<&PlayerKill> = player.kills_with.iter().rev().take(10).collect();
