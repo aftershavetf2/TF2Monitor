@@ -19,6 +19,12 @@ TODO: The above data will be saved in file(a local [SQLite database](https://www
 
 ![Alt text](/screenshots/TF2Monitor.png?raw=true "TF2Monitor")
 
+First column in the table is:
+
+- White box is you(settings file, self_steamid64)
+- Green box is for accounts newer than one year
+- Team colored box
+
 # What about VAC?
 
 This application does not alter any game file or intervene with the TF2 process and memory in any way. This is completely VAC safe.
