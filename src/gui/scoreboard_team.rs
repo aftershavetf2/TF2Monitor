@@ -89,8 +89,10 @@ pub fn scoreboard_team(
 fn add_player_name(ui: &mut Ui, player: &Player) {
     // Player icon and name
     ui.horizontal(|ui| {
-        // ui.image(IMAGE_URL)
-        //     .on_hover_ui(|ui| add_player_tooltip(ui, player));
+        if let Some(steam_info) = &player.steam_info {
+            ui.image(&steam_info.avatar)
+                .on_hover_ui(|ui| add_player_tooltip(ui, player));
+        }
 
         ui.label(player.name.clone())
             .on_hover_ui(|ui| add_player_tooltip(ui, player));
@@ -117,6 +119,13 @@ fn add_team_symbol(ui: &mut Ui, self_steamid: SteamID, player: &Player) {
             if player.steamid == self_steamid {
                 let (rect, _response) = ui.allocate_at_least(size, Sense::hover());
                 ui.painter().rect_filled(rect, 3.0f32, Color32::WHITE);
+            }
+
+            if let Some(steam_info) = &player.steam_info {
+                if steam_info.is_account_new() {
+                    let (rect, _response) = ui.allocate_at_least(size, Sense::hover());
+                    ui.painter().rect_filled(rect, 3.0f32, Color32::LIGHT_GREEN);
+                }
             }
         });
     });

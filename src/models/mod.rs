@@ -1,12 +1,10 @@
-use std::sync::{Arc, Mutex};
-
-use bus::BusReader;
 pub mod app_settings;
 pub mod steamid;
 
-use crate::{appbus::AppBus, tf2::lobby::Lobby};
-
 use self::{app_settings::AppSettings, steamid::SteamID};
+use crate::{appbus::AppBus, tf2::lobby::Lobby};
+use bus::BusReader;
+use std::sync::{Arc, Mutex};
 
 pub struct AppWin {
     pub lobby: Lobby,
@@ -39,8 +37,7 @@ pub enum PlayerFlags {
     Cheater,
     Bot,
     Sus,
-    New,
-    Racist,
+    Toxic,
     Exploiter,
 }
 
@@ -49,8 +46,7 @@ pub fn flag_shortname(flag: PlayerFlags) -> &'static str {
         PlayerFlags::Cheater => "C",
         PlayerFlags::Bot => "B",
         PlayerFlags::Sus => "S",
-        PlayerFlags::New => "N",
-        PlayerFlags::Racist => "R",
+        PlayerFlags::Toxic => "T",
         PlayerFlags::Exploiter => "E",
     }
 }
@@ -60,8 +56,7 @@ pub fn flag_description(flag: PlayerFlags) -> &'static str {
         PlayerFlags::Cheater => "Cheater",
         PlayerFlags::Bot => "Bot",
         PlayerFlags::Sus => "Suspicious",
-        PlayerFlags::New => "New Account",
-        PlayerFlags::Racist => "Racist",
+        PlayerFlags::Toxic => "Toxic",
         PlayerFlags::Exploiter => "Exploiter",
     }
 }

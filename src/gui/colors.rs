@@ -52,8 +52,7 @@ pub fn color_for_flag(flag: PlayerFlags) -> (Color32, Color32) {
         PlayerFlags::Cheater => (Color32::BLACK, hexrgb(0xff006e)),
         PlayerFlags::Bot => (Color32::BLACK, hexrgb(0xff0000)),
         PlayerFlags::Sus => (Color32::BLACK, Color32::from_rgb(0xf0, 0x81, 0x49)),
-        PlayerFlags::New => (Color32::WHITE, Color32::DARK_GREEN),
-        PlayerFlags::Racist => (Color32::BLACK, Color32::WHITE),
+        PlayerFlags::Toxic => (Color32::BLACK, Color32::WHITE),
         PlayerFlags::Exploiter => (Color32::BLACK, Color32::LIGHT_GREEN),
     }
 }

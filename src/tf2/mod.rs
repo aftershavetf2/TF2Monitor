@@ -1,9 +1,10 @@
-use crate::{appbus::AppBus, models::app_settings::AppSettings};
-use std::sync::{Arc, Mutex};
-
 pub mod lobby;
 pub mod logfile;
 pub mod rcon;
+pub mod steam;
+
+use crate::{appbus::AppBus, models::app_settings::AppSettings};
+use std::sync::{Arc, Mutex};
 
 /// Start the background threads for the TF2 module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) {

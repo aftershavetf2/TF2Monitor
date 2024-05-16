@@ -30,6 +30,41 @@ pub struct Player {
     pub crit_deaths: u32,
     pub kills_with: Vec<PlayerKill>,
     pub last_seen: DateTime<Local>,
+
+    pub steam_info: Option<PlayerSteamInfo>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlayerSteamInfo {
+    pub steamid: SteamID,
+    pub name: String,
+    pub avatar: String,
+    pub avatarmedium: String,
+    pub avatarfull: String,
+    pub account_age: Option<DateTime<Local>>,
+}
+
+impl PlayerSteamInfo {
+    pub fn get_account_created(&self) -> String {
+        if self.account_age.is_none() {
+            return "Unknown".to_string();
+        }
+
+        let account_age = self.account_age.unwrap();
+
+        format!("{}", account_age.format("%Y-%m-%d"))
+    }
+
+    pub fn is_account_new(&self) -> bool {
+        if self.account_age.is_none() {
+            return false;
+        }
+
+        let account_age = self.account_age.unwrap();
+        let days = (Local::now() - account_age).num_days();
+
+        days < 365
+    }
 }
 
 #[derive(Default, Debug, Clone)]
@@ -55,39 +90,19 @@ impl Lobby {
         }
     }
 
-    pub fn get_player_by_name(&self, name: &str) -> Option<&Player> {
-        for player in self.players.iter() {
-            if player.name == name {
-                return Some(player);
-            }
-        }
-        None
+    pub fn get_player(&self, name: Option<&str>, steamid: Option<SteamID>) -> Option<&Player> {
+        self.players
+            .iter()
+            .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid)
     }
 
-    pub fn get_player_by_name_mut(&mut self, name: &str) -> Option<&mut Player> {
-        for player in self.players.iter_mut() {
-            if player.name == name {
-                return Some(player);
-            }
-        }
-        None
-    }
-
-    pub fn get_player_by_steamid(&self, steamid: &SteamID) -> Option<&Player> {
-        for player in self.players.iter() {
-            if player.steamid == *steamid {
-                return Some(player);
-            }
-        }
-        None
-    }
-
-    pub fn get_player_by_steamid_mut(&mut self, steamid: &SteamID) -> Option<&mut Player> {
-        for player in self.players.iter_mut() {
-            if player.steamid == *steamid {
-                return Some(player);
-            }
-        }
-        None
+    pub fn get_player_mut(
+        &mut self,
+        name: Option<&str>,
+        steamid: Option<SteamID>,
+    ) -> Option<&mut Player> {
+        self.players
+            .iter_mut()
+            .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid)
     }
 }

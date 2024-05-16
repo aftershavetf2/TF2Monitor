@@ -41,7 +41,7 @@ pub fn add_chat(ui: &mut Ui, lobby: &Lobby, swap_team_colors: &mut bool) {
 }
 
 fn add_chat_row(ui: &mut Ui, lobby: &Lobby, chat: &LobbyChat, swap_team_colors: &mut bool) {
-    let player = lobby.get_player_by_steamid(&chat.steamid);
+    let player = lobby.get_player(None, Some(chat.steamid));
     if player.is_none() {
         return;
     }

@@ -1,5 +1,6 @@
-use super::Lobby;
+use super::{Lobby, PlayerSteamInfo};
 use super::{LobbyChat, Player, PlayerKill, Team};
+use crate::tf2::steam::SteamApi;
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
@@ -19,6 +20,7 @@ pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
     logfile_bus_rx: BusReader<LogLine>,
     lobby: Lobby,
+    steam_api: SteamApi,
 }
 
 /// Start the background thread for the lobby module
@@ -29,12 +31,13 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 }
 
 impl LobbyThread {
-    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         Self {
             bus: Arc::clone(bus),
             logfile_bus_rx,
             lobby: Lobby::new(),
+            steam_api: SteamApi::new(settings),
         }
     }
 
@@ -45,6 +48,8 @@ impl LobbyThread {
             self.process_bus();
 
             self.update_scoreboard();
+
+            self.fetch_steam_info();
 
             sleep(LOOP_DELAY);
         }
@@ -89,6 +94,37 @@ impl LobbyThread {
         bus.send_lobby_report(self.lobby.clone());
     }
 
+    fn fetch_steam_info(&mut self) {
+        let steamids: Vec<SteamID> = self
+            .lobby
+            .players
+            .iter()
+            .filter(|p| p.steam_info.is_none())
+            .map(|p| p.steamid)
+            .collect();
+
+        if steamids.is_empty() {
+            return;
+        }
+
+        if let Some(steam_players) = self.steam_api.get_player_summaries(steamids) {
+            for steam_player in steam_players.iter() {
+                if let Some(steamid) = SteamID::from_u64_string(&steam_player.steamid) {
+                    if let Some(lobby_player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                        lobby_player.steam_info = Some(PlayerSteamInfo {
+                            steamid,
+                            name: steam_player.personaname.clone(),
+                            avatar: steam_player.avatar.clone(),
+                            avatarmedium: steam_player.avatarmedium.clone(),
+                            avatarfull: steam_player.avatarfull.clone(),
+                            account_age: steam_player.get_account_age(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
     fn new_lobby(&mut self) {
         log::info!("Creating new lobby");
         self.lobby = Lobby::new();
@@ -120,6 +156,7 @@ impl LobbyThread {
             crit_deaths: 0,
             kills_with: Vec::new(),
             last_seen: when,
+            steam_info: None,
         });
     }
 
@@ -150,6 +187,7 @@ impl LobbyThread {
             crit_deaths: 0,
             kills_with: Vec::new(),
             last_seen: Local::now(),
+            steam_info: None,
         });
     }
 
@@ -161,7 +199,7 @@ impl LobbyThread {
         weapon: String,
         crit: bool,
     ) {
-        if let Some(player) = self.lobby.get_player_by_name_mut(killer.as_str()) {
+        if let Some(player) = self.lobby.get_player_mut(Some(killer.as_str()), None) {
             player.kills += 1;
             if crit {
                 player.crit_kills += 1;
@@ -174,7 +212,7 @@ impl LobbyThread {
             log::warn!("Killer not found: '{}'", victim);
         }
 
-        if let Some(player) = self.lobby.get_player_by_name_mut(victim.as_str()) {
+        if let Some(player) = self.lobby.get_player_mut(Some(victim.as_str()), None) {
             player.deaths += 1;
             if crit {
                 player.crit_deaths += 1;
@@ -185,7 +223,7 @@ impl LobbyThread {
     }
 
     fn suicide(&mut self, _when: DateTime<Local>, name: String) {
-        if let Some(player) = self.lobby.get_player_by_name_mut(name.as_str()) {
+        if let Some(player) = self.lobby.get_player_mut(Some(name.as_str()), None) {
             player.deaths += 1;
         } else {
             log::warn!("Player not found: '{}'", name);
@@ -200,7 +238,7 @@ impl LobbyThread {
         dead: bool,
         team: bool,
     ) {
-        if let Some(player) = self.lobby.get_player_by_name(name.as_str()) {
+        if let Some(player) = self.lobby.get_player(Some(name.as_str()), None) {
             self.lobby.chat.push(LobbyChat {
                 when,
                 steamid: player.steamid,
@@ -213,13 +251,14 @@ impl LobbyThread {
         }
     }
 
+    /// Players who has a last_seen older than 30 seconds are removed from the lobby
     fn purge_old_players(&mut self, when: DateTime<Local>) {
         let mut new_vec: Vec<Player> = vec![];
 
         for player in self.lobby.players.iter_mut() {
-            let age = when - player.last_seen;
-            let seconds = age.num_seconds();
-            if seconds < 30 {
+            let age_seconds = (when - player.last_seen).num_seconds();
+            if age_seconds < 30 {
+                // Player is still active, keep it
                 new_vec.push(player.clone());
             }
         }
