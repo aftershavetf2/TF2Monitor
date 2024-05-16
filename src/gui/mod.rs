@@ -73,14 +73,14 @@ impl eframe::App for AppWin {
     }
 }
 
-fn add_menu_row(ctx: &egui::Context) {
-    egui::TopBottomPanel::top("menu").show(ctx, |ui| {
-        ui.label("Menus...");
-    });
-}
+// fn add_menu_row(ctx: &egui::Context) {
+//     egui::TopBottomPanel::top("menu").show(ctx, |ui| {
+//         ui.label("Menus...");
+//     });
+// }
 
-fn add_status_row(ctx: &egui::Context) {
-    egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
-        ui.label("Status: Online");
-    });
-}
+// fn add_status_row(ctx: &egui::Context) {
+//     egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
+//         ui.label("Status: Online");
+//     });
+// }

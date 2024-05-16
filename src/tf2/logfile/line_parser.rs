@@ -197,7 +197,7 @@ impl LogLineParser {
         None
     }
 
-    pub fn parse_tf_lobby_debug_line(&self, when: DateTime<Local>, line: &str) -> Option<LogLine> {
+    pub fn parse_tf_lobby_debug_line(&self, _when: DateTime<Local>, line: &str) -> Option<LogLine> {
         let caps = self.lobby_debug_rx.captures(line);
 
         match caps {
@@ -224,7 +224,7 @@ impl LogLineParser {
         match result {
             Ok(when) => match Local.from_local_datetime(&when) {
                 LocalResult::Single(when) => Some(when),
-                LocalResult::Ambiguous(e, l) => {
+                LocalResult::Ambiguous(_e, _l) => {
                     // println!("Ambiguous: Error parsing date: {:?}, {:?}", e, l);
                     None
                 }
@@ -233,7 +233,7 @@ impl LogLineParser {
                     None
                 }
             },
-            Err(e) => {
+            Err(_e) => {
                 // println!("Error parsing date: {:?}. Line = '{}'", e, line);
                 None
             }

@@ -18,7 +18,6 @@ use self::get_player_summariess::get_player_summaries;
 
 pub struct SteamApi {
     steam_api_key: String,
-    self_steamid64: SteamID,
 }
 
 #[derive(Debug, Deserialize)]
@@ -35,12 +34,10 @@ pub struct SteamApiPlayer {
 
 impl SteamApiPlayer {
     pub fn get_account_age(&self) -> Option<DateTime<Local>> {
-        if self.timecreated.is_none() {
-            return None;
-        }
+        self.timecreated?;
 
         let timecreated = self.timecreated.unwrap() as i64;
-        match Local.timestamp_opt(timecreated as i64, 0) {
+        match Local.timestamp_opt(timecreated, 0) {
             chrono::offset::LocalResult::Single(x) => Some(x),
             _ => None,
         }
@@ -48,11 +45,11 @@ impl SteamApiPlayer {
         // format!("{}", timecreated.format("%Y-%m-%d"))
     }
 }
+
 impl SteamApi {
     pub fn new(app_settings: &AppSettings) -> Self {
         Self {
             steam_api_key: app_settings.steam_api_key.clone(),
-            self_steamid64: app_settings.self_steamid64,
         }
     }
 

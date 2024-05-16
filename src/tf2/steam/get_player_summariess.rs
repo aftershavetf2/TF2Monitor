@@ -1,5 +1,5 @@
 use crate::models::steamid::SteamID;
-use reqwest::{blocking::get, Client};
+use reqwest::blocking::get;
 use serde::Deserialize;
 
 use super::SteamApiPlayer;

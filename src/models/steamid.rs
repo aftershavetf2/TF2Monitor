@@ -9,7 +9,7 @@ impl SteamID {
     }
 
     pub fn from_u64_string(steamid64: &String) -> Option<Self> {
-        if let Ok(steamid64) = u64::from_str_radix(steamid64, 10) {
+        if let Ok(steamid64) = steamid64.parse::<u64>() {
             Some(Self::from_u64(steamid64))
         } else {
             log::debug!("Failed to parse SteamID64: '{}'", steamid64);
@@ -27,7 +27,7 @@ impl SteamID {
         Self::from_u64(steamid32 + 76561197960265728)
     }
 
-    pub fn to_u64(&self) -> u64 {
+    pub fn to_u64(self) -> u64 {
         self.0
     }
 

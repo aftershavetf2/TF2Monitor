@@ -1,15 +1,9 @@
+use super::scoreboard_team::scoreboard_team;
 use crate::{
     models::steamid::SteamID,
     tf2::lobby::{Lobby, Player, Team},
 };
 use eframe::egui::{Color32, Ui};
-
-use super::scoreboard_team::scoreboard_team;
-
-const IMAGE_URL: &str =
-    "https://avatars.cloudflare.steamstatic.com/f39ba23bc07d2de9b77abcabae13ee2541f9c938_full.jpg";
-
-// const TEAM_NAMES: [&str; 2] = [" BLU ", " RED "];
 
 pub fn add_scoreboard(
     ui: &mut Ui,
@@ -54,22 +48,8 @@ pub fn add_scoreboard(
         .collect();
 
     ui.columns(2, |ui| {
-        scoreboard_team(
-            &mut ui[0],
-            "Blu",
-            self_steamid,
-            &blu,
-            "blu",
-            show_crits,
-        );
-        scoreboard_team(
-            &mut ui[1],
-            "Red",
-            self_steamid,
-            &red,
-            "red",
-            show_crits,
-        );
+        scoreboard_team(&mut ui[0], "Blu", self_steamid, &blu, "blu", show_crits);
+        scoreboard_team(&mut ui[1], "Red", self_steamid, &red, "red", show_crits);
     });
 
     let spectator_players: Vec<&Player> = sorted_players
