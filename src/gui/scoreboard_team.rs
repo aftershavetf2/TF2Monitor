@@ -236,7 +236,7 @@ fn add_vote(ui: &mut Ui, bus: &Arc<Mutex<AppBus>>, player: &&Player) {
             ui.heading(format!("Kick {}", player.name));
             if ui.button("Cheating").clicked() {
                 log::info!("Vote to kick player '{}' for cheating", player.name);
-                let cmd = format!("callvote kick {} cheating\"", player.id);
+                let cmd = format!("callvote kick \"{} cheating\"", player.id);
                 bus.lock().unwrap().send_rcon_cmd(cmd.as_str());
             }
             // make_link(ui, player.steamid.steam_community_url(), "SteamCommunity");
