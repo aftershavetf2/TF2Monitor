@@ -70,3 +70,16 @@ I have not tested it but currently the app does not use any platform specifc API
 
 The UI framework uses OpenGL via `glow` and there's a note here on libs you might need to install on your Linux machine:
 https://crates.io/crates/eframe/0.27.2
+
+# Other projects of interest
+
+There are already several similar applications like this one. Most of them have been tested for years and offer more functionality.
+
+- https://botdetector.tf/
+
+  - Newly developed
+
+- https://github.com/PazerOP/tf2_bot_detector
+  - This is archived and not developed.
+  - With some tweaks it still works fine.
+  - There are also forks with fixes, if you search github.
