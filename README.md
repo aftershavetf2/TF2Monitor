@@ -13,7 +13,7 @@ With this app you can:
 
 - TODO: Keep track of people you know are bots, cheaters, racists and so on.
 
-**NOTE! Tthis project is a work in progress and something I do on a hobby basis when I have spare time and energy.**
+**NOTE! This project is a work in progress and something I do on a hobby basis when I have spare time and energy.**
 
 # Screenshot
 
