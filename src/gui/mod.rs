@@ -3,7 +3,6 @@ pub mod colors;
 pub mod player_tooltip;
 pub mod scoreboard;
 pub mod scoreboard_team;
-pub mod settings;
 
 use crate::{
     appbus::AppBus,
