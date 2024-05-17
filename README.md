@@ -2,14 +2,18 @@
 
 An application companion to be run along with you playing Team Fortress 2.
 
-It's purpose is to:
+With this app you can:
 
 - Collect and present public Steam info about the players you play with. Example info:
+
   - Steam account creating time
-  - Number of TF2 hours
-  - Player's public avatar picture
-  - Buttons with links to popular sites such as SteamHistory.net and SteamCommunity.com for each player.
+  - Player's public avatar picture - Buttons with links to popular sites such as SteamHistory.net and SteamCommunity.com for each player.
+  - TODO: Number of TF2 hours
+  - TODO: VAC bans etc.
+
 - TODO: Keep track of people you know are bots, cheaters, racists and so on.
+
+**NOTE! Tthis project is a work in progress and something I do on a hobby basis when I have spare time and energy.**
 
 # Screenshot
 
@@ -25,9 +29,7 @@ First column in the table is:
 
 This application does not alter any game file or intervene with the TF2 process and memory in any way. This is completely VAC safe.
 
-All it does is to start TF2 with some flags to tell it to log more info to the `console.log` file, and enable and configure RCON(remote connect) so this app can send commands to TF2.
-
-Then the application periodically scans the `console.log` file and sends commands to TF2 over RCON telling it to log info about the players in the server, to votekick cheaters and bots.
+All it does is to start TF2 with some flags to tell it to log more info to the `console.log` file, and enable and configure RCON(remote connect) so this app can send commands to TF2. Then the application periodically scans the `console.log` file and sends commands to TF2 over RCON telling it to log info about the players in the server, to votekick cheaters and bots.
 
 # Your privacy
 
@@ -37,26 +39,18 @@ I have no intention nor interest in collecting any of your personal information 
 
 The source code is available for anyone to inspect.
 
-# How to run and set up
+# How to set up and run
 
 At the moment you need to download the source code and [install The Rust programming language](https://www.rust-lang.org/tools/install).
 
 After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and typ `cargo run` and the application will be compiled and started.
 
-First start will complain about a missing `settings.json` file, and a skeleton settings file was created. Open that `settings.json` in a text editor.
-
-You also need a second command line and run the `start_tf2.bat` file. It will launch TF2 with some extra options to enable more info in the log file and let this application send commands to TF2 to find out who you are playing with.
-
-## Settings file
-
-The settings file contain information about where to find the TF2 `console.log` file, TF2 RCON settings and your SteamAPI key. To make it easier, some fields has default values. These you don't need to edit.
-
-You must fill in your SteamID64 in the self_steamid64 field and get a SteamAPI key.
-
-### The SteamAPI key.
-
-This key is a personal thing and not something I can give you.
-You need to go to https://steamcommunity.com/dev/apikey to create a personal one.
+1. First start will complain about a missing `settings.json` file, and a skeleton settings file was created
+2. Quit the app and open that `settings.json` in a text editor
+3. Fill in your own SteamID
+4. Fill in the SteamAPI key, go to https://steamcommunity.com/dev/apikey to create a personal one
+5. `cargo run` again
+6. Use a second terminal and run `start_tf2.bat`
 
 ## Start TF2 from the app or from Steam?
 
@@ -73,5 +67,6 @@ If you change rcon-password or port you need to alter the bat file.
 # Linux support?
 
 I have not tested it but currently the app does not use any platform specifc API.
-The UI framework uses glow and there's a note here on libs you might need to install on your Linux machine:
+
+The UI framework uses OpenGL via `glow` and there's a note here on libs you might need to install on your Linux machine:
 https://crates.io/crates/eframe/0.27.2
