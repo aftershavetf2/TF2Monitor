@@ -3,6 +3,7 @@ pub mod colors;
 pub mod player_tooltip;
 pub mod scoreboard;
 pub mod scoreboard_team;
+pub mod settings;
 
 use crate::{
     appbus::AppBus,
@@ -43,11 +44,6 @@ impl eframe::App for AppWin {
         colors::set_style(ctx);
 
         self.process_bus();
-
-        // Exist the app with Escape key
-        if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-        }
 
         // add_menu_row(ctx);
 
