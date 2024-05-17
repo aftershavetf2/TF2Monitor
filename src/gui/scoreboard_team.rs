@@ -1,5 +1,8 @@
+use std::sync::{Arc, Mutex};
+
 use super::player_tooltip::add_player_tooltip;
 use crate::{
+    appbus::AppBus,
     models::steamid::SteamID,
     tf2::lobby::{Player, Team},
 };
@@ -7,6 +10,7 @@ use eframe::egui::{Align, Color32, Grid, Layout, Sense, Ui, Vec2};
 
 pub fn scoreboard_team(
     ui: &mut Ui,
+    bus: &Arc<Mutex<AppBus>>,
     title: &str,
     self_steamid: SteamID,
     players: &Vec<&Player>,
@@ -80,6 +84,7 @@ pub fn scoreboard_team(
 
             // add_flags(ui, &player);
             add_links(ui, player);
+            add_vote(ui, bus, player);
 
             ui.end_row();
         }
@@ -221,6 +226,23 @@ fn add_links(ui: &mut Ui, player: &Player) {
             make_link(ui, player.steamid.steam_history_url(), "SteamHistory");
             make_link(ui, player.steamid.steam_rep_url(), "SteamRep");
             make_link(ui, player.steamid.steam_id_url(), "SteamID");
+        });
+    });
+}
+
+fn add_vote(ui: &mut Ui, bus: &Arc<Mutex<AppBus>>, player: &&Player) {
+    ui.horizontal(|ui| {
+        ui.menu_button("☰ Vote", |ui| {
+            ui.heading(format!("Kick {}", player.name));
+            if ui.button("Cheating").clicked() {
+                log::info!("Vote to kick player '{}' for cheating", player.name);
+                let cmd = format!("callvote kick {} cheating\"", player.id);
+                bus.lock().unwrap().send_rcon_cmd(cmd.as_str());
+            }
+            // make_link(ui, player.steamid.steam_community_url(), "SteamCommunity");
+            // make_link(ui, player.steamid.steam_history_url(), "SteamHistory");
+            // make_link(ui, player.steamid.steam_rep_url(), "SteamRep");
+            // make_link(ui, player.steamid.steam_id_url(), "SteamID");
         });
     });
 }

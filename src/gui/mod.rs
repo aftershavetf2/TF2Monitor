@@ -53,6 +53,7 @@ impl eframe::App for AppWin {
         egui::CentralPanel::default().show(ctx, |ui| {
             scoreboard::add_scoreboard(
                 ui,
+                &self.bus,
                 self.self_steamid,
                 &mut self.lobby,
                 &mut self.swap_team_colors,

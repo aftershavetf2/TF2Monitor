@@ -6,7 +6,8 @@ use crate::tf2::lobby::{Player, PlayerKill};
 //     "https://avatars.cloudflare.steamstatic.com/f39ba23bc07d2de9b77abcabae13ee2541f9c938_full.jpg";
 
 pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
-    ui.heading(player.name.clone());
+    ui.heading(&player.name);
+    // ui.heading(format!("({}) {}", player.id, &player.name));
 
     if let Some(steam_info) = &player.steam_info {
         let image = Image::from_uri(&steam_info.avatarfull)
@@ -21,6 +22,9 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
 
         ui.separator();
     }
+
+    ui.label(format!("Console ID in game: {}", player.id));
+    //  .on_hover_text("This ID is used in TF2 console commands to vote kick");
 
     // Get the last 10 kill's weapon names
     let kills: Vec<&PlayerKill> = player.kills_with.iter().rev().take(10).collect();

@@ -12,11 +12,11 @@ fn main() -> Result<(), eframe::Error> {
     simple_logger::SimpleLogger::new().init().unwrap();
 
     let settings = AppSettings::load_or_default();
-    let buses = Arc::new(Mutex::new(AppBus::default()));
+    let bus = Arc::new(Mutex::new(AppBus::default()));
 
-    tf2::start(&settings, &buses);
+    tf2::start(&settings, &bus);
 
-    gui::run(&settings, &buses)
+    gui::run(&settings, &bus)
 }
 
 // fn main() {

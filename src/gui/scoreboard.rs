@@ -1,5 +1,8 @@
+use std::sync::{Arc, Mutex};
+
 use super::scoreboard_team::scoreboard_team;
 use crate::{
+    appbus::AppBus,
     models::steamid::SteamID,
     tf2::lobby::{Lobby, Player, Team},
 };
@@ -7,6 +10,7 @@ use eframe::egui::{Color32, Ui};
 
 pub fn add_scoreboard(
     ui: &mut Ui,
+    bus: &Arc<Mutex<AppBus>>,
     self_steamid: SteamID,
     lobby: &mut Lobby,
     swap_team_colors: &mut bool,
@@ -48,8 +52,24 @@ pub fn add_scoreboard(
         .collect();
 
     ui.columns(2, |ui| {
-        scoreboard_team(&mut ui[0], "Blu", self_steamid, &blu, "blu", show_crits);
-        scoreboard_team(&mut ui[1], "Red", self_steamid, &red, "red", show_crits);
+        scoreboard_team(
+            &mut ui[0],
+            bus,
+            "Blu",
+            self_steamid,
+            &blu,
+            "blu",
+            show_crits,
+        );
+        scoreboard_team(
+            &mut ui[1],
+            bus,
+            "Red",
+            self_steamid,
+            &red,
+            "red",
+            show_crits,
+        );
     });
 
     let spectator_players: Vec<&Player> = sorted_players

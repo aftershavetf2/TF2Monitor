@@ -31,6 +31,10 @@ impl SteamID {
         self.0
     }
 
+    pub fn is_valid(self) -> bool {
+        self.0 >= 76561197960265728
+    }
+
     pub fn steam_history_url(&self) -> String {
         format!("https://steamhistory.net/id/{}", self.0)
     }

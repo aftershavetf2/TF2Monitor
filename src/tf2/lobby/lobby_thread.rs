@@ -95,6 +95,10 @@ impl LobbyThread {
     }
 
     fn fetch_steam_info(&mut self) {
+        if !self.steam_api.has_key() {
+            return;
+        }
+
         let steamids: Vec<SteamID> = self
             .lobby
             .players
@@ -138,6 +142,7 @@ impl LobbyThread {
         // Update last_seen for existing player
         for player in self.lobby.players.iter_mut() {
             if player.steamid == steamid {
+                player.id = id;
                 player.name.clone_from(&name);
                 player.last_seen = when;
                 return;

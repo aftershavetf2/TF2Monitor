@@ -32,6 +32,24 @@ pub struct SteamApiPlayer {
     pub timecreated: Option<u64>,
 }
 
+impl SteamApi {
+    pub fn new(app_settings: &AppSettings) -> Self {
+        Self {
+            steam_api_key: app_settings.steam_api_key.clone(),
+        }
+    }
+
+    /// Fetches player summaries from the Steam API for a list of steamdids
+    pub fn get_player_summaries(&mut self, steamids: Vec<SteamID>) -> Option<Vec<SteamApiPlayer>> {
+        get_player_summaries(&self.steam_api_key, steamids)
+    }
+
+    /// Returns true if the Steam API key is set
+    pub fn has_key(&self) -> bool {
+        !self.steam_api_key.is_empty()
+    }
+}
+
 impl SteamApiPlayer {
     pub fn get_account_age(&self) -> Option<DateTime<Local>> {
         self.timecreated?;
@@ -41,19 +59,5 @@ impl SteamApiPlayer {
             chrono::offset::LocalResult::Single(x) => Some(x),
             _ => None,
         }
-
-        // format!("{}", timecreated.format("%Y-%m-%d"))
-    }
-}
-
-impl SteamApi {
-    pub fn new(app_settings: &AppSettings) -> Self {
-        Self {
-            steam_api_key: app_settings.steam_api_key.clone(),
-        }
-    }
-
-    pub fn get_player_summaries(&mut self, steamids: Vec<SteamID>) -> Option<Vec<SteamApiPlayer>> {
-        get_player_summaries(&self.steam_api_key, steamids)
     }
 }
