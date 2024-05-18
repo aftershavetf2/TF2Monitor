@@ -45,7 +45,7 @@ At the moment you need to download the source code and [install The Rust program
 
 After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and typ `cargo run` and the application will be compiled and started.
 
-1. Start Steam. If Steam is running your SteamID is read from the Windows registry if you are on Windows.
+1. Start Steam. If Steam is running your SteamID is read from the Windows registry if you are on Windows
 2. First start will complain about a missing `settings.json` file, and a skeleton settings file was created
 3. Quit the app and open that `settings.json` in a text editor
 4. Fill in your own SteamID, if you are on Windows and Steam was running, it is filled in already.
