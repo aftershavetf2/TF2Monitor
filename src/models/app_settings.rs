@@ -28,11 +28,13 @@ pub struct AppSettings {
 
 impl Default for AppSettings {
     fn default() -> Self {
+        let self_steamid64 = get_current_user_steamid().unwrap_or(SteamID::from_u64(0));
+
         Self {
             log_filename: get_log_filename(),
             exe_filename: get_exe_filename(),
 
-            self_steamid64: SteamID::from_u64(0),
+            self_steamid64,
 
             steam_api_key: "".to_string(),
 
@@ -135,6 +137,12 @@ impl AppSettings {
     }
 }
 
+//
+// Platform specific functions
+// - Try to find the SteadID for the current user
+// - To get the default log and exe filenames
+//
+
 #[cfg(target_os = "windows")]
 fn get_log_filename() -> String {
     r"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf\console.log".to_string()
@@ -161,4 +169,47 @@ fn get_exe_filename() -> String {
         .to_str()
         .unwrap()
         .to_string()
+}
+
+/// Get the SteamID for the current user, if possible.
+/// This is used to show the current user in the scoreboard.
+#[cfg(target_os = "windows")]
+pub fn get_current_user_steamid() -> Option<SteamID> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    log::info!("Trying to find the SteamID for the current user using the Windows registry.");
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+
+    let Ok(steam_root) = hkcu.open_subkey(r"Software\Valve\Steam\ActiveProcess") else {
+        log::warn!("Could not find the Steam registry key. Are you sure Steam is running?");
+        return None;
+    };
+
+    let mut active_user: Option<String> = None;
+    for k in steam_root.enum_values() {
+        if let Ok(k) = k {
+            if k.0 == "ActiveUser" {
+                active_user = Some(format!("{}", k.1));
+                continue;
+            }
+        }
+    }
+
+    if active_user.is_none() {
+        log::warn!("Could not find the ActiveUser registry key. Are you sure Steam is running?");
+        return None;
+    }
+
+    let active_user = active_user.unwrap();
+
+    let s = format!("[U:1:{}]", active_user);
+    Some(SteamID::from_steam_id32(&s))
+}
+
+/// Get the SteamID for the current user, if possible.
+/// This is used to show the current user in the scoreboard.
+#[cfg(target_os = "linux")]
+pub fn get_current_user_steamid() -> Option<SteamID> {
+    None
 }

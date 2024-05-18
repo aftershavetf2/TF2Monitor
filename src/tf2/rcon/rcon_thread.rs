@@ -12,7 +12,7 @@ use std::{
 };
 
 /// The delay between RCON commands
-const RCON_DELAY: Duration = time::Duration::from_millis(500);
+const RCON_DELAY: Duration = time::Duration::from_millis(1000);
 
 /// The delay between loops in run()
 const LOOP_DELAY: Duration = time::Duration::from_millis(1000);
@@ -81,7 +81,8 @@ impl RconThread {
                 }
             }
             Err(error) => {
-                log::error!("RCON: '{}' failed: '{:?}'", cmd, error);
+                log::debug!("RCON: '{}' failed: '{:?}'", cmd, error);
+                log::warn!("Could not talk to TF2 using RCON.");
             }
         }
     }
