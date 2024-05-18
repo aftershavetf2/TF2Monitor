@@ -45,12 +45,13 @@ At the moment you need to download the source code and [install The Rust program
 
 After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and typ `cargo run` and the application will be compiled and started.
 
-1. First start will complain about a missing `settings.json` file, and a skeleton settings file was created
-2. Quit the app and open that `settings.json` in a text editor
-3. Fill in your own SteamID
-4. Fill in the SteamAPI key, go to https://steamcommunity.com/dev/apikey to create a personal one
-5. `cargo run` again
-6. Use a second terminal and run `start_tf2.bat`
+1. Start Steam. If Steam is running your SteamID is read from the Windows registry if you are on Windows.
+2. First start will complain about a missing `settings.json` file, and a skeleton settings file was created
+3. Quit the app and open that `settings.json` in a text editor
+4. Fill in your own SteamID, if you are on Windows and Steam was running, it is filled in already.
+5. Fill in the SteamAPI key, go to https://steamcommunity.com/dev/apikey to create a personal one
+6. `cargo run` again
+7. Use a second terminal and run `start_tf2.bat`
 
 ## Start TF2 from the app or from Steam?
 
