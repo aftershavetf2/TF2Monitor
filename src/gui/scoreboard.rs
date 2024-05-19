@@ -1,6 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use super::scoreboard_team::scoreboard_team;
+use super::{
+    background_image::add_background_image, image_creds::add_image_creds,
+    scoreboard_team::scoreboard_team,
+};
 use crate::{
     appbus::AppBus,
     models::steamid::SteamID,
@@ -17,6 +20,7 @@ pub fn add_scoreboard(
     show_crits: &mut bool,
 ) {
     // ui.heading("Scoreboard");
+    let image_desc = add_background_image(ui);
 
     let mut sorted_players: Vec<Player> = lobby.players.clone();
 
@@ -25,6 +29,8 @@ pub fn add_scoreboard(
             *swap_team_colors = !*swap_team_colors;
         }
         ui.checkbox(show_crits, "Show crits");
+
+        add_image_creds(ui, &image_desc);
     });
 
     if *swap_team_colors {

@@ -1,5 +1,7 @@
+pub mod background_image;
 pub mod chat;
 pub mod colors;
+pub mod image_creds;
 pub mod player_tooltip;
 pub mod scoreboard;
 pub mod scoreboard_team;
@@ -13,7 +15,7 @@ use std::sync::{Arc, Mutex};
 
 pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), eframe::Error> {
     let viewport = egui::ViewportBuilder::default()
-        .with_inner_size([800.0, 600.0])
+        .with_inner_size([1024.0, 768.0])
         .with_min_inner_size([800.0, 600.0]);
 
     let options = eframe::NativeOptions {
@@ -43,12 +45,6 @@ impl eframe::App for AppWin {
         colors::set_style(ctx);
 
         self.process_bus();
-
-        // add_menu_row(ctx);
-
-        // add_status_row(ctx);
-
-        // scoreboard::make_scoreboard(ctx, &self.scores);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             scoreboard::add_scoreboard(
