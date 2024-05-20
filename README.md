@@ -43,7 +43,7 @@ The source code is available for anyone to inspect.
 
 At the moment you need to download the source code and [install The Rust programming language](https://www.rust-lang.org/tools/install).
 
-After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and typ `cargo run` and the application will be compiled and started.
+After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and type `cargo run` and the application will be compiled and started.
 
 1. Start Steam. If Steam is running your SteamID is read from the Windows registry if you are on Windows
 2. First start will complain about a missing `settings.json` file, and a skeleton settings file was created
