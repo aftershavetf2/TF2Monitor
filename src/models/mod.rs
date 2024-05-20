@@ -15,6 +15,7 @@ pub struct AppWin {
     pub self_steamid: SteamID,
     pub swap_team_colors: bool,
     pub show_crits: bool,
+    pub selected_player: Option<SteamID>,
 }
 
 impl AppWin {
@@ -27,6 +28,7 @@ impl AppWin {
             swap_team_colors: false,
             show_crits: false,
             self_steamid: settings.self_steamid64,
+            selected_player: None,
         }
     }
 

@@ -30,11 +30,6 @@ pub fn get_player_summaries(
     let response = get(url);
     match response {
         Ok(response) => {
-            // log::debug!("Reply: {:?}", response);
-            // let reply = response.text().unwrap();
-
-            // println!("{}", reply);
-            // return None;
             let reply: GetPlayerSummariesApiResponse = response.json().unwrap();
             let players = reply.response.players;
             Some(players)

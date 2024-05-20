@@ -187,12 +187,10 @@ pub fn get_current_user_steamid() -> Option<SteamID> {
     };
 
     let mut active_user: Option<String> = None;
-    for k in steam_root.enum_values() {
-        if let Ok(k) = k {
-            if k.0 == "ActiveUser" {
-                active_user = Some(format!("{}", k.1));
-                continue;
-            }
+    for k in steam_root.enum_values().flatten() {
+        if k.0 == "ActiveUser" {
+            active_user = Some(format!("{}", k.1));
+            continue;
         }
     }
 

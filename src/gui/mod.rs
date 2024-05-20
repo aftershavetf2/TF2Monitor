@@ -47,14 +47,7 @@ impl eframe::App for AppWin {
         self.process_bus();
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            scoreboard::add_scoreboard(
-                ui,
-                &self.bus,
-                self.self_steamid,
-                &mut self.lobby,
-                &mut self.swap_team_colors,
-                &mut self.show_crits,
-            );
+            scoreboard::add_scoreboard(self, ui);
 
             ui.separator();
 

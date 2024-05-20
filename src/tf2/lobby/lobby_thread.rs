@@ -95,6 +95,7 @@ impl LobbyThread {
     }
 
     fn fetch_steam_info(&mut self) {
+        // To fetch additional info from Steam Web Api a key is needed
         if !self.steam_api.has_key() {
             return;
         }
@@ -115,6 +116,8 @@ impl LobbyThread {
             for steam_player in steam_players.iter() {
                 if let Some(steamid) = SteamID::from_u64_string(&steam_player.steamid) {
                     if let Some(lobby_player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                        let friendslist = self.steam_api.get_friendlist(steamid);
+
                         lobby_player.steam_info = Some(PlayerSteamInfo {
                             steamid,
                             name: steam_player.personaname.clone(),
@@ -122,6 +125,8 @@ impl LobbyThread {
                             avatarmedium: steam_player.avatarmedium.clone(),
                             avatarfull: steam_player.avatarfull.clone(),
                             account_age: steam_player.get_account_age(),
+
+                            friends: friendslist.unwrap_or_default(),
                         });
                     }
                 }
@@ -262,7 +267,7 @@ impl LobbyThread {
 
         for player in self.lobby.players.iter_mut() {
             let age_seconds = (when - player.last_seen).num_seconds();
-            if age_seconds < 30 {
+            if age_seconds < 20 {
                 // Player is still active, keep it
                 new_vec.push(player.clone());
             }

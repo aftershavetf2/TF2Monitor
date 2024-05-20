@@ -42,6 +42,7 @@ pub struct PlayerSteamInfo {
     pub avatarmedium: String,
     pub avatarfull: String,
     pub account_age: Option<DateTime<Local>>,
+    pub friends: Vec<SteamID>,
 }
 
 impl PlayerSteamInfo {
@@ -104,5 +105,21 @@ impl Lobby {
         self.players
             .iter_mut()
             .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid)
+    }
+
+    pub fn get_friendlist_of(&self, steamid: SteamID) -> Vec<&Player> {
+        let friends: Vec<&Player> = self
+            .players
+            .iter()
+            .filter(|player| {
+                if let Some(steam_info) = &player.steam_info {
+                    steam_info.friends.contains(&steamid)
+                } else {
+                    false
+                }
+            })
+            .collect();
+
+        friends
     }
 }

@@ -3,19 +3,17 @@ use std::sync::{Arc, Mutex};
 use super::player_tooltip::add_player_tooltip;
 use crate::{
     appbus::AppBus,
-    models::steamid::SteamID,
+    models::{steamid::SteamID, AppWin},
     tf2::lobby::{Player, Team},
 };
 use eframe::egui::{Align, Color32, Grid, Layout, Sense, Ui, Vec2};
 
 pub fn scoreboard_team(
+    app_win: &mut AppWin,
     ui: &mut Ui,
-    bus: &Arc<Mutex<AppBus>>,
     title: &str,
-    self_steamid: SteamID,
     players: &Vec<&Player>,
     team_name: &str,
-    show_crits: &mut bool,
 ) {
     ui.heading(format!("{} - {} players", title, players.len()));
 
@@ -26,12 +24,12 @@ pub fn scoreboard_team(
         let total_crits_deaths = players.iter().map(|p| p.crit_deaths).sum::<u32>();
 
         ui.label(format!("Kills: {}", total_kills));
-        if *show_crits {
+        if app_win.show_crits {
             ui.colored_label(Color32::GRAY, format!("({})", total_crit_kills));
         }
 
         ui.label(format!("Deaths: {}", total_deaths));
-        if *show_crits {
+        if app_win.show_crits {
             ui.colored_label(Color32::GRAY, format!("({})", total_crits_deaths));
         }
     });
@@ -62,14 +60,14 @@ pub fn scoreboard_team(
 
         for player in players {
             // Team color box
-            add_team_symbol(ui, self_steamid, player);
+            add_team_symbol(ui, app_win.self_steamid, player);
 
-            add_player_name(ui, player);
+            add_player_name(app_win, ui, player);
 
             // Player kills
             ui.horizontal(|ui| {
                 ui.label(format!("{:3}", player.kills));
-                if *show_crits {
+                if app_win.show_crits {
                     ui.colored_label(Color32::GRAY, format!("({})", player.crit_kills));
                 }
             });
@@ -77,30 +75,67 @@ pub fn scoreboard_team(
             // Player deaths
             ui.horizontal(|ui| {
                 ui.label(format!("{:3}", player.deaths));
-                if *show_crits {
+                if app_win.show_crits {
                     ui.colored_label(Color32::GRAY, format!("({})", player.crit_deaths));
                 }
             });
 
             // add_flags(ui, &player);
             add_links(ui, player);
-            add_vote(ui, bus, player);
+            add_vote(ui, &app_win.bus, player);
 
             ui.end_row();
         }
     });
 }
 
-fn add_player_name(ui: &mut Ui, player: &Player) {
+fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
     // Player icon and name
     ui.horizontal(|ui| {
-        if let Some(steam_info) = &player.steam_info {
-            ui.image(&steam_info.avatar)
-                .on_hover_ui(|ui| add_player_tooltip(ui, player));
-        }
+        ui.scope(|ui| {
+            let marked_color = Some(Color32::YELLOW);
+            // log::info!("Selected player: {:?}", app_win.selected_player);
+            if let Some(steamid) = app_win.selected_player {
+                // Mark selected player
+                if steamid == player.steamid {
+                    ui.visuals_mut().override_text_color = marked_color;
+                    ui.style_mut().visuals.override_text_color = marked_color;
+                } else {
+                    // Mark friends of selected player
+                    if let Some(steam_info) = &player.steam_info {
+                        if steam_info.friends.contains(&steamid) {
+                            ui.visuals_mut().override_text_color = marked_color;
+                            ui.style_mut().visuals.override_text_color = marked_color;
+                        }
+                    }
+                }
+            }
 
-        ui.label(player.name.clone())
-            .on_hover_ui(|ui| add_player_tooltip(ui, player));
+            if let Some(steam_info) = &player.steam_info {
+                ui.image(&steam_info.avatar)
+                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(app_win, ui, player));
+            }
+
+            if ui
+                .label(&player.name)
+                .on_hover_ui_at_pointer(|ui| add_player_tooltip(app_win, ui, player))
+                .hovered()
+            {
+                // log::info!("Clicked on player: {}", player.name);
+                if let Some(steamid) = app_win.selected_player {
+                    if steamid == player.steamid {
+                        // log::info!("Deselected player: {}", player.name);
+                        // app_win.selected_player = None;
+                    } else {
+                        // log::info!("Selected player: {}", player.name);
+                        app_win.selected_player = Some(player.steamid);
+                    }
+                } else {
+                    // log::info!("Selected player: {}", player.name);
+                    app_win.selected_player = Some(player.steamid);
+                }
+            }
+        });
     });
 }
 

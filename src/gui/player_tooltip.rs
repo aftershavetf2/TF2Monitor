@@ -1,11 +1,14 @@
 use eframe::egui::{Image, Ui};
 
-use crate::tf2::lobby::{Player, PlayerKill};
+use crate::{
+    models::AppWin,
+    tf2::lobby::{Player, PlayerKill},
+};
 
 // pub const IMAGE_URL: &str =
 //     "https://avatars.cloudflare.steamstatic.com/f39ba23bc07d2de9b77abcabae13ee2541f9c938_full.jpg";
 
-pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
+pub fn add_player_tooltip(app_win: &AppWin, ui: &mut Ui, player: &Player) {
     ui.heading(&player.name);
     // ui.heading(format!("({}) {}", player.id, &player.name));
 
@@ -15,10 +18,25 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
             .rounding(3.0);
 
         ui.add(image);
+
         ui.label(format!(
             "Account created: {}",
             steam_info.get_account_created()
         ));
+
+        ui.label(format!("Friends: {}", steam_info.friends.len()));
+
+        if let Some(steamid) = app_win.selected_player {
+            let friends = app_win.lobby.get_friendlist_of(steamid);
+            if !friends.is_empty() {
+                let names = friends
+                    .iter()
+                    .map(|f| f.name.clone())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                ui.label(format!("Friends in server: {}", names));
+            }
+        }
 
         ui.separator();
     }

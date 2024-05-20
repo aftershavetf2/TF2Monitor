@@ -1,39 +1,29 @@
-use std::sync::{Arc, Mutex};
-
 use super::{
     background_image::add_background_image, image_creds::add_image_creds,
     scoreboard_team::scoreboard_team,
 };
 use crate::{
-    appbus::AppBus,
-    models::steamid::SteamID,
-    tf2::lobby::{Lobby, Player, Team},
+    models::AppWin,
+    tf2::lobby::{Player, Team},
 };
 use eframe::egui::{Color32, Ui};
 
-pub fn add_scoreboard(
-    ui: &mut Ui,
-    bus: &Arc<Mutex<AppBus>>,
-    self_steamid: SteamID,
-    lobby: &mut Lobby,
-    swap_team_colors: &mut bool,
-    show_crits: &mut bool,
-) {
+pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
     // ui.heading("Scoreboard");
     let image_desc = add_background_image(ui);
 
-    let mut sorted_players: Vec<Player> = lobby.players.clone();
+    let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
 
     ui.horizontal(|ui| {
         if ui.button("Swap team colors").clicked() {
-            *swap_team_colors = !*swap_team_colors;
+            app_win.swap_team_colors = !app_win.swap_team_colors;
         }
-        ui.checkbox(show_crits, "Show crits");
+        ui.checkbox(&mut app_win.show_crits, "Show crits");
 
         add_image_creds(ui, &image_desc);
     });
 
-    if *swap_team_colors {
+    if app_win.swap_team_colors {
         sorted_players.iter_mut().for_each(|p| {
             p.team = match p.team {
                 Team::Invaders => Team::Defendes,
@@ -58,24 +48,8 @@ pub fn add_scoreboard(
         .collect();
 
     ui.columns(2, |ui| {
-        scoreboard_team(
-            &mut ui[0],
-            bus,
-            "Blu",
-            self_steamid,
-            &blu,
-            "blu",
-            show_crits,
-        );
-        scoreboard_team(
-            &mut ui[1],
-            bus,
-            "Red",
-            self_steamid,
-            &red,
-            "red",
-            show_crits,
-        );
+        scoreboard_team(app_win, &mut ui[0], "Blu", &blu, "blu");
+        scoreboard_team(app_win, &mut ui[1], "Red", &red, "red");
     });
 
     let spectator_players: Vec<&Player> = sorted_players

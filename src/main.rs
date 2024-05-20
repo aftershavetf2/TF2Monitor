@@ -25,7 +25,8 @@ fn main() -> Result<(), eframe::Error> {
 //     let settings = AppSettings::load_or_default();
 //     let buses = Arc::new(Mutex::new(AppBus::default()));
 
-//     test_steam_api(&settings);
+//     // test_steam_api(&settings);
+//     test_get_friendslist(&settings);
 // }
 
 // fn test_steam_api(settings: &AppSettings) {
@@ -62,4 +63,14 @@ fn main() -> Result<(), eframe::Error> {
 //         SteamID::from_u64(76561197974228301),
 //     ]);
 //     println!("Players: {:?}", players);
+// }
+
+// fn test_get_friendslist(settings: &AppSettings) {
+//     use crate::models::steamid::SteamID;
+
+//     let mut steam_api = tf2::steam::SteamApi::new(settings);
+
+//     let friends = steam_api.get_friendlist(settings.self_steamid64).unwrap();
+//     println!("Friends: {:?}", friends);
+//     println!("Friends.len(): {:?}", friends.len());
 // }

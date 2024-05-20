@@ -8,6 +8,7 @@
 // - GetPlayerBans
 //
 
+mod get_friendlist;
 mod get_player_summariess;
 
 use crate::models::{app_settings::AppSettings, steamid::SteamID};
@@ -42,6 +43,10 @@ impl SteamApi {
     /// Fetches player summaries from the Steam API for a list of steamdids
     pub fn get_player_summaries(&mut self, steamids: Vec<SteamID>) -> Option<Vec<SteamApiPlayer>> {
         get_player_summaries(&self.steam_api_key, steamids)
+    }
+
+    pub fn get_friendlist(&self, steamid: SteamID) -> Option<Vec<SteamID>> {
+        get_friendlist::get_friendlist(&self.steam_api_key, steamid)
     }
 
     /// Returns true if the Steam API key is set

@@ -25,6 +25,8 @@ First column in the table is:
 - Green box is for accounts newer than one year
 - Team colored box
 
+Hover on a player to show its friends. Players marked yellow are friends. Tooltip for a player also shows the friend's names.
+
 # What about VAC?
 
 This application does not alter any game file or intervene with the TF2 process and memory in any way. This is completely VAC safe.
