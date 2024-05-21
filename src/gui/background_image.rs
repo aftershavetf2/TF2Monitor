@@ -20,7 +20,7 @@ pub fn add_background_image(ui: &mut eframe::egui::Ui) -> ImageDescription {
     image.paint_at(ui, rect);
 
     ImageDescription {
-        author: "die salo".to_string(),
+        author: "die_salo".to_string(),
         url: "https://www.instagram.com/p/CyrMyRos2xQ/?img_index=1".to_string(),
     }
 }
