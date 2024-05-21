@@ -294,9 +294,17 @@ impl LobbyThread {
 
         let mut new_vec: Vec<Player> = vec![];
 
-        for player in self.lobby.recently_left_players.iter_mut() {
-            let age_seconds = (when - player.last_seen).num_seconds();
-            if age_seconds < 60 {
+        // Go through the recently_left_players
+        // and remove those who are still active
+        // and remove those who are older than 60 seconds
+        for player in self.lobby.recently_left_players.iter() {
+            if self.lobby.get_player(None, Some(player.steamid)).is_some() {
+                // The player also exists in the active player list
+                continue;
+            }
+
+            let age = when - player.last_seen;
+            if age.num_seconds() < 60 {
                 new_vec.push(player.clone());
             }
         }
