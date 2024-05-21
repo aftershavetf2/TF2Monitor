@@ -48,8 +48,6 @@ impl LobbyThread {
         loop {
             self.process_bus();
 
-            self.fetch_steam_info();
-
             self.update_scoreboard();
 
             self.fetch_steam_info();
@@ -140,7 +138,17 @@ impl LobbyThread {
 
     fn new_lobby(&mut self) {
         log::info!("Creating new lobby");
-        self.lobby = Lobby::new();
+
+        let mut new_lobby = Lobby::new();
+
+        new_lobby
+            .recently_left_players
+            .append(&mut self.lobby.players);
+        new_lobby
+            .recently_left_players
+            .append(&mut self.lobby.recently_left_players);
+
+        self.lobby = new_lobby;
     }
 
     /// Add this player to the list of players if not already added
@@ -265,18 +273,34 @@ impl LobbyThread {
         }
     }
 
-    /// Players who has a last_seen older than 30 seconds are removed from the lobby
+    /// Players who has a last_seen older than 12 seconds are removed from the lobby
+    /// and instead added to the recently_left collection.
+    /// Recently_left players remain there until 30 seconds has passed.
     fn purge_old_players(&mut self, when: DateTime<Local>) {
         let mut new_vec: Vec<Player> = vec![];
 
         for player in self.lobby.players.iter_mut() {
             let age_seconds = (when - player.last_seen).num_seconds();
-            if age_seconds < 20 {
+            if age_seconds < 12 {
                 // Player is still active, keep it
                 new_vec.push(player.clone());
+            } else {
+                // Player has left the game
+                self.lobby.recently_left_players.push(player.clone());
             }
         }
 
         self.lobby.players = new_vec;
+
+        let mut new_vec: Vec<Player> = vec![];
+
+        for player in self.lobby.recently_left_players.iter_mut() {
+            let age_seconds = (when - player.last_seen).num_seconds();
+            if age_seconds < 60 {
+                new_vec.push(player.clone());
+            }
+        }
+
+        self.lobby.recently_left_players = new_vec;
     }
 }

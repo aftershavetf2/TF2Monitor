@@ -73,6 +73,7 @@ impl PlayerSteamInfo {
 pub struct Lobby {
     pub players: Vec<Player>,
     pub chat: Vec<LobbyChat>,
+    pub recently_left_players: Vec<Player>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -89,6 +90,7 @@ impl Lobby {
         Self {
             players: Vec::new(),
             chat: Vec::new(),
+            recently_left_players: Vec::new(),
         }
     }
 

@@ -104,10 +104,11 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
             let marked_color = Some(Color32::YELLOW);
             // log::info!("Selected player: {:?}", app_win.selected_player);
             if let Some(steamid) = app_win.selected_player {
-                // Mark selected player
                 if steamid == player.steamid {
+                    // Mark selected player
                     ui.visuals_mut().override_text_color = marked_color;
                     ui.style_mut().visuals.override_text_color = marked_color;
+                    ui.style_mut().visuals.extreme_bg_color = marked_color.unwrap();
                 } else {
                     // Mark friends of selected player
                     if let Some(steam_info) = &player.steam_info {
@@ -115,6 +116,7 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                             if friends.contains(&steamid) {
                                 ui.visuals_mut().override_text_color = marked_color;
                                 ui.style_mut().visuals.override_text_color = marked_color;
+                                ui.style_mut().visuals.extreme_bg_color = marked_color.unwrap();
                             }
                         }
                     }
@@ -277,11 +279,13 @@ fn add_links(ui: &mut Ui, player: &Player) {
 
     ui.horizontal(|ui| {
         ui.menu_button("☰ View", |ui| {
+            ui.label(format!("View {} on", player.name));
+            ui.separator();
             // ui.heading("View player on");
-            make_link(ui, player.steamid.steam_community_url(), "SteamCommunity");
-            make_link(ui, player.steamid.steam_history_url(), "SteamHistory");
-            make_link(ui, player.steamid.steam_rep_url(), "SteamRep");
-            make_link(ui, player.steamid.steam_id_url(), "SteamID");
+            make_link(ui, player.steamid.steam_community_url(), "- SteamCommunity");
+            make_link(ui, player.steamid.steam_history_url(), "- SteamHistory");
+            make_link(ui, player.steamid.steam_rep_url(), "- SteamRep");
+            make_link(ui, player.steamid.steam_id_url(), "- SteamID");
         });
     });
 }
@@ -289,8 +293,9 @@ fn add_links(ui: &mut Ui, player: &Player) {
 fn add_vote(ui: &mut Ui, bus: &Arc<Mutex<AppBus>>, player: &&Player) {
     ui.horizontal(|ui| {
         ui.menu_button("☰ Vote", |ui| {
-            ui.heading(format!("Kick {}", player.name));
-            if ui.button("Cheating").clicked() {
+            ui.label(format!("Kick {} for", player.name));
+            ui.separator();
+            if ui.button("- Cheating").clicked() {
                 log::info!("Vote to kick player '{}' for cheating", player.name);
                 let cmd = format!("callvote kick \"{} cheating\"", player.id);
                 bus.lock().unwrap().send_rcon_cmd(cmd.as_str());

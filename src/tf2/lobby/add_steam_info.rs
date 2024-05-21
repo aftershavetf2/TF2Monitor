@@ -9,7 +9,7 @@ pub fn add_friends_from_steam(steam_api: &SteamApi, lobby: &mut Lobby) {
 
     // The fetching is synchronous, so we limit the amount of fetches
     // to allow for other info to be processed in between
-    const MAX_FETCHES: usize = 4;
+    const MAX_FETCHES: usize = 3;
 
     // The list of players that
     // - Has basic info from Steam fetched

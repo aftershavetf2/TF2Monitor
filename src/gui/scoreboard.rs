@@ -1,6 +1,6 @@
 use super::{
     background_image::add_background_image, image_creds::add_image_creds,
-    scoreboard_team::scoreboard_team,
+    recently_left::add_recently_left_players, scoreboard_team::scoreboard_team,
 };
 use crate::{
     models::AppWin,
@@ -86,6 +86,8 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
             .join(", ");
         ui.colored_label(Color32::GRAY, format!("Joined: {}", player_names));
     }
+
+    add_recently_left_players(app_win, ui);
 }
 
 fn cmp_for_scoreboard(a: &Player, b: &Player) -> std::cmp::Ordering {

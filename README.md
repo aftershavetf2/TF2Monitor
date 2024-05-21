@@ -28,6 +28,8 @@ First column in the table is:
 
 Hover on a player to show its friends. Players marked yellow are friends. Tooltip for a player also shows the friend's names.
 
+Under scoreboard there's a list of players that left recently. Names are links to SteamHistory for now. They remain there for 1 minute.
+
 # What about VAC?
 
 This application does not alter any game file or intervene with the TF2 process and memory in any way. This is completely VAC safe.
