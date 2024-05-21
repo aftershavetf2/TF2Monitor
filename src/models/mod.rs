@@ -26,7 +26,7 @@ impl AppWin {
             lobby: Lobby::new(),
             lobby_report_bus_rx: bus.lock().unwrap().lobby_report_bus.add_rx(),
             swap_team_colors: false,
-            show_crits: false,
+            show_crits: true,
             self_steamid: settings.self_steamid64,
             selected_player: None,
         }
