@@ -1,10 +1,13 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    fmt::format,
+    sync::{Arc, Mutex},
+};
 
 use super::player_tooltip::add_player_tooltip;
 use crate::{
     appbus::AppBus,
     models::{steamid::SteamID, AppWin},
-    tf2::lobby::{Player, Team},
+    tf2::lobby::{Lobby, Player, Team},
 };
 use eframe::egui::{Align, Color32, Grid, Layout, Sense, Ui, Vec2};
 
@@ -60,23 +63,28 @@ pub fn scoreboard_team(
 
         for player in players {
             // Team color box
-            add_team_symbol(ui, app_win.self_steamid, player);
+            add_team_symbol(app_win, ui, app_win.self_steamid, player);
 
             add_player_name(app_win, ui, player);
 
             // Player kills
             ui.horizontal(|ui| {
-                ui.label(format!("{:3}", player.kills));
+                ui.label(format!("{:3}", player.kills))
+                    .on_hover_text("Number of kills");
                 if app_win.show_crits {
-                    ui.colored_label(Color32::GRAY, format!("({})", player.crit_kills));
+                    ui.colored_label(Color32::GRAY, format!("({})", player.crit_kills))
+                        .on_hover_text("Number of crit kills");
                 }
             });
 
             // Player deaths
             ui.horizontal(|ui| {
-                ui.label(format!("{:3}", player.deaths));
+                ui.label(format!("{:3}", player.deaths))
+                    .on_hover_text("Number of deaths");
+
                 if app_win.show_crits {
-                    ui.colored_label(Color32::GRAY, format!("({})", player.crit_deaths));
+                    ui.colored_label(Color32::GRAY, format!("({})", player.crit_deaths))
+                        .on_hover_text("Number of deaths due to crits");
                 }
             });
 
@@ -103,9 +111,11 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                 } else {
                     // Mark friends of selected player
                     if let Some(steam_info) = &player.steam_info {
-                        if steam_info.friends.contains(&steamid) {
-                            ui.visuals_mut().override_text_color = marked_color;
-                            ui.style_mut().visuals.override_text_color = marked_color;
+                        if let Some(friends) = &steam_info.friends {
+                            if friends.contains(&steamid) {
+                                ui.visuals_mut().override_text_color = marked_color;
+                                ui.style_mut().visuals.override_text_color = marked_color;
+                            }
                         }
                     }
                 }
@@ -139,7 +149,7 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
     });
 }
 
-fn add_team_symbol(ui: &mut Ui, self_steamid: SteamID, player: &Player) {
+fn add_team_symbol(app_win: &AppWin, ui: &mut Ui, self_steamid: SteamID, player: &Player) {
     let invader_color = super::colors::TEAM_BLU_COLOR;
     let defender_color = super::colors::TEAM_RED_COLOR;
 
@@ -153,19 +163,30 @@ fn add_team_symbol(ui: &mut Ui, self_steamid: SteamID, player: &Player) {
         ui.horizontal(|ui| {
             let size = Vec2::splat(2.0 * 10.0 * 0.5 + 5.0);
 
-            let (rect, _response) = ui.allocate_at_least(size, Sense::hover());
+            let (rect, response) = ui.allocate_at_least(size, Sense::hover());
             ui.painter().rect_filled(rect, 3.0f32, color);
+            response.on_hover_text("Team color");
 
             if player.steamid == self_steamid {
-                let (rect, _response) = ui.allocate_at_least(size, Sense::hover());
+                let (rect, response) = ui.allocate_at_least(size, Sense::hover());
                 ui.painter().rect_filled(rect, 3.0f32, Color32::WHITE);
+                response.on_hover_text("This is you");
             }
 
             if let Some(steam_info) = &player.steam_info {
                 if steam_info.is_account_new() {
-                    let (rect, _response) = ui.allocate_at_least(size, Sense::hover());
+                    let (rect, response) = ui.allocate_at_least(size, Sense::hover());
                     ui.painter().rect_filled(rect, 3.0f32, Color32::GREEN);
+                    response.on_hover_text("<1 year old");
                 }
+            }
+
+            if app_win
+                .lobby
+                .is_friend_of_self(app_win.self_steamid, player.steamid)
+            {
+                ui.colored_label(Color32::RED, "❤")
+                    .on_hover_text(format!("{} is in your friendlist", player.name));
             }
         });
     });

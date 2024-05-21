@@ -1,8 +1,8 @@
-use chrono::{DateTime, Local};
+pub mod add_steam_info;
+pub mod lobby_thread;
 
 use crate::models::steamid::SteamID;
-
-pub mod lobby_thread;
+use chrono::{DateTime, Local};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Team {
@@ -42,7 +42,8 @@ pub struct PlayerSteamInfo {
     pub avatarmedium: String,
     pub avatarfull: String,
     pub account_age: Option<DateTime<Local>>,
-    pub friends: Vec<SteamID>,
+
+    pub friends: Option<Vec<SteamID>>,
 }
 
 impl PlayerSteamInfo {
@@ -107,16 +108,32 @@ impl Lobby {
             .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid)
     }
 
+    pub fn is_friend_of_self(&self, self_steamid: SteamID, steamid: SteamID) -> bool {
+        if let Some(me) = self.get_player(None, Some(self_steamid)) {
+            if let Some(steam_info) = &me.steam_info {
+                if let Some(friends) = &steam_info.friends {
+                    return friends.contains(&steamid);
+                }
+            }
+        }
+
+        false
+    }
+
     pub fn get_friendlist_of(&self, steamid: SteamID) -> Vec<&Player> {
+        // TODO: First look up the player, if it has a friendlist, use that
+        // Otherwise, check all players' friendlists
         let friends: Vec<&Player> = self
             .players
             .iter()
             .filter(|player| {
                 if let Some(steam_info) = &player.steam_info {
-                    steam_info.friends.contains(&steamid)
-                } else {
-                    false
+                    if let Some(friends) = &steam_info.friends {
+                        return friends.contains(&steamid);
+                    }
                 }
+
+                false
             })
             .collect();
 

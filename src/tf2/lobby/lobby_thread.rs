@@ -1,3 +1,4 @@
+use super::add_steam_info::add_friends_from_steam;
 use super::{Lobby, PlayerSteamInfo};
 use super::{LobbyChat, Player, PlayerKill, Team};
 use crate::tf2::steam::SteamApi;
@@ -14,7 +15,7 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(5000);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(1000);
 
 pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
@@ -46,6 +47,8 @@ impl LobbyThread {
 
         loop {
             self.process_bus();
+
+            self.fetch_steam_info();
 
             self.update_scoreboard();
 
@@ -100,6 +103,9 @@ impl LobbyThread {
             return;
         }
 
+        // Fetch friends list
+        add_friends_from_steam(&self.steam_api, &mut self.lobby);
+
         let steamids: Vec<SteamID> = self
             .lobby
             .players
@@ -116,8 +122,6 @@ impl LobbyThread {
             for steam_player in steam_players.iter() {
                 if let Some(steamid) = SteamID::from_u64_string(&steam_player.steamid) {
                     if let Some(lobby_player) = self.lobby.get_player_mut(None, Some(steamid)) {
-                        let friendslist = self.steam_api.get_friendlist(steamid);
-
                         lobby_player.steam_info = Some(PlayerSteamInfo {
                             steamid,
                             name: steam_player.personaname.clone(),
@@ -126,7 +130,7 @@ impl LobbyThread {
                             avatarfull: steam_player.avatarfull.clone(),
                             account_age: steam_player.get_account_age(),
 
-                            friends: friendslist.unwrap_or_default(),
+                            friends: None,
                         });
                     }
                 }
