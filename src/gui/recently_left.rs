@@ -9,10 +9,12 @@ pub fn add_recently_left_players(app_win: &mut AppWin, ui: &mut Ui) {
     ui.separator();
 
     ui.horizontal_wrapped(|ui| {
-        ui.label("Recently left players:");
         if ui.button("Clear").clicked() {
             app_win.lobby.recently_left_players.clear();
         }
+
+        ui.label("Recent players:\n");
+        ui.separator();
 
         let mut is_first = true;
         for player in &app_win.lobby.recently_left_players {
