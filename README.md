@@ -24,6 +24,7 @@ First column in the table is:
 - White box is you(settings file, self_steamid64)
 - Green box is for accounts newer than one year
 - Team colored box
+- Heart is a friend of yours(settings file, self_steamid64)
 
 Hover on a player to show its friends. Players marked yellow are friends. Tooltip for a player also shows the friend's names.
 
