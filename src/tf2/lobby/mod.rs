@@ -1,7 +1,6 @@
-pub mod add_steam_info;
 pub mod lobby_thread;
 
-use crate::models::steamid::SteamID;
+use crate::models::{steamid::SteamID, PlayerFlags};
 use chrono::{DateTime, Local};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -30,6 +29,7 @@ pub struct Player {
     pub crit_deaths: u32,
     pub kills_with: Vec<PlayerKill>,
     pub last_seen: DateTime<Local>,
+    pub flags: Vec<PlayerFlags>,
 
     pub steam_info: Option<PlayerSteamInfo>,
 }

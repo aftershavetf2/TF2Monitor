@@ -2,6 +2,7 @@ pub mod background_image;
 pub mod chat;
 pub mod colors;
 pub mod image_creds;
+pub mod player_menu;
 pub mod player_tooltip;
 pub mod recently_left;
 pub mod scoreboard;

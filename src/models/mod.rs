@@ -41,6 +41,7 @@ impl AppWin {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PlayerFlags {
+    Awesome,
     Cheater,
     Bot,
     Sus,
@@ -50,6 +51,7 @@ pub enum PlayerFlags {
 
 pub fn flag_shortname(flag: PlayerFlags) -> &'static str {
     match flag {
+        PlayerFlags::Awesome => "A",
         PlayerFlags::Cheater => "C",
         PlayerFlags::Bot => "B",
         PlayerFlags::Sus => "S",
@@ -60,6 +62,7 @@ pub fn flag_shortname(flag: PlayerFlags) -> &'static str {
 
 pub fn flag_description(flag: PlayerFlags) -> &'static str {
     match flag {
+        PlayerFlags::Awesome => "Awesome",
         PlayerFlags::Cheater => "Cheater",
         PlayerFlags::Bot => "Bot",
         PlayerFlags::Sus => "Suspicious",

@@ -1,7 +1,6 @@
-use super::add_steam_info::add_friends_from_steam;
-use super::{Lobby, PlayerSteamInfo};
+use super::Lobby;
 use super::{LobbyChat, Player, PlayerKill, Team};
-use crate::tf2::steam::SteamApi;
+use crate::tf2::steamapi::SteamApiMsg;
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
@@ -20,8 +19,8 @@ const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(1000);
 pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
     logfile_bus_rx: BusReader<LogLine>,
+    steamapi_bus_rx: BusReader<SteamApiMsg>,
     lobby: Lobby,
-    steam_api: SteamApi,
 }
 
 /// Start the background thread for the lobby module
@@ -32,13 +31,14 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 }
 
 impl LobbyThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
+        let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         Self {
             bus: Arc::clone(bus),
             logfile_bus_rx,
+            steamapi_bus_rx,
             lobby: Lobby::new(),
-            steam_api: SteamApi::new(settings),
         }
     }
 
@@ -47,16 +47,41 @@ impl LobbyThread {
 
         loop {
             self.process_bus();
-
             self.update_scoreboard();
-
-            self.fetch_steam_info();
 
             sleep(LOOP_DELAY);
         }
     }
 
     fn process_bus(&mut self) {
+        self.process_logfile_bus();
+        self.process_steamapi_bus();
+    }
+
+    fn process_steamapi_bus(&mut self) {
+        while let Ok(msg) = self.steamapi_bus_rx.try_recv() {
+            // log::info!("LobbyThread: Got SteamAPI message: {:?}", msg);
+            match msg {
+                SteamApiMsg::FriendsList(steamid, friends) => {
+                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                        if let Some(steam_info) = &mut player.steam_info {
+                            steam_info.friends = Some(friends);
+                        }
+                    }
+                }
+                SteamApiMsg::PlayerSummary(player_steam_info) => {
+                    if let Some(player) = self
+                        .lobby
+                        .get_player_mut(None, Some(player_steam_info.steamid))
+                    {
+                        player.steam_info = Some(player_steam_info);
+                    }
+                }
+            }
+        }
+    }
+
+    fn process_logfile_bus(&mut self) {
         while let Ok(cmd) = self.logfile_bus_rx.try_recv() {
             // log::info!("LobbyThread: Got message: {:?}", cmd);
             match cmd {
@@ -93,47 +118,6 @@ impl LobbyThread {
     fn update_scoreboard(&mut self) {
         let mut bus = self.bus.lock().unwrap();
         bus.send_lobby_report(self.lobby.clone());
-    }
-
-    fn fetch_steam_info(&mut self) {
-        // To fetch additional info from Steam Web Api a key is needed
-        if !self.steam_api.has_key() {
-            return;
-        }
-
-        // Fetch friends list
-        add_friends_from_steam(&self.steam_api, &mut self.lobby);
-
-        let steamids: Vec<SteamID> = self
-            .lobby
-            .players
-            .iter()
-            .filter(|p| p.steam_info.is_none())
-            .map(|p| p.steamid)
-            .collect();
-
-        if steamids.is_empty() {
-            return;
-        }
-
-        if let Some(steam_players) = self.steam_api.get_player_summaries(steamids) {
-            for steam_player in steam_players.iter() {
-                if let Some(steamid) = SteamID::from_u64_string(&steam_player.steamid) {
-                    if let Some(lobby_player) = self.lobby.get_player_mut(None, Some(steamid)) {
-                        lobby_player.steam_info = Some(PlayerSteamInfo {
-                            steamid,
-                            name: steam_player.personaname.clone(),
-                            avatar: steam_player.avatar.clone(),
-                            avatarmedium: steam_player.avatarmedium.clone(),
-                            avatarfull: steam_player.avatarfull.clone(),
-                            account_age: steam_player.get_account_age(),
-
-                            friends: None,
-                        });
-                    }
-                }
-            }
-        }
     }
 
     fn new_lobby(&mut self) {
@@ -178,6 +162,7 @@ impl LobbyThread {
             crit_deaths: 0,
             kills_with: Vec::new(),
             last_seen: when,
+            flags: Vec::new(),
             steam_info: None,
         });
     }
@@ -209,6 +194,7 @@ impl LobbyThread {
             crit_deaths: 0,
             kills_with: Vec::new(),
             last_seen: Local::now(),
+            flags: Vec::new(),
             steam_info: None,
         });
     }

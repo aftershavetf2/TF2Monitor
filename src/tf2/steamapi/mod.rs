@@ -10,6 +10,7 @@
 
 mod get_friendlist;
 mod get_player_summariess;
+pub mod steamapi_thread;
 
 use crate::models::{app_settings::AppSettings, steamid::SteamID};
 use chrono::{DateTime, Local, TimeZone};
@@ -17,11 +18,19 @@ use serde::Deserialize;
 
 use self::get_player_summariess::get_player_summaries;
 
+use super::lobby::PlayerSteamInfo;
+
+#[derive(Debug, Clone)]
+pub enum SteamApiMsg {
+    PlayerSummary(PlayerSteamInfo),
+    FriendsList(SteamID, Vec<SteamID>),
+}
+
 pub struct SteamApi {
     steam_api_key: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct SteamApiPlayer {
     pub steamid: String,
     pub personaname: String,

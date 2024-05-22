@@ -56,8 +56,8 @@ impl RConConnection {
     pub fn new(args: &RConArgs) -> BoxResult<Self> {
         let addr = format!("{}:{}", args.ip, args.port);
         let stream = TcpStream::connect(addr)?;
-        stream.set_read_timeout(Some(Duration::from_secs(1)))?;
-        stream.set_write_timeout(Some(Duration::from_secs(1)))?;
+        stream.set_read_timeout(Some(Duration::from_secs(8)))?;
+        stream.set_write_timeout(Some(Duration::from_secs(8)))?;
 
         Ok(RConConnection {
             args: args.clone(),

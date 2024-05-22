@@ -1,13 +1,7 @@
-use std::{
-    fmt::format,
-    sync::{Arc, Mutex},
-};
-
-use super::player_tooltip::add_player_tooltip;
+use super::{player_menu::add_player_menu, player_tooltip::add_player_tooltip};
 use crate::{
-    appbus::AppBus,
     models::{steamid::SteamID, AppWin},
-    tf2::lobby::{Lobby, Player, Team},
+    tf2::lobby::{Player, Team},
 };
 use eframe::egui::{Align, Color32, Grid, Layout, Sense, Ui, Vec2};
 
@@ -56,7 +50,7 @@ pub fn scoreboard_team(
         // ui.label("Flags");
         ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
             // ui.label(RichText::new("Links").strong());
-            ui.label("Links");
+            ui.label("Flags");
         });
 
         ui.end_row();
@@ -89,8 +83,6 @@ pub fn scoreboard_team(
             });
 
             // add_flags(ui, &player);
-            add_links(ui, player);
-            add_vote(ui, &app_win.bus, player);
 
             ui.end_row();
         }
@@ -100,6 +92,8 @@ pub fn scoreboard_team(
 fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
     // Player icon and name
     ui.horizontal(|ui| {
+        add_player_menu(ui, &app_win.bus, player);
+
         ui.scope(|ui| {
             let marked_color = Some(Color32::YELLOW);
             // log::info!("Selected player: {:?}", app_win.selected_player);
@@ -108,7 +102,6 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                     // Mark selected player
                     ui.visuals_mut().override_text_color = marked_color;
                     ui.style_mut().visuals.override_text_color = marked_color;
-                    ui.style_mut().visuals.extreme_bg_color = marked_color.unwrap();
                 } else {
                     // Mark friends of selected player
                     if let Some(steam_info) = &player.steam_info {
@@ -116,7 +109,6 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                             if friends.contains(&steamid) {
                                 ui.visuals_mut().override_text_color = marked_color;
                                 ui.style_mut().visuals.override_text_color = marked_color;
-                                ui.style_mut().visuals.extreme_bg_color = marked_color.unwrap();
                             }
                         }
                     }
@@ -269,41 +261,3 @@ fn add_team_symbol(app_win: &AppWin, ui: &mut Ui, self_steamid: SteamID, player:
 //         }
 //     });
 // }
-
-fn add_links(ui: &mut Ui, player: &Player) {
-    fn make_link(ui: &mut Ui, url: String, text: &str) {
-        if ui.hyperlink_to(text, url).clicked() {
-            ui.close_menu();
-        }
-    }
-
-    ui.horizontal(|ui| {
-        ui.menu_button("☰ View", |ui| {
-            ui.label(format!("View {} on", player.name));
-            ui.separator();
-            // ui.heading("View player on");
-            make_link(ui, player.steamid.steam_community_url(), "- SteamCommunity");
-            make_link(ui, player.steamid.steam_history_url(), "- SteamHistory");
-            make_link(ui, player.steamid.steam_rep_url(), "- SteamRep");
-            make_link(ui, player.steamid.steam_id_url(), "- SteamID");
-        });
-    });
-}
-
-fn add_vote(ui: &mut Ui, bus: &Arc<Mutex<AppBus>>, player: &&Player) {
-    ui.horizontal(|ui| {
-        ui.menu_button("☰ Vote", |ui| {
-            ui.label(format!("Kick {} for", player.name));
-            ui.separator();
-            if ui.button("- Cheating").clicked() {
-                log::info!("Vote to kick player '{}' for cheating", player.name);
-                let cmd = format!("callvote kick \"{} cheating\"", player.id);
-                bus.lock().unwrap().send_rcon_cmd(cmd.as_str());
-            }
-            // make_link(ui, player.steamid.steam_community_url(), "SteamCommunity");
-            // make_link(ui, player.steamid.steam_history_url(), "SteamHistory");
-            // make_link(ui, player.steamid.steam_rep_url(), "SteamRep");
-            // make_link(ui, player.steamid.steam_id_url(), "SteamID");
-        });
-    });
-}
