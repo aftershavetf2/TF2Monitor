@@ -92,53 +92,55 @@ pub fn scoreboard_team(
 fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
     // Player icon and name
     ui.horizontal(|ui| {
-        add_player_menu(ui, &app_win.bus, player);
+        ui.push_id(player.steamid.to_u64(), |ui| {
+            add_player_menu(ui, &app_win.bus, player);
 
-        ui.scope(|ui| {
-            let marked_color = Some(Color32::YELLOW);
-            // log::info!("Selected player: {:?}", app_win.selected_player);
-            if let Some(steamid) = app_win.selected_player {
-                if steamid == player.steamid {
-                    // Mark selected player
-                    ui.visuals_mut().override_text_color = marked_color;
-                    ui.style_mut().visuals.override_text_color = marked_color;
-                } else {
-                    // Mark friends of selected player
-                    if let Some(steam_info) = &player.steam_info {
-                        if let Some(friends) = &steam_info.friends {
-                            if friends.contains(&steamid) {
-                                ui.visuals_mut().override_text_color = marked_color;
-                                ui.style_mut().visuals.override_text_color = marked_color;
+            ui.scope(|ui| {
+                let marked_color = Some(Color32::YELLOW);
+                // log::info!("Selected player: {:?}", app_win.selected_player);
+                if let Some(steamid) = app_win.selected_player {
+                    if steamid == player.steamid {
+                        // Mark selected player
+                        ui.visuals_mut().override_text_color = marked_color;
+                        ui.style_mut().visuals.override_text_color = marked_color;
+                    } else {
+                        // Mark friends of selected player
+                        if let Some(steam_info) = &player.steam_info {
+                            if let Some(friends) = &steam_info.friends {
+                                if friends.contains(&steamid) {
+                                    ui.visuals_mut().override_text_color = marked_color;
+                                    ui.style_mut().visuals.override_text_color = marked_color;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            if let Some(steam_info) = &player.steam_info {
-                ui.image(&steam_info.avatar)
-                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(app_win, ui, player));
-            }
+                if let Some(steam_info) = &player.steam_info {
+                    ui.image(&steam_info.avatar)
+                        .on_hover_ui_at_pointer(|ui| add_player_tooltip(app_win, ui, player));
+                }
 
-            if ui
-                .label(&player.name)
-                .on_hover_ui_at_pointer(|ui| add_player_tooltip(app_win, ui, player))
-                .hovered()
-            {
-                // log::info!("Clicked on player: {}", player.name);
-                if let Some(steamid) = app_win.selected_player {
-                    if steamid == player.steamid {
-                        // log::info!("Deselected player: {}", player.name);
-                        // app_win.selected_player = None;
+                if ui
+                    .label(&player.name)
+                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(app_win, ui, player))
+                    .hovered()
+                {
+                    // log::info!("Clicked on player: {}", player.name);
+                    if let Some(steamid) = app_win.selected_player {
+                        if steamid == player.steamid {
+                            // log::info!("Deselected player: {}", player.name);
+                            // app_win.selected_player = None;
+                        } else {
+                            // log::info!("Selected player: {}", player.name);
+                            app_win.selected_player = Some(player.steamid);
+                        }
                     } else {
                         // log::info!("Selected player: {}", player.name);
                         app_win.selected_player = Some(player.steamid);
                     }
-                } else {
-                    // log::info!("Selected player: {}", player.name);
-                    app_win.selected_player = Some(player.steamid);
                 }
-            }
+            });
         });
     });
 }
