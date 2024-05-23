@@ -30,7 +30,7 @@ Hover on a player to show its friends. Players marked yellow are friends. Toolti
 
 Under scoreboard there's a list of players that left recently. Names are links to SteamHistory for now. They remain there for 1 minute.
 
-When "Show friendships" is checked, there are white conntections between friends.
+When "Show friendships" is checked, there are white connections between friends.
 
 # What about VAC?
 
