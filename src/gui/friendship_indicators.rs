@@ -88,7 +88,7 @@ fn draw_curve(ui: &mut Ui, start_pos: Pos2, end_pos: Pos2, stroke: &Stroke) {
     let y_delta = end_pos.y - start_pos.y;
     let y_delta_inc = y_delta / NSEGS as f32;
 
-    let x_scale = 1.0 + y_delta.abs() / 200.0;
+    let x_scale = 1.0 + y_delta.abs() / 150.0;
 
     let mut a = Pos2::new(0f32, 0f32);
     let mut b = Pos2::new(0f32, 0f32);
