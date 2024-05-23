@@ -4,7 +4,17 @@ pub mod steamid;
 use self::{app_settings::AppSettings, steamid::SteamID};
 use crate::{appbus::AppBus, tf2::lobby::Lobby};
 use bus::BusReader;
-use std::sync::{Arc, Mutex};
+use eframe::egui::{Pos2, Vec2};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
+
+// #[derive(Debug, Copy, Clone, Hash)]
+// pub struct MyPos2 {
+//     pub x: f32,
+//     pub y: f32,
+// }
 
 pub struct AppWin {
     pub bus: Arc<Mutex<AppBus>>,
@@ -16,6 +26,9 @@ pub struct AppWin {
     pub swap_team_colors: bool,
     pub show_crits: bool,
     pub selected_player: Option<SteamID>,
+
+    pub show_friendships: bool,
+    pub friendship_positions: Vec<(SteamID, Pos2)>,
 }
 
 impl AppWin {
@@ -27,8 +40,11 @@ impl AppWin {
             lobby_report_bus_rx: bus.lock().unwrap().lobby_report_bus.add_rx(),
             swap_team_colors: false,
             show_crits: true,
+            show_friendships: true,
             self_steamid: settings.self_steamid64,
             selected_player: None,
+
+            friendship_positions: Vec::new(),
         }
     }
 

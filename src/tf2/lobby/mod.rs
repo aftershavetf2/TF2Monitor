@@ -1,5 +1,7 @@
 pub mod lobby_thread;
 
+use std::collections::HashSet;
+
 use crate::models::{steamid::SteamID, PlayerFlags};
 use chrono::{DateTime, Local};
 
@@ -43,7 +45,7 @@ pub struct PlayerSteamInfo {
     pub avatarfull: String,
     pub account_age: Option<DateTime<Local>>,
 
-    pub friends: Option<Vec<SteamID>>,
+    pub friends: Option<HashSet<SteamID>>,
 }
 
 impl PlayerSteamInfo {

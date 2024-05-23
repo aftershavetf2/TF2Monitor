@@ -1,4 +1,4 @@
-use std::vec;
+use std::{collections::HashSet, vec};
 
 use crate::models::steamid::SteamID;
 use reqwest::{blocking::get, Result};
@@ -23,7 +23,7 @@ struct Response {
 /// Fetches the friends list of a SteamID
 /// If there's some error, None is returned
 /// Otherwise a list of SteamIDs is returned, possible an empty list
-pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<Vec<SteamID>> {
+pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<HashSet<SteamID>> {
     let url = format!(
         "https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key={}&steamid={}&relationship=friend",
         steam_api_key, steamid.to_u64()
@@ -44,7 +44,7 @@ pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<Vec<St
                     log::debug!("Reply: {:?}", reply);
 
                     let friends = reply.friendslist.friends;
-                    let players: Vec<SteamID> = friends
+                    let players: HashSet<SteamID> = friends
                         .iter()
                         .filter(|f| f.relationship == "friend")
                         .filter_map(|f| SteamID::from_u64_string(&f.steamid))
@@ -53,7 +53,7 @@ pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<Vec<St
                     Some(players)
                 }
                 // The reply was not in the expected format, probably just "{}" because of an private profile
-                Err(_e) => Some(vec![]),
+                Err(_e) => Some(HashSet::new()),
             }
         }
         // There was a communication error

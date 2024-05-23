@@ -145,7 +145,7 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
     });
 }
 
-fn add_team_symbol(app_win: &AppWin, ui: &mut Ui, self_steamid: SteamID, player: &Player) {
+fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, player: &Player) {
     let invader_color = super::colors::TEAM_BLU_COLOR;
     let defender_color = super::colors::TEAM_RED_COLOR;
 
@@ -162,6 +162,9 @@ fn add_team_symbol(app_win: &AppWin, ui: &mut Ui, self_steamid: SteamID, player:
             let (rect, response) = ui.allocate_at_least(size, Sense::hover());
             ui.painter().rect_filled(rect, 3.0f32, color);
             response.on_hover_text("Team color");
+
+            let pos = rect.center();
+            app_win.friendship_positions.push((player.steamid, pos));
 
             if player.steamid == self_steamid {
                 let (rect, response) = ui.allocate_at_least(size, Sense::hover());

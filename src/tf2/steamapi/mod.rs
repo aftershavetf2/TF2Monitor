@@ -12,6 +12,8 @@ mod get_friendlist;
 mod get_player_summariess;
 pub mod steamapi_thread;
 
+use std::collections::HashSet;
+
 use crate::models::{app_settings::AppSettings, steamid::SteamID};
 use chrono::{DateTime, Local, TimeZone};
 use serde::Deserialize;
@@ -23,7 +25,7 @@ use super::lobby::PlayerSteamInfo;
 #[derive(Debug, Clone)]
 pub enum SteamApiMsg {
     PlayerSummary(PlayerSteamInfo),
-    FriendsList(SteamID, Vec<SteamID>),
+    FriendsList(SteamID, HashSet<SteamID>),
 }
 
 pub struct SteamApi {
@@ -54,7 +56,7 @@ impl SteamApi {
         get_player_summaries(&self.steam_api_key, steamids)
     }
 
-    pub fn get_friendlist(&self, steamid: SteamID) -> Option<Vec<SteamID>> {
+    pub fn get_friendlist(&self, steamid: SteamID) -> Option<HashSet<SteamID>> {
         get_friendlist::get_friendlist(&self.steam_api_key, steamid)
     }
 

@@ -9,7 +9,7 @@ use crate::{
 };
 use bus::BusReader;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
@@ -26,7 +26,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 
 struct SteamApiCache {
     summaries: HashMap<SteamID, PlayerSteamInfo>,
-    friends: HashMap<SteamID, Vec<SteamID>>,
+    friends: HashMap<SteamID, HashSet<SteamID>>,
 }
 
 impl SteamApiCache {
@@ -37,11 +37,11 @@ impl SteamApiCache {
         }
     }
 
-    fn get_friends(&self, steamid: SteamID) -> Option<&Vec<SteamID>> {
+    fn get_friends(&self, steamid: SteamID) -> Option<&HashSet<SteamID>> {
         self.friends.get(&steamid)
     }
 
-    fn add_friends(&mut self, steamid: SteamID, friends: Vec<SteamID>) {
+    fn set_friends(&mut self, steamid: SteamID, friends: HashSet<SteamID>) {
         self.friends.insert(steamid, friends);
     }
 
@@ -49,7 +49,7 @@ impl SteamApiCache {
         self.summaries.get(&steamid)
     }
 
-    fn add_summary(&mut self, summary: PlayerSteamInfo) {
+    fn set_summary(&mut self, summary: PlayerSteamInfo) {
         self.summaries.insert(summary.steamid, summary);
     }
 }
@@ -141,7 +141,7 @@ impl SteamApiThread {
                     };
 
                     // Add to cache and then send
-                    self.steam_api_cache.add_summary(info.clone());
+                    self.steam_api_cache.set_summary(info.clone());
                     self.send(SteamApiMsg::PlayerSummary(info));
                 }
             }
@@ -167,7 +167,7 @@ impl SteamApiThread {
                     // Not in cache, fetch from Steam API and put in cache
                     log::info!("Fetching friends of {}", player.name);
                     if let Some(friends) = self.steam_api.get_friendlist(steamid) {
-                        self.steam_api_cache.add_friends(steamid, friends.clone());
+                        self.steam_api_cache.set_friends(steamid, friends.clone());
                         self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
                     }
                 }

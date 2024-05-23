@@ -19,6 +19,7 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
             app_win.swap_team_colors = !app_win.swap_team_colors;
         }
         ui.checkbox(&mut app_win.show_crits, "Show crits");
+        ui.checkbox(&mut app_win.show_friendships, "Show friendships");
 
         add_image_creds(ui, &image_desc);
     });

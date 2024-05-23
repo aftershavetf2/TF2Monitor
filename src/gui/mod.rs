@@ -1,6 +1,7 @@
 pub mod background_image;
 pub mod chat;
 pub mod colors;
+pub mod friendship_indicators;
 pub mod image_creds;
 pub mod player_menu;
 pub mod player_tooltip;
@@ -14,6 +15,8 @@ use crate::{
 };
 use eframe::egui;
 use std::sync::{Arc, Mutex};
+
+use self::friendship_indicators::add_friendship_indicators;
 
 pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), eframe::Error> {
     let viewport = egui::ViewportBuilder::default()
@@ -48,12 +51,18 @@ impl eframe::App for AppWin {
 
         self.process_bus();
 
+        self.friendship_positions.clear();
+
         egui::CentralPanel::default().show(ctx, |ui| {
             scoreboard::add_scoreboard(self, ui);
 
             ui.separator();
 
             chat::add_chat(ui, &self.lobby, &mut self.swap_team_colors);
+
+            if self.show_friendships {
+                add_friendship_indicators(self, ui);
+            }
         });
 
         ctx.request_repaint();
