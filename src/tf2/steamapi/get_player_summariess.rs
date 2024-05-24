@@ -18,6 +18,10 @@ pub fn get_player_summaries(
     steam_api_key: &String,
     steamids: Vec<SteamID>,
 ) -> Option<Vec<SteamApiPlayer>> {
+    if steamids.is_empty() {
+        return None;
+    }
+
     let steamids: Vec<String> = steamids.iter().map(|s| s.to_u64().to_string()).collect();
     let steamids = steamids.join(",");
 
@@ -26,7 +30,6 @@ pub fn get_player_summaries(
         steam_api_key, steamids
     );
 
-    log::debug!("Requesting: {}", url);
     let response = get(url);
     match response {
         Ok(response) => {
@@ -35,7 +38,7 @@ pub fn get_player_summaries(
             Some(players)
         }
         Err(e) => {
-            eprintln!("Error: {}", e);
+            log::error!("Error: {}", e);
             None
         }
     }

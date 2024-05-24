@@ -101,14 +101,9 @@ impl SteamApiThread {
     }
 
     fn fetch_summaries(&mut self, lobby: &Lobby) {
-        let players = self.get_players_without_steam_infos(lobby);
-        if players.is_empty() {
-            // log::info!("fetch_summaries - No players to process");
-            return;
-        }
-
         let mut summaries_to_fetch = Vec::new();
 
+        let players = self.get_players_without_steam_infos(lobby);
         for player in players {
             if player.steam_info.is_some() {
                 // First check cache
@@ -121,10 +116,6 @@ impl SteamApiThread {
 
             // Bulk fetch from Steam API below
             summaries_to_fetch.push(player.steamid);
-        }
-
-        if summaries_to_fetch.is_empty() {
-            return;
         }
 
         if let Some(infos) = self.steam_api.get_player_summaries(summaries_to_fetch) {
@@ -148,12 +139,7 @@ impl SteamApiThread {
     }
 
     fn fetch_friends(&mut self, lobby: &Lobby) {
-        let players = self.get_players_without_friends(lobby, usize::MAX);
-        if players.is_empty() {
-            // log::info!("fetch_friends - No players to process");
-            return;
-        }
-
+        let players = self.get_players_without_friends(lobby, 4);
         for player in players {
             let steamid = player.steamid;
 
@@ -162,13 +148,14 @@ impl SteamApiThread {
                 if let Some(friends) = self.steam_api_cache.get_friends(steamid) {
                     log::info!("Fetched from cache friends of {}", player.name);
                     self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
-                } else {
-                    // Not in cache, fetch from Steam API and put in cache
-                    log::info!("Fetching friends of {}", player.name);
-                    if let Some(friends) = self.steam_api.get_friendlist(steamid) {
-                        self.steam_api_cache.set_friends(steamid, friends.clone());
-                        self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
-                    }
+                    continue;
+                }
+
+                // Not in cache, fetch from Steam API and put in cache
+                log::info!("Fetching friends of {}", player.name);
+                if let Some(friends) = self.steam_api.get_friendlist(steamid) {
+                    self.steam_api_cache.set_friends(steamid, friends.clone());
+                    self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
                 }
             }
         }

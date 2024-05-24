@@ -28,20 +28,12 @@ pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<HashSe
         steam_api_key, steamid.to_u64()
     );
 
-    log::debug!(
-        "Fetching friends of {} from URL '{}'",
-        steamid.to_u64(),
-        url
-    );
-
     let response = get(url);
     match response {
         Ok(response) => {
             let reply: Result<Response> = response.json();
             match reply {
                 Ok(reply) => {
-                    log::debug!("Reply: {:?}", reply);
-
                     let friends = reply.friendslist.friends;
                     let players: HashSet<SteamID> = friends
                         .iter()
