@@ -46,7 +46,8 @@ pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
                     }
 
                     if friends.contains(steamid) {
-                        draw_curve(ui, start_pos, *end_pos, &stroke);
+                        let dir = 1 == (player.steamid.to_u64() & 1) ^ (steamid.to_u64() & 1);
+                        draw_curve(ui, start_pos, *end_pos, &stroke, dir);
                     }
                 }
             }
@@ -63,7 +64,7 @@ fn find_pos_for_player(app_win: &AppWin, player: &Player) -> Option<Pos2> {
     None
 }
 
-fn draw_curve(ui: &mut Ui, start_pos: Pos2, end_pos: Pos2, stroke: &Stroke) {
+fn draw_curve(ui: &mut Ui, start_pos: Pos2, end_pos: Pos2, stroke: &Stroke, dir: bool) {
     let r = 3.0f32;
     ui.painter().circle_filled(start_pos, r, stroke.color);
     ui.painter().circle_filled(end_pos, r, stroke.color);
@@ -81,7 +82,11 @@ fn draw_curve(ui: &mut Ui, start_pos: Pos2, end_pos: Pos2, stroke: &Stroke) {
     let y_delta = end_pos.y - start_pos.y;
     let y_delta_inc = y_delta / NSEGS as f32;
 
-    let x_scale = 1.0 + y_delta.abs() / 150.0;
+    let mut x_scale = 1.0 + y_delta.abs() / 150.0;
+
+    if dir {
+        x_scale = -x_scale;
+    }
 
     let mut a = Pos2::new(0f32, 0f32);
     let mut b = Pos2::new(0f32, 0f32);
