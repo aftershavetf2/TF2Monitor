@@ -21,6 +21,7 @@ With this app you can:
 
 First column in the table is:
 
+- Red box is Steam bans. Hover this box or the player for specifics.
 - White box is you(settings file, self_steamid64)
 - Green box is for accounts newer than one year
 - Team colored box
