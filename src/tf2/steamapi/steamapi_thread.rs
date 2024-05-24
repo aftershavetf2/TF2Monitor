@@ -1,4 +1,4 @@
-use super::SteamApi;
+use super::{SteamApi, SteamPlayerBan};
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
@@ -28,6 +28,7 @@ struct SteamApiCache {
     summaries: HashMap<SteamID, PlayerSteamInfo>,
     friends: HashMap<SteamID, HashSet<SteamID>>,
     playtimes: HashMap<SteamID, u32>,
+    steam_bans: HashMap<SteamID, SteamPlayerBan>,
 }
 
 impl SteamApiCache {
@@ -36,6 +37,7 @@ impl SteamApiCache {
             summaries: HashMap::new(),
             friends: HashMap::new(),
             playtimes: HashMap::new(),
+            steam_bans: HashMap::new(),
         }
     }
 
@@ -61,6 +63,14 @@ impl SteamApiCache {
 
     fn set_playtime(&mut self, steamid: SteamID, playtime: u32) {
         self.playtimes.insert(steamid, playtime);
+    }
+
+    fn get_steam_bans(&self, steamid: SteamID) -> Option<&SteamPlayerBan> {
+        self.steam_bans.get(&steamid)
+    }
+
+    fn set_steam_bans(&mut self, steamid: SteamID, steam_bans: SteamPlayerBan) {
+        self.steam_bans.insert(steamid, steam_bans);
     }
 }
 
@@ -108,6 +118,7 @@ impl SteamApiThread {
             self.fetch_summaries(&lobby);
             self.fetch_friends(&lobby);
             self.fetch_playtimes(&lobby);
+            self.fetch_steam_bans(&lobby);
         }
     }
 
@@ -150,7 +161,7 @@ impl SteamApiThread {
     }
 
     fn fetch_friends(&mut self, lobby: &Lobby) {
-        let players = self.get_players_without_friends(lobby, 4);
+        let players = self.get_players_without_friends(lobby, usize::MAX);
         for player in players {
             let steamid = player.steamid;
 
@@ -173,24 +184,44 @@ impl SteamApiThread {
     }
 
     fn fetch_playtimes(&mut self, lobby: &Lobby) {
-        let players = self.get_players_without_playtime(lobby, 4);
+        let players = self.get_players_without_playtime(lobby, usize::MAX);
         for player in players {
             let steamid = player.steamid;
 
-            if player.steam_info.is_some() {
-                // First check cache
-                if let Some(playtime) = self.steam_api_cache.get_playtime(steamid) {
-                    // log::info!("Fetched from cache playtime for {}", player.name);
-                    self.send(SteamApiMsg::Tf2Playtime(steamid, *playtime));
-                    continue;
-                }
+            // First check cache
+            if let Some(playtime) = self.steam_api_cache.get_playtime(steamid) {
+                // log::info!("Fetched from cache playtime for {}", player.name);
+                self.send(SteamApiMsg::Tf2Playtime(steamid, *playtime));
+                continue;
+            }
 
-                // Not in cache, fetch from Steam API and put in cache
-                log::info!("Fetching playtime for {}", player.name);
-                if let Some(playtime) = self.steam_api.get_tf2_play_minutes(steamid) {
-                    self.steam_api_cache.set_playtime(steamid, playtime);
-                    self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
-                }
+            // Not in cache, fetch from Steam API and put in cache
+            log::info!("Fetching playtime for {}", player.name);
+            if let Some(playtime) = self.steam_api.get_tf2_play_minutes(steamid) {
+                self.steam_api_cache.set_playtime(steamid, playtime);
+                self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
+            }
+        }
+    }
+
+    fn fetch_steam_bans(&mut self, lobby: &Lobby) {
+        let players = self.get_players_without_steam_bans(lobby, usize::MAX);
+        for player in players {
+            let steamid = player.steamid;
+
+            // First check cache
+            if let Some(steam_bans) = self.steam_api_cache.get_steam_bans(steamid) {
+                // log::info!("Fetched from cache playtime for {}", player.name);
+                self.send(SteamApiMsg::SteamBans(steamid, steam_bans.clone()));
+                continue;
+            }
+
+            // Not in cache, fetch from Steam API and put in cache
+            log::info!("Fetching steam bans for {}", player.name);
+            if let Some(steam_bans) = self.steam_api.get_bans(steamid) {
+                self.steam_api_cache
+                    .set_steam_bans(steamid, steam_bans.clone());
+                self.send(SteamApiMsg::SteamBans(steamid, steam_bans));
             }
         }
     }
@@ -217,6 +248,19 @@ impl SteamApiThread {
             .players
             .iter()
             .filter(|p| p.tf2_play_minutes.is_none())
+            .take(take_n)
+            .collect()
+    }
+
+    fn get_players_without_steam_bans<'a>(
+        &self,
+        lobby: &'a Lobby,
+        take_n: usize,
+    ) -> Vec<&'a Player> {
+        lobby
+            .players
+            .iter()
+            .filter(|p| p.steam_bans.is_none())
             .take(take_n)
             .collect()
     }

@@ -8,6 +8,7 @@
 // - GetPlayerBans
 //
 
+mod get_bans;
 mod get_friendlist;
 mod get_player_summariess;
 mod get_tf2_play_minutes;
@@ -28,6 +29,7 @@ pub enum SteamApiMsg {
     PlayerSummary(PlayerSteamInfo),
     FriendsList(SteamID, HashSet<SteamID>),
     Tf2Playtime(SteamID, u32),
+    SteamBans(SteamID, SteamPlayerBan),
 }
 
 pub struct SteamApi {
@@ -44,6 +46,17 @@ pub struct SteamApiPlayer {
     pub avatarfull: String,
     // avatarhash: String,
     pub timecreated: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SteamPlayerBan {
+    pub steamid: SteamID,
+    pub community_banned: bool,
+    pub vac_banned: bool,
+    pub number_of_vac_bans: u32,
+    pub days_since_last_ban: u32,
+    pub number_of_game_bans: u32,
+    pub economy_ban: String,
 }
 
 impl SteamApi {
@@ -64,6 +77,10 @@ impl SteamApi {
 
     pub fn get_tf2_play_minutes(&self, steamid: SteamID) -> Option<u32> {
         get_tf2_play_minutes::get_tf2_play_minutes(&self.steam_api_key, steamid)
+    }
+
+    pub fn get_bans(&self, steamid: SteamID) -> Option<SteamPlayerBan> {
+        get_bans::get_bans(&self.steam_api_key, steamid)
     }
 
     /// Returns true if the Steam API key is set

@@ -80,6 +80,11 @@ impl LobbyThread {
                         player.tf2_play_minutes = Some(playtime);
                     }
                 }
+                SteamApiMsg::SteamBans(steamid, steam_bans) => {
+                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                        player.steam_bans = Some(steam_bans);
+                    }
+                }
             }
         }
     }
@@ -169,6 +174,7 @@ impl LobbyThread {
             steam_info: None,
             friends: None,
             tf2_play_minutes: None,
+            steam_bans: None,
         });
     }
 
@@ -203,6 +209,7 @@ impl LobbyThread {
             steam_info: None,
             friends: None,
             tf2_play_minutes: None,
+            steam_bans: None,
         });
     }
 

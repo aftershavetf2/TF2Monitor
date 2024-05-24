@@ -31,6 +31,14 @@ pub fn add_player_tooltip(app_win: &AppWin, ui: &mut Ui, player: &Player) {
         ui.label("TF2 playtime: Loading...");
     }
 
+    ui.label("");
+
+    if let Some(reason) = player.has_steam_bans() {
+        ui.label(reason);
+    } else {
+        ui.label("Steam bans: None");
+    }
+
     if let Some(friends) = &player.friends {
         ui.label(format!("Friends: {}", friends.len()));
 

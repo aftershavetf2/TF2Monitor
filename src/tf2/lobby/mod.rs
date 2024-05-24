@@ -5,6 +5,8 @@ use std::collections::HashSet;
 use crate::models::{steamid::SteamID, PlayerFlags};
 use chrono::{DateTime, Local};
 
+use super::steamapi::SteamPlayerBan;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Team {
     Unknown,
@@ -36,9 +38,43 @@ pub struct Player {
     pub steam_info: Option<PlayerSteamInfo>,
     pub friends: Option<HashSet<SteamID>>,
     pub tf2_play_minutes: Option<u32>,
+    pub steam_bans: Option<SteamPlayerBan>,
 }
 
 impl Player {
+    pub fn has_steam_bans(&self) -> Option<String> {
+        if let Some(steam_bans) = &self.steam_bans {
+            let has_any_bans = steam_bans.community_banned
+                || steam_bans.vac_banned
+                || steam_bans.number_of_game_bans > 0;
+            if has_any_bans {
+                let mut reasons = String::new();
+
+                reasons.push_str("Player has bans: \n");
+                if steam_bans.vac_banned {
+                    reasons.push_str(
+                        format!("- VAC banned {} times\n", steam_bans.number_of_vac_bans).as_str(),
+                    );
+                }
+
+                if steam_bans.number_of_game_bans > 0 {
+                    reasons.push_str(
+                        format!("- Game banned {} times\n", steam_bans.number_of_game_bans)
+                            .as_str(),
+                    );
+                }
+
+                if steam_bans.community_banned {
+                    reasons.push_str("- Community banned\n");
+                }
+
+                return Some(reasons);
+            }
+        }
+
+        None
+    }
+
     pub fn is_newbie(&self) -> Option<String> {
         let mut is_new_account = false;
         if let Some(steam_info) = &self.steam_info {
