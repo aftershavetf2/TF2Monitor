@@ -1,10 +1,9 @@
-use std::{collections::HashSet, hash::Hash};
-
 use crate::{
     models::{steamid::SteamID, AppWin},
     tf2::lobby::Player,
 };
-use eframe::egui::{Color32, Pos2, Rect, Stroke, Ui, Vec2};
+use eframe::egui::{Color32, Pos2, Stroke, Ui};
+use std::collections::HashSet;
 
 pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
     let stroke = Stroke::new(1.0f32, Color32::WHITE);

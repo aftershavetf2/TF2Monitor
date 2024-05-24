@@ -1,8 +1,7 @@
-use std::{collections::HashSet, vec};
-
 use crate::models::steamid::SteamID;
 use reqwest::{blocking::get, Result};
 use serde::Deserialize;
+use std::collections::HashSet;
 
 #[derive(Debug, Deserialize)]
 struct FriendInfo {

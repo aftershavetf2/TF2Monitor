@@ -4,17 +4,8 @@ pub mod steamid;
 use self::{app_settings::AppSettings, steamid::SteamID};
 use crate::{appbus::AppBus, tf2::lobby::Lobby};
 use bus::BusReader;
-use eframe::egui::{Pos2, Vec2};
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
-
-// #[derive(Debug, Copy, Clone, Hash)]
-// pub struct MyPos2 {
-//     pub x: f32,
-//     pub y: f32,
-// }
+use eframe::egui::Pos2;
+use std::sync::{Arc, Mutex};
 
 pub struct AppWin {
     pub bus: Arc<Mutex<AppBus>>,
