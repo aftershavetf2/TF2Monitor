@@ -56,7 +56,7 @@ impl Player {
         match (is_new_account, has_few_hours) {
             (true, true) => Some(format!(
                 "Account is < 1 year old and has only {} TF2 hours",
-                self.tf2_play_minutes.unwrap()
+                self.tf2_play_minutes.unwrap() / 60
             )),
             (true, false) => Some("Account is < 1 year old".to_string()),
             (false, true) => Some(format!(
