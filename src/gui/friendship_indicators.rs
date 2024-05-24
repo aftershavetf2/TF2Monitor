@@ -40,13 +40,14 @@ pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
                         // Skip lines *to* self from friends
                         continue;
                     }
+
                     if my_friends.contains(&player.steamid) && my_friends.contains(steamid) {
                         // Skip lines between two of my friends
                         continue;
                     }
 
                     if friends.contains(steamid) {
-                        let dir = 1 == (player.steamid.to_u64() & 1) ^ (steamid.to_u64() & 1);
+                        let dir = 1 == (player.steamid.to_u64() ^ steamid.to_u64()) & 1;
                         draw_curve(ui, start_pos, *end_pos, &stroke, dir);
                     }
                 }
