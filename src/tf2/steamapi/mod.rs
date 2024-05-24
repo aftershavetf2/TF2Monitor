@@ -10,6 +10,7 @@
 
 mod get_friendlist;
 mod get_player_summariess;
+mod get_tf2_play_minutes;
 pub mod steamapi_thread;
 
 use std::collections::HashSet;
@@ -26,6 +27,7 @@ use super::lobby::PlayerSteamInfo;
 pub enum SteamApiMsg {
     PlayerSummary(PlayerSteamInfo),
     FriendsList(SteamID, HashSet<SteamID>),
+    Tf2Playtime(SteamID, u32),
 }
 
 pub struct SteamApi {
@@ -58,6 +60,10 @@ impl SteamApi {
 
     pub fn get_friendlist(&self, steamid: SteamID) -> Option<HashSet<SteamID>> {
         get_friendlist::get_friendlist(&self.steam_api_key, steamid)
+    }
+
+    pub fn get_tf2_play_minutes(&self, steamid: SteamID) -> Option<u32> {
+        get_tf2_play_minutes::get_tf2_play_minutes(&self.steam_api_key, steamid)
     }
 
     /// Returns true if the Steam API key is set

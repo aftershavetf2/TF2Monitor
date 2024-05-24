@@ -75,6 +75,11 @@ impl LobbyThread {
                         player.steam_info = Some(player_steam_info);
                     }
                 }
+                SteamApiMsg::Tf2Playtime(steamid, playtime) => {
+                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                        player.tf2_play_minutes = Some(playtime);
+                    }
+                }
             }
         }
     }
@@ -163,6 +168,7 @@ impl LobbyThread {
             flags: Vec::new(),
             steam_info: None,
             friends: None,
+            tf2_play_minutes: None,
         });
     }
 
@@ -196,6 +202,7 @@ impl LobbyThread {
             flags: Vec::new(),
             steam_info: None,
             friends: None,
+            tf2_play_minutes: None,
         });
     }
 

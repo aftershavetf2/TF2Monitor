@@ -35,6 +35,37 @@ pub struct Player {
 
     pub steam_info: Option<PlayerSteamInfo>,
     pub friends: Option<HashSet<SteamID>>,
+    pub tf2_play_minutes: Option<u32>,
+}
+
+impl Player {
+    pub fn is_newbie(&self) -> Option<String> {
+        let mut is_new_account = false;
+        if let Some(steam_info) = &self.steam_info {
+            is_new_account = steam_info.is_account_new();
+        }
+
+        let mut has_few_hours = false;
+        if let Some(tf2_play_minutes) = self.tf2_play_minutes {
+            let min_minutes = 60 * 500;
+            if tf2_play_minutes > 0 && tf2_play_minutes < min_minutes {
+                has_few_hours = true;
+            }
+        }
+
+        match (is_new_account, has_few_hours) {
+            (true, true) => Some(format!(
+                "Account is < 1 year old and has only {} TF2 hours",
+                self.tf2_play_minutes.unwrap()
+            )),
+            (true, false) => Some("Account is < 1 year old".to_string()),
+            (false, true) => Some(format!(
+                "Account has only {} TF2 hours",
+                self.tf2_play_minutes.unwrap() / 60
+            )),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

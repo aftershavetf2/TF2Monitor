@@ -170,12 +170,10 @@ fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, pla
                 response.on_hover_text("This is you");
             }
 
-            if let Some(steam_info) = &player.steam_info {
-                if steam_info.is_account_new() {
-                    let (rect, response) = ui.allocate_at_least(size, Sense::hover());
-                    ui.painter().rect_filled(rect, 3.0f32, Color32::GREEN);
-                    response.on_hover_text("<1 year old");
-                }
+            if let Some(tooltip) = &player.is_newbie() {
+                let (rect, response) = ui.allocate_at_least(size, Sense::hover());
+                ui.painter().rect_filled(rect, 3.0f32, Color32::GREEN);
+                response.on_hover_text(tooltip);
             }
 
             if app_win

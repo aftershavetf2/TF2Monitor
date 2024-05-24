@@ -27,6 +27,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 struct SteamApiCache {
     summaries: HashMap<SteamID, PlayerSteamInfo>,
     friends: HashMap<SteamID, HashSet<SteamID>>,
+    playtimes: HashMap<SteamID, u32>,
 }
 
 impl SteamApiCache {
@@ -34,6 +35,7 @@ impl SteamApiCache {
         Self {
             summaries: HashMap::new(),
             friends: HashMap::new(),
+            playtimes: HashMap::new(),
         }
     }
 
@@ -51,6 +53,14 @@ impl SteamApiCache {
 
     fn set_summary(&mut self, summary: PlayerSteamInfo) {
         self.summaries.insert(summary.steamid, summary);
+    }
+
+    fn get_playtime(&self, steamid: SteamID) -> Option<&u32> {
+        self.playtimes.get(&steamid)
+    }
+
+    fn set_playtime(&mut self, steamid: SteamID, playtime: u32) {
+        self.playtimes.insert(steamid, playtime);
     }
 }
 
@@ -97,6 +107,7 @@ impl SteamApiThread {
             // log::info!("process_bus - received lobby");
             self.fetch_summaries(&lobby);
             self.fetch_friends(&lobby);
+            self.fetch_playtimes(&lobby);
         }
     }
 
@@ -108,7 +119,7 @@ impl SteamApiThread {
             if player.steam_info.is_some() {
                 // First check cache
                 if let Some(summary) = self.steam_api_cache.get_summary(player.steamid) {
-                    log::info!("Fetched from cache summary of {}", player.name);
+                    // log::info!("Fetched from cache summary of {}", player.name);
                     self.send(SteamApiMsg::PlayerSummary(summary.clone()));
                     continue;
                 }
@@ -146,7 +157,7 @@ impl SteamApiThread {
             if player.steam_info.is_some() {
                 // First check cache
                 if let Some(friends) = self.steam_api_cache.get_friends(steamid) {
-                    log::info!("Fetched from cache friends of {}", player.name);
+                    // log::info!("Fetched from cache friends of {}", player.name);
                     self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
                     continue;
                 }
@@ -156,6 +167,29 @@ impl SteamApiThread {
                 if let Some(friends) = self.steam_api.get_friendlist(steamid) {
                     self.steam_api_cache.set_friends(steamid, friends.clone());
                     self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
+                }
+            }
+        }
+    }
+
+    fn fetch_playtimes(&mut self, lobby: &Lobby) {
+        let players = self.get_players_without_playtime(lobby, 4);
+        for player in players {
+            let steamid = player.steamid;
+
+            if player.steam_info.is_some() {
+                // First check cache
+                if let Some(playtime) = self.steam_api_cache.get_playtime(steamid) {
+                    // log::info!("Fetched from cache playtime for {}", player.name);
+                    self.send(SteamApiMsg::Tf2Playtime(steamid, *playtime));
+                    continue;
+                }
+
+                // Not in cache, fetch from Steam API and put in cache
+                log::info!("Fetching playtime for {}", player.name);
+                if let Some(playtime) = self.steam_api.get_tf2_play_minutes(steamid) {
+                    self.steam_api_cache.set_playtime(steamid, playtime);
+                    self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
                 }
             }
         }
@@ -174,6 +208,15 @@ impl SteamApiThread {
             .players
             .iter()
             .filter(|p| p.friends.is_none())
+            .take(take_n)
+            .collect()
+    }
+
+    fn get_players_without_playtime<'a>(&self, lobby: &'a Lobby, take_n: usize) -> Vec<&'a Player> {
+        lobby
+            .players
+            .iter()
+            .filter(|p| p.tf2_play_minutes.is_none())
             .take(take_n)
             .collect()
     }

@@ -25,6 +25,12 @@ pub fn add_player_tooltip(app_win: &AppWin, ui: &mut Ui, player: &Player) {
         ));
     }
 
+    if let Some(playtime) = player.tf2_play_minutes {
+        ui.label(format!("TF2 playtime: {} hours", playtime / 60));
+    } else {
+        ui.label("TF2 playtime: Loading...");
+    }
+
     if let Some(friends) = &player.friends {
         ui.label(format!("Friends: {}", friends.len()));
 
