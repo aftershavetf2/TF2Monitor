@@ -64,9 +64,7 @@ impl LobbyThread {
             match msg {
                 SteamApiMsg::FriendsList(steamid, friends) => {
                     if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
-                        if let Some(steam_info) = &mut player.steam_info {
-                            steam_info.friends = Some(friends);
-                        }
+                        player.friends = Some(friends);
                     }
                 }
                 SteamApiMsg::PlayerSummary(player_steam_info) => {
@@ -164,6 +162,7 @@ impl LobbyThread {
             last_seen: when,
             flags: Vec::new(),
             steam_info: None,
+            friends: None,
         });
     }
 
@@ -196,6 +195,7 @@ impl LobbyThread {
             last_seen: Local::now(),
             flags: Vec::new(),
             steam_info: None,
+            friends: None,
         });
     }
 

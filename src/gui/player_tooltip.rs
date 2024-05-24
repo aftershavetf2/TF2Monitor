@@ -23,26 +23,24 @@ pub fn add_player_tooltip(app_win: &AppWin, ui: &mut Ui, player: &Player) {
             "Account created: {}",
             steam_info.get_account_created()
         ));
+    }
 
-        if let Some(friends) = &steam_info.friends {
-            ui.label(format!("Friends: {}", friends.len()));
+    if let Some(friends) = &player.friends {
+        ui.label(format!("Friends: {}", friends.len()));
 
-            if let Some(steamid) = app_win.selected_player {
-                let friends = app_win.lobby.get_friendlist_of(steamid);
-                if !friends.is_empty() {
-                    let names = friends
-                        .iter()
-                        .map(|f| f.name.clone())
-                        .collect::<Vec<String>>()
-                        .join(", ");
-                    ui.label(format!("Friends in server: {}", names));
-                }
+        if let Some(steamid) = app_win.selected_player {
+            let friends = app_win.lobby.get_friendlist_of(steamid);
+            if !friends.is_empty() {
+                let names = friends
+                    .iter()
+                    .map(|f| f.name.clone())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                ui.label(format!("Friends in server: {}", names));
             }
-        } else {
-            ui.label("Friends: Loading...");
         }
-
-        ui.separator();
+    } else {
+        ui.label("Friends: Loading...");
     }
 
     ui.label(format!("Console ID in game: {}", player.id));

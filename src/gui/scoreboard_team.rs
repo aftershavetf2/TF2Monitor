@@ -105,12 +105,10 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                         ui.style_mut().visuals.override_text_color = marked_color;
                     } else {
                         // Mark friends of selected player
-                        if let Some(steam_info) = &player.steam_info {
-                            if let Some(friends) = &steam_info.friends {
-                                if friends.contains(&steamid) {
-                                    ui.visuals_mut().override_text_color = marked_color;
-                                    ui.style_mut().visuals.override_text_color = marked_color;
-                                }
+                        if let Some(friends) = &player.friends {
+                            if friends.contains(&steamid) {
+                                ui.visuals_mut().override_text_color = marked_color;
+                                ui.style_mut().visuals.override_text_color = marked_color;
                             }
                         }
                     }

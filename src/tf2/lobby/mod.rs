@@ -34,6 +34,7 @@ pub struct Player {
     pub flags: Vec<PlayerFlags>,
 
     pub steam_info: Option<PlayerSteamInfo>,
+    pub friends: Option<HashSet<SteamID>>,
 }
 
 #[derive(Debug, Clone)]
@@ -44,8 +45,6 @@ pub struct PlayerSteamInfo {
     pub avatarmedium: String,
     pub avatarfull: String,
     pub account_age: Option<DateTime<Local>>,
-
-    pub friends: Option<HashSet<SteamID>>,
 }
 
 impl PlayerSteamInfo {
@@ -114,10 +113,8 @@ impl Lobby {
 
     pub fn is_friend_of_self(&self, self_steamid: SteamID, steamid: SteamID) -> bool {
         if let Some(me) = self.get_player(None, Some(self_steamid)) {
-            if let Some(steam_info) = &me.steam_info {
-                if let Some(friends) = &steam_info.friends {
-                    return friends.contains(&steamid);
-                }
+            if let Some(friends) = &me.friends {
+                return friends.contains(&steamid);
             }
         }
 
@@ -131,10 +128,8 @@ impl Lobby {
             .players
             .iter()
             .filter(|player| {
-                if let Some(steam_info) = &player.steam_info {
-                    if let Some(friends) = &steam_info.friends {
-                        return friends.contains(&steamid);
-                    }
+                if let Some(friends) = &player.friends {
+                    return friends.contains(&steamid);
                 }
 
                 false

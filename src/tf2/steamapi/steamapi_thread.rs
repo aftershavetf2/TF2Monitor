@@ -137,7 +137,6 @@ impl SteamApiThread {
                         avatarmedium: info.avatarmedium.clone(),
                         avatarfull: info.avatarfull.clone(),
                         account_age: info.get_account_age(),
-                        friends: None,
                     };
 
                     // Add to cache and then send
@@ -187,13 +186,7 @@ impl SteamApiThread {
         lobby
             .players
             .iter()
-            .filter(|p| {
-                if let Some(steam_info) = &p.steam_info {
-                    steam_info.friends.is_none()
-                } else {
-                    false
-                }
-            })
+            .filter(|p| p.friends.is_none())
             .take(take_n)
             .collect()
     }

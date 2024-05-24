@@ -19,12 +19,8 @@ pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
     }
     let me = me.unwrap();
     let empty_friends = HashSet::new();
-    let my_friends: &HashSet<SteamID> = if let Some(steam_info) = &me.steam_info {
-        if let Some(friends) = &steam_info.friends {
-            friends
-        } else {
-            &empty_friends
-        }
+    let my_friends: &HashSet<SteamID> = if let Some(friends) = &me.friends {
+        friends
     } else {
         &empty_friends
     };
@@ -37,22 +33,20 @@ pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
             continue;
         }
 
-        if let Some(steam_info) = &player.steam_info {
-            if let Some(friends) = &steam_info.friends {
-                if let Some(start_pos) = find_pos_for_player(app_win, player) {
-                    for (steamid, end_pos) in app_win.friendship_positions.iter() {
-                        if me.steamid == player.steamid {
-                            // Skip lines *to* self from friends
-                            continue;
-                        }
-                        if my_friends.contains(&player.steamid) && my_friends.contains(steamid) {
-                            // Skip lines between two of my friends
-                            continue;
-                        }
+        if let Some(friends) = &player.friends {
+            if let Some(start_pos) = find_pos_for_player(app_win, player) {
+                for (steamid, end_pos) in app_win.friendship_positions.iter() {
+                    if me.steamid == player.steamid {
+                        // Skip lines *to* self from friends
+                        continue;
+                    }
+                    if my_friends.contains(&player.steamid) && my_friends.contains(steamid) {
+                        // Skip lines between two of my friends
+                        continue;
+                    }
 
-                        if friends.contains(steamid) {
-                            draw_curve(ui, start_pos, *end_pos, &stroke);
-                        }
+                    if friends.contains(steamid) {
+                        draw_curve(ui, start_pos, *end_pos, &stroke);
                     }
                 }
             }
