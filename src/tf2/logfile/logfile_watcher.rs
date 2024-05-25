@@ -36,10 +36,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 fn remove_log_file(filename: &str) {
     if Path::new(filename).exists() {
         log::info!("Removing log file: {}", filename);
-        let result = fs::remove_file(filename);
-        if let Err(e) = result {
-            // log::error!("Error removing file: {:?}", e);
-        }
+        let _ = fs::remove_file(filename);
     } else {
         log::warn!(
             "Log file does not exist (yet?), or wrong path? {}",
