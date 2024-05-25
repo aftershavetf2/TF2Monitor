@@ -1,24 +1,27 @@
 pub mod lobby_thread;
 
-use std::collections::HashSet;
-
+use super::steamapi::SteamPlayerBan;
 use crate::models::{steamid::SteamID, PlayerFlags};
 use chrono::{DateTime, Local};
+use std::collections::HashSet;
 
-use super::steamapi::SteamPlayerBan;
+#[derive(Default, Debug, Clone)]
+pub struct Lobby {
+    pub players: Vec<Player>,
+    pub chat: Vec<LobbyChat>,
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Team {
-    Unknown,
-    Invaders,
-    Defendes,
-    Spec,
+    /// Players who no longer show up in the status command output
+    /// or in tf_lobby_debug output. Players are kept in here for 1 minute.
+    pub recently_left_players: Vec<Player>,
 }
 
-#[derive(Debug, Clone)]
-pub struct PlayerKill {
-    pub weapon: String,
-    pub crit: bool,
+#[derive(Default, Debug, Clone)]
+pub struct LobbyChat {
+    pub when: DateTime<Local>,
+    pub steamid: SteamID,
+    pub message: String,
+    pub dead: bool,
+    pub team: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +42,30 @@ pub struct Player {
     pub friends: Option<HashSet<SteamID>>,
     pub tf2_play_minutes: Option<u32>,
     pub steam_bans: Option<SteamPlayerBan>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Team {
+    Unknown,
+    Invaders,
+    Defendes,
+    Spec,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlayerKill {
+    pub weapon: String,
+    pub crit: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlayerSteamInfo {
+    pub steamid: SteamID,
+    pub name: String,
+    pub avatar: String,
+    pub avatarmedium: String,
+    pub avatarfull: String,
+    pub account_age: Option<DateTime<Local>>,
 }
 
 impl Player {
@@ -104,16 +131,6 @@ impl Player {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PlayerSteamInfo {
-    pub steamid: SteamID,
-    pub name: String,
-    pub avatar: String,
-    pub avatarmedium: String,
-    pub avatarfull: String,
-    pub account_age: Option<DateTime<Local>>,
-}
-
 impl PlayerSteamInfo {
     pub fn get_account_created(&self) -> String {
         if self.account_age.is_none() {
@@ -135,22 +152,6 @@ impl PlayerSteamInfo {
 
         days < 365
     }
-}
-
-#[derive(Default, Debug, Clone)]
-pub struct Lobby {
-    pub players: Vec<Player>,
-    pub chat: Vec<LobbyChat>,
-    pub recently_left_players: Vec<Player>,
-}
-
-#[derive(Default, Debug, Clone)]
-pub struct LobbyChat {
-    pub when: DateTime<Local>,
-    pub steamid: SteamID,
-    pub message: String,
-    pub dead: bool,
-    pub team: bool,
 }
 
 impl Lobby {
