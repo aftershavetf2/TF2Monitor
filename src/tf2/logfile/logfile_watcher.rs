@@ -16,6 +16,9 @@ use thread::sleep;
 /// The delay between loops in run()
 const LOOP_DELAY: Duration = time::Duration::from_millis(2000);
 
+// The delay between checking if the file exists
+const FILE_NOT_EXIST_DELAY: Duration = time::Duration::from_millis(20 * 1000);
+
 /// Start the logfile watcher thread to run in the background
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let mut watcher = LogfileWatcher {
@@ -24,7 +27,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
         bus: Arc::clone(bus),
     };
 
-    // remove_log_file(&watcher.filename);
+    remove_log_file(&watcher.filename);
 
     thread::spawn(move || watcher.run())
 }
@@ -35,10 +38,13 @@ fn remove_log_file(filename: &str) {
         log::info!("Removing log file: {}", filename);
         let result = fs::remove_file(filename);
         if let Err(e) = result {
-            log::error!("Error removing file: {:?}", e);
+            // log::error!("Error removing file: {:?}", e);
         }
     } else {
-        log::warn!("Log file does not exist (yet?): {}", filename);
+        log::warn!(
+            "Log file does not exist (yet?), or wrong path? {}",
+            filename
+        );
     }
 }
 
@@ -65,6 +71,15 @@ impl LogfileWatcher {
     }
 
     pub fn process_new_data(&mut self, parser: &LogLineParser) {
+        if !Path::new(&self.filename).exists() {
+            log::warn!(
+                "Log file does not exist (yet?), or wrong path? Waiting a bit... Filename: {}",
+                self.filename
+            );
+            sleep(FILE_NOT_EXIST_DELAY);
+            return;
+        }
+
         // log::info!("Processing new data");
         let new_data = self.read_new_data();
         if let Ok(new_data) = new_data {
