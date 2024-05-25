@@ -17,6 +17,15 @@ use std::{
 /// The delay between loops in run()
 const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
 
+/// For each loop, fetch this many players' TF2 playtimes
+const NUM_PLAYTIMES_TO_FETCH: usize = 1;
+
+/// For each loop, fetch this many players' friends list
+const NUM_FRIENDS_TO_FETCH: usize = 5;
+
+/// For each loop, fetch this many players' steam bans
+const NUM_BANS_TO_FETCH: usize = 1;
+
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let mut steamapi_thread = SteamApiThread::new(settings, bus);
@@ -161,7 +170,7 @@ impl SteamApiThread {
     }
 
     fn fetch_friends(&mut self, lobby: &Lobby) {
-        let players = self.get_players_without_friends(lobby, usize::MAX);
+        let players = self.get_players_without_friends(lobby);
         for player in players {
             let steamid = player.steamid;
 
@@ -184,7 +193,7 @@ impl SteamApiThread {
     }
 
     fn fetch_playtimes(&mut self, lobby: &Lobby) {
-        let players = self.get_players_without_playtime(lobby, usize::MAX);
+        let players = self.get_players_without_playtime(lobby);
         for player in players {
             let steamid = player.steamid;
 
@@ -205,7 +214,7 @@ impl SteamApiThread {
     }
 
     fn fetch_steam_bans(&mut self, lobby: &Lobby) {
-        let players = self.get_players_without_steam_bans(lobby, usize::MAX);
+        let players = self.get_players_without_steam_bans(lobby);
         for player in players {
             let steamid = player.steamid;
 
@@ -234,34 +243,30 @@ impl SteamApiThread {
             .collect()
     }
 
-    fn get_players_without_friends<'a>(&self, lobby: &'a Lobby, take_n: usize) -> Vec<&'a Player> {
+    fn get_players_without_friends<'a>(&self, lobby: &'a Lobby) -> Vec<&'a Player> {
         lobby
             .players
             .iter()
             .filter(|p| p.friends.is_none())
-            .take(take_n)
+            .take(NUM_FRIENDS_TO_FETCH)
             .collect()
     }
 
-    fn get_players_without_playtime<'a>(&self, lobby: &'a Lobby, take_n: usize) -> Vec<&'a Player> {
+    fn get_players_without_playtime<'a>(&self, lobby: &'a Lobby) -> Vec<&'a Player> {
         lobby
             .players
             .iter()
             .filter(|p| p.tf2_play_minutes.is_none())
-            .take(take_n)
+            .take(NUM_PLAYTIMES_TO_FETCH)
             .collect()
     }
 
-    fn get_players_without_steam_bans<'a>(
-        &self,
-        lobby: &'a Lobby,
-        take_n: usize,
-    ) -> Vec<&'a Player> {
+    fn get_players_without_steam_bans<'a>(&self, lobby: &'a Lobby) -> Vec<&'a Player> {
         lobby
             .players
             .iter()
             .filter(|p| p.steam_bans.is_none())
-            .take(take_n)
+            .take(NUM_BANS_TO_FETCH)
             .collect()
     }
 }
