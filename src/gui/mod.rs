@@ -9,14 +9,13 @@ pub mod recently_left;
 pub mod scoreboard;
 pub mod scoreboard_team;
 
+use self::friendship_indicators::add_friendship_indicators;
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, AppWin},
 };
 use eframe::egui;
 use std::sync::{Arc, Mutex};
-
-use self::friendship_indicators::add_friendship_indicators;
 
 pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), eframe::Error> {
     let viewport = egui::ViewportBuilder::default()
