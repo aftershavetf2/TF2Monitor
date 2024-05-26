@@ -6,9 +6,8 @@ use eframe::egui::{Color32, Pos2, Stroke, Ui};
 use std::collections::HashSet;
 
 pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
-    let indicator_color = Color32::from_rgba_unmultiplied(0xff, 0xff, 0xff, 0x18);
-
-    let stroke = Stroke::new(3.0f32, indicator_color);
+    let indicator_color = Color32::WHITE;
+    let stroke = Stroke::new(0.6f32, indicator_color);
 
     // Get info about me and my friendlist
     let me = app_win
