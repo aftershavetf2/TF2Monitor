@@ -73,6 +73,16 @@ If you change rcon-password or port you need to alter the bat file.
 "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf_win64.exe" -steam -game tf  -usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +sv_rcon_whitelist_address 127.0.0.1 +sv_quota_stringcmdspersecond 1000000 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console
 ```
 
+# TF2 Bot Detector files
+
+This app can read and write the usual TF2 Bot Detector files but will only use the subset of rules that point out a SteamID and a flag(Cheater, Suspicious, Racist, Exploiter).
+
+Where the `settings.json` file are your markings will be saved in `playerlist.json` whenever a player's flags are changed.
+
+Right now only one `playerlist.json` file is supported.
+
+In the future there could be support for multiple `playerlist.XXX.json` along with autoupdate features.
+
 # Linux support?
 
 I have not tested it but currently the app does not use any platform specifc API.
@@ -80,15 +90,28 @@ I have not tested it but currently the app does not use any platform specifc API
 The UI framework uses OpenGL via `glow` and there's a note here on libs you might need to install on your Linux machine:
 https://crates.io/crates/eframe/0.27.2
 
+# Application architecture and technology
+
+See the file [ARCHITECTURE.md](/ARCHITECTURE.md) for the bigger picture of the inner workings of this app.
+
+The application is written in [Rust](https://www.rust-lang.org/) and uses [egui](https://www.egui.rs/) to display an user interface.
+
 # Other projects of interest
 
-There are already several similar applications like this one. Most of them have been tested for years and offer more functionality.
+There are already several similar applications like this one. Some of them has been tested for years and offers a lot of functionality.
 
 - https://botdetector.tf/
 
-  - Newly developed
+  - Newly developed.
+  - Uses a Go backend.
+  - Uses a web frontend written in React.
 
 - https://github.com/PazerOP/tf2_bot_detector
+
   - This is archived and not developed.
   - With some tweaks it still works fine.
-  - There are also forks with fixes, if you search github.
+  - Has a lot of features.
+  - Written in C++ with a Dear Imgui frontend.
+  - Windows only AFAIK.
+  - There are also forks with fixes and updates:
+    - https://github.com/surepy/tf2_bot_detector
