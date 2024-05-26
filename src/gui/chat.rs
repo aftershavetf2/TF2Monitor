@@ -114,7 +114,7 @@ fn add_chat_row(ui: &mut Ui, lobby: &Lobby, chat: &LobbyChat, swap_team_colors: 
         &chat.message,
         0.0,
         TextFormat {
-            color: Color32::GRAY,
+            color: Color32::from_rgb(200, 200, 200),
             ..Default::default()
         },
     );
