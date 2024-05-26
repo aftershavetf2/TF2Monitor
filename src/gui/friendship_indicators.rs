@@ -6,7 +6,9 @@ use eframe::egui::{Color32, Pos2, Stroke, Ui};
 use std::collections::HashSet;
 
 pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
-    let stroke = Stroke::new(1.0f32, Color32::WHITE);
+    let indicator_color = Color32::from_rgba_unmultiplied(0xff, 0xff, 0xff, 0x30);
+
+    let stroke = Stroke::new(1.0f32, indicator_color);
 
     // Get info about me and my friendlist
     let me = app_win
@@ -47,6 +49,10 @@ pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
                     }
 
                     if friends.contains(steamid) {
+                        if steamid.to_u64() > player.steamid.to_u64() {
+                            continue;
+                        }
+
                         let dir = 1 == (player.steamid.to_u64() ^ steamid.to_u64()) & 1;
                         draw_curve(ui, start_pos, *end_pos, &stroke, dir);
                     }
