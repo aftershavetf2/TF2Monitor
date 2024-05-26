@@ -11,7 +11,7 @@ pub fn add_background_image(ui: &mut eframe::egui::Ui) -> ImageDescription {
     let image = eframe::egui::Image::new(BACKGROUND_IMAGE_BYTES)
         // .maintain_aspect_ratio(true)
         .bg_fill(Color32::from_rgb(32, 32, 128))
-        .tint(Color32::from_rgb(80, 80, 80));
+        .tint(Color32::from_rgb(60, 60, 60));
 
     // let rect_vec2 = ui.max_rect().size();
     let rect_vec2 = ui.ctx().screen_rect().size();
