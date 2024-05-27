@@ -64,7 +64,7 @@ fn add_chat_row(ui: &mut Ui, lobby: &Lobby, chat: &LobbyChat, swap_team_colors: 
             "*DEAD* ",
             0.0,
             TextFormat {
-                color: Color32::WHITE,
+                color: Color32::LIGHT_GRAY,
                 ..Default::default()
             },
         );
@@ -73,7 +73,7 @@ fn add_chat_row(ui: &mut Ui, lobby: &Lobby, chat: &LobbyChat, swap_team_colors: 
             "(TEAM) ",
             0.0,
             TextFormat {
-                color: Color32::WHITE,
+                color: Color32::LIGHT_GRAY,
                 ..Default::default()
             },
         );
@@ -92,11 +92,13 @@ fn add_chat_row(ui: &mut Ui, lobby: &Lobby, chat: &LobbyChat, swap_team_colors: 
         _ => Color32::GRAY,
     };
 
+    let new_color = Color32::from_rgb(color.r() + 30, color.g() + 30, color.b() + 30);
+
     job.append(
         &player.name,
         0.0,
         TextFormat {
-            color,
+            color: new_color,
             ..Default::default()
         },
     );
@@ -105,7 +107,7 @@ fn add_chat_row(ui: &mut Ui, lobby: &Lobby, chat: &LobbyChat, swap_team_colors: 
         ": ",
         0.0,
         TextFormat {
-            color: Color32::WHITE,
+            color: Color32::LIGHT_GRAY,
             ..Default::default()
         },
     );
@@ -114,7 +116,7 @@ fn add_chat_row(ui: &mut Ui, lobby: &Lobby, chat: &LobbyChat, swap_team_colors: 
         &chat.message,
         0.0,
         TextFormat {
-            color: Color32::from_rgb(200, 200, 200),
+            color: Color32::from_rgb(210, 210, 210),
             ..Default::default()
         },
     );
