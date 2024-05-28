@@ -1,5 +1,9 @@
 # TF2Monitor
 
+**NOTE! This project is a work in progress and something I do on a hobby basis when I have spare time and energy.**
+
+**NOTE! Not ready to receive code contributions yet.**
+
 An application companion to be run along with you playing Team Fortress 2.
 
 With this app you can:
@@ -12,8 +16,6 @@ With this app you can:
   - TODO: VAC bans etc.
 
 - TODO: Keep track of people you know are bots, cheaters, racists and so on.
-
-**NOTE! This project is a work in progress and something I do on a hobby basis when I have spare time and energy.**
 
 # Screenshot
 
