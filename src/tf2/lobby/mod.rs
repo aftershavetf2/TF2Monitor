@@ -107,6 +107,10 @@ impl Player {
                     reasons.push_str(
                         format!("- VAC banned {} times\n", steam_bans.number_of_vac_bans).as_str(),
                     );
+                    reasons.push_str(
+                        format!("- {} days since last ban\n", steam_bans.days_since_last_ban)
+                            .as_str(),
+                    );
                 }
 
                 if steam_bans.number_of_game_bans > 0 {
