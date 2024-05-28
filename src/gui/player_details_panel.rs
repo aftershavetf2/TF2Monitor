@@ -57,8 +57,6 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
                 ui.label("No Steam bans");
             }
 
-            ui.label("");
-
             add_player_kills(player, ui);
         }
     } else {
