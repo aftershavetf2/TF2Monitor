@@ -26,6 +26,7 @@ pub struct LobbyChat {
 
 #[derive(Debug, Clone)]
 pub struct Player {
+    /// The player's ID in the lobby, used when votekicking etc
     pub id: u32,
     pub steamid: SteamID,
     pub name: String,
@@ -35,13 +36,37 @@ pub struct Player {
     pub crit_kills: u32,
     pub crit_deaths: u32,
     pub kills_with: Vec<PlayerKill>,
-    pub last_seen: DateTime<Local>,
-    pub flags: Vec<PlayerFlags>,
 
+    /// The last time the player was seen in the
+    /// status or tf_lobby_debug command output.
+    pub last_seen: DateTime<Local>,
     pub steam_info: Option<PlayerSteamInfo>,
     pub friends: Option<HashSet<SteamID>>,
     pub tf2_play_minutes: Option<u32>,
     pub steam_bans: Option<SteamPlayerBan>,
+
+    pub markings: PlayerMarkings,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct PlayerMarkings {
+    pub markings: Vec<PlayerMarking>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlayerMarking {
+    /*
+       /// The rules file which resulted in this marking
+       pub source: String,
+
+       /// Any comment on why the player was marked
+       pub reason: String,
+
+       /// Some rules files may suggest a marking, but not enforce it
+       pub suggestion: bool,
+    */
+    /// The actual flags that were set
+    pub flags: Vec<PlayerFlags>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -118,12 +143,12 @@ impl Player {
 
         match (is_new_account, has_few_hours) {
             (true, true) => Some(format!(
-                "Account is < 1 year old and has only {} TF2 hours",
+                "Account is < 1 year old and has only {} hours in TF2",
                 self.tf2_play_minutes.unwrap() / 60
             )),
             (true, false) => Some("Account is < 1 year old".to_string()),
             (false, true) => Some(format!(
-                "Account has only {} TF2 hours",
+                "Account has only {} hours in TF2",
                 self.tf2_play_minutes.unwrap() / 60
             )),
             _ => None,

@@ -28,7 +28,7 @@ pub fn add_recently_left_players(app_win: &mut AppWin, ui: &mut Ui) {
 
             ui.hyperlink_to(player.name.as_str(), player.steamid.steam_history_url())
                 .on_hover_text("Click to view on Steam History")
-                .on_hover_ui_at_pointer(|ui| add_player_tooltip(app_win, ui, player));
+                .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
         }
     });
 }

@@ -3,6 +3,7 @@ pub mod chat;
 pub mod colors;
 pub mod friendship_indicators;
 pub mod image_creds;
+pub mod player_details_panel;
 pub mod player_menu;
 pub mod player_tooltip;
 pub mod recently_left;
@@ -14,7 +15,9 @@ use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, AppWin},
 };
+use chat::add_chat;
 use eframe::egui;
+use player_details_panel::add_player_details_panel;
 use std::sync::{Arc, Mutex};
 
 pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), eframe::Error> {
@@ -57,7 +60,10 @@ impl eframe::App for AppWin {
 
             ui.separator();
 
-            chat::add_chat(ui, &self.lobby, &mut self.swap_team_colors);
+            ui.columns(2, |ui| {
+                add_chat(&mut ui[0], &self.lobby, &mut self.swap_team_colors);
+                add_player_details_panel(self, &mut ui[1]);
+            });
 
             if self.show_friendships {
                 add_friendship_indicators(self, ui);

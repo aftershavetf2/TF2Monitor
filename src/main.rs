@@ -2,6 +2,7 @@ mod appbus;
 mod gui;
 mod models;
 mod tf2;
+mod tf2bd;
 mod utils;
 
 use appbus::AppBus;
@@ -15,6 +16,7 @@ fn main() -> Result<(), eframe::Error> {
     let bus = Arc::new(Mutex::new(AppBus::default()));
 
     tf2::start(&settings, &bus);
+    tf2bd::tf2bd_thread::start(&settings, &bus);
 
     gui::run(&settings, &bus)
 }

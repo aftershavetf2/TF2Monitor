@@ -18,7 +18,7 @@ pub fn add_chat(ui: &mut Ui, lobby: &Lobby, swap_team_colors: &mut bool) {
     }
 
     ui.label("Chat");
-    ui.separator();
+    // ui.separator();
     // ui.add_space(4.0);
 
     // hexrgb(0x756B5E);

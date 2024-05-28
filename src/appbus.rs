@@ -1,17 +1,22 @@
 use bus::Bus;
 
-use crate::tf2::{lobby::Lobby, logfile::LogLine, steamapi::SteamApiMsg};
+use crate::{
+    tf2::{lobby::Lobby, logfile::LogLine, steamapi::SteamApiMsg},
+    tf2bd::Tf2dMsg,
+};
 
 pub struct AppBus {
     pub logfile_bus: Bus<LogLine>,
     pub rcon_bus: Bus<String>,
     pub lobby_report_bus: Bus<Lobby>,
     pub steamapi_bus: Bus<SteamApiMsg>,
+    pub tf2bd_bus: Bus<Tf2dMsg>,
 
     pub rcon_thread_handle: Option<std::thread::JoinHandle<()>>,
     pub lobby_thread_handle: Option<std::thread::JoinHandle<()>>,
     pub steamapi_thread_handle: Option<std::thread::JoinHandle<()>>,
     pub logfile_watcher_thread_handle: Option<std::thread::JoinHandle<()>>,
+    pub tf2bd_thread_handle: Option<std::thread::JoinHandle<()>>,
 }
 
 impl Default for AppBus {
@@ -27,11 +32,13 @@ impl AppBus {
             rcon_bus: Bus::new(10),
             lobby_report_bus: Bus::new(10),
             steamapi_bus: Bus::new(1000),
+            tf2bd_bus: Bus::new(1000),
 
             rcon_thread_handle: None,
             lobby_thread_handle: None,
             steamapi_thread_handle: None,
             logfile_watcher_thread_handle: None,
+            tf2bd_thread_handle: None,
         }
     }
 

@@ -1,4 +1,4 @@
-use super::{player_menu::add_player_menu, player_tooltip::add_player_tooltip};
+use super::player_tooltip::add_player_tooltip;
 use crate::{
     models::{steamid::SteamID, AppWin},
     tf2::lobby::{Player, Team},
@@ -93,7 +93,7 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
     // Player icon and name
     ui.horizontal(|ui| {
         ui.push_id(player.steamid.to_u64(), |ui| {
-            add_player_menu(ui, &app_win.bus, player);
+            // add_player_menu(ui, &app_win.bus, player);
 
             ui.scope(|ui| {
                 let marked_color = Some(Color32::YELLOW);
@@ -116,13 +116,13 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
 
                 if let Some(steam_info) = &player.steam_info {
                     ui.image(&steam_info.avatar)
-                        .on_hover_ui_at_pointer(|ui| add_player_tooltip(app_win, ui, player));
+                        .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
                 }
 
                 if ui
                     .label(&player.name)
-                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(app_win, ui, player))
-                    .hovered()
+                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
+                    .clicked()
                 {
                     // log::info!("Clicked on player: {}", player.name);
                     if let Some(steamid) = app_win.selected_player {

@@ -14,7 +14,7 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(1000);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
 
 pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
@@ -170,11 +170,11 @@ impl LobbyThread {
             crit_deaths: 0,
             kills_with: Vec::new(),
             last_seen: when,
-            flags: Vec::new(),
             steam_info: None,
             friends: None,
             tf2_play_minutes: None,
             steam_bans: None,
+            markings: Default::default(),
         });
     }
 
@@ -205,11 +205,11 @@ impl LobbyThread {
             crit_deaths: 0,
             kills_with: Vec::new(),
             last_seen: Local::now(),
-            flags: Vec::new(),
             steam_info: None,
             friends: None,
             tf2_play_minutes: None,
             steam_bans: None,
+            markings: Default::default(),
         });
     }
 
