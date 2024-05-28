@@ -79,8 +79,8 @@ impl SteamApi {
         get_tf2_play_minutes::get_tf2_play_minutes(&self.steam_api_key, steamid)
     }
 
-    pub fn get_bans(&self, steamid: SteamID) -> Option<SteamPlayerBan> {
-        get_bans::get_bans(&self.steam_api_key, steamid)
+    pub fn get_bans(&self, steamids: Vec<SteamID>) -> Option<Vec<SteamPlayerBan>> {
+        get_bans::get_bans(&self.steam_api_key, steamids)
     }
 
     /// Returns true if the Steam API key is set

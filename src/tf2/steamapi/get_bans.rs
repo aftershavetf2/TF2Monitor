@@ -49,52 +49,43 @@ struct Envelope {
     players: Vec<PlayerBans>,
 }
 
-pub fn get_bans(steam_api_key: &String, steamid: SteamID) -> Option<SteamPlayerBan> {
+pub fn get_bans(steam_api_key: &String, steamids: Vec<SteamID>) -> Option<Vec<SteamPlayerBan>> {
+    if steamids.is_empty() {
+        return None;
+    }
+
+    let steamids: Vec<String> = steamids.iter().map(|s| s.to_u64().to_string()).collect();
+    let steamids = steamids.join(",");
+
     let url = format!(
-        "https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key={}&steamids={}]",
-        steam_api_key,
-        steamid.to_u64()
+        "https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key={}&steamids={}",
+        steam_api_key, steamids
     );
 
     let response = get(url);
     match response {
         Ok(response) => {
             let reply: Result<Envelope> = response.json();
-            let steamid_str = steamid.to_u64().to_string();
             match reply {
                 Ok(reply) => {
-                    // log::info!("Reply: {:?}", reply);
-                    match reply.players.iter().find(|g| g.steamid == steamid_str) {
-                        Some(bans) => Some(SteamPlayerBan {
-                            steamid,
-                            community_banned: bans.community_banned,
-                            vac_banned: bans.vac_banned,
-                            number_of_vac_bans: bans.number_of_vac_bans,
-                            days_since_last_ban: bans.days_since_last_ban,
-                            number_of_game_bans: bans.number_of_game_bans,
-                            economy_ban: bans.economy_ban.clone(),
-                        }),
-                        None => Some(SteamPlayerBan {
-                            steamid,
-                            community_banned: false,
-                            vac_banned: false,
-                            number_of_vac_bans: 0,
-                            days_since_last_ban: 0,
-                            number_of_game_bans: 0,
-                            economy_ban: "none".to_string(),
-                        }),
-                    }
+                    let bans: Vec<SteamPlayerBan> = reply
+                        .players
+                        .iter()
+                        .map(|ban| SteamPlayerBan {
+                            steamid: SteamID::from_u64_string(&ban.steamid).unwrap_or_default(),
+                            community_banned: ban.community_banned,
+                            vac_banned: ban.vac_banned,
+                            number_of_vac_bans: ban.number_of_vac_bans,
+                            days_since_last_ban: ban.days_since_last_ban,
+                            number_of_game_bans: ban.number_of_game_bans,
+                            economy_ban: ban.economy_ban.clone(),
+                        })
+                        .collect();
+
+                    return Some(bans);
                 }
                 // The reply was not in the expected format, probably just "{}" because of an private profile
-                Err(_) => Some(SteamPlayerBan {
-                    steamid,
-                    community_banned: false,
-                    vac_banned: false,
-                    number_of_vac_bans: 0,
-                    days_since_last_ban: 0,
-                    number_of_game_bans: 0,
-                    economy_ban: "none".to_string(),
-                }),
+                Err(_) => Some(Vec::new()),
             }
         }
         Err(e) => {
