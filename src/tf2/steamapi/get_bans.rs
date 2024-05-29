@@ -82,7 +82,7 @@ pub fn get_bans(steam_api_key: &String, steamids: Vec<SteamID>) -> Option<Vec<St
                         })
                         .collect();
 
-                    return Some(bans);
+                    Some(bans)
                 }
                 // The reply was not in the expected format, probably just "{}" because of an private profile
                 Err(_) => Some(Vec::new()),

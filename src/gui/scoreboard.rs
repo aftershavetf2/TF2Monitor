@@ -1,7 +1,4 @@
-use super::{
-    background_image::add_background_image, image_creds::add_image_creds,
-    recently_left::add_recently_left_players, scoreboard_team::scoreboard_team,
-};
+use super::{recently_left::add_recently_left_players, scoreboard_team::scoreboard_team};
 use crate::{
     models::AppWin,
     tf2::lobby::{Player, Team},
@@ -10,7 +7,7 @@ use eframe::egui::{Color32, Ui};
 
 pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
     // ui.heading("Scoreboard");
-    let image_desc = add_background_image(ui);
+    // let image_desc = add_background_image(ui);
 
     let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
 
@@ -21,7 +18,7 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
         ui.checkbox(&mut app_win.show_crits, "Show crits");
         ui.checkbox(&mut app_win.show_friendships, "Show friendships");
 
-        add_image_creds(ui, &image_desc);
+        // add_image_creds(ui, &image_desc);
     });
 
     if app_win.swap_team_colors {

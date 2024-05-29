@@ -147,8 +147,11 @@ impl SteamApiThread {
         if let Some(infos) = self.steam_api.get_player_summaries(summaries_to_fetch) {
             for info in infos {
                 if let Some(steamid) = SteamID::from_u64_string(&info.steamid) {
+                    let public_profile = matches!(info.communityvisibilitystate, 3);
+
                     let info = PlayerSteamInfo {
                         steamid,
+                        public_profile,
                         name: info.personaname.clone(),
                         avatar: info.avatar.clone(),
                         avatarmedium: info.avatarmedium.clone(),

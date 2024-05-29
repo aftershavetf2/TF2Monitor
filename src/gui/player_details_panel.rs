@@ -24,6 +24,12 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
                     // ui.label(format!("Console ID in game: {}", player.id));
 
                     if let Some(steam_info) = &player.steam_info {
+                        if steam_info.public_profile {
+                            ui.label("Public profile");
+                        } else {
+                            ui.label("Private profile");
+                        }
+
                         ui.label(format!(
                             "Account created: {}",
                             steam_info.get_account_created()

@@ -40,6 +40,7 @@ pub struct SteamApi {
 pub struct SteamApiPlayer {
     pub steamid: String,
     pub personaname: String,
+    pub communityvisibilitystate: u8,
     // profileurl: String,
     pub avatar: String,
     pub avatarmedium: String,

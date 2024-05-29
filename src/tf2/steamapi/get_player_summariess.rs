@@ -30,6 +30,8 @@ pub fn get_player_summaries(
         steam_api_key, steamids
     );
 
+    log::info!("Fetching player summaries from Steam API: {}", url);
+
     let response = get(url);
     match response {
         Ok(response) => {

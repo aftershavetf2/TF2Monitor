@@ -86,6 +86,7 @@ pub struct PlayerKill {
 #[derive(Debug, Clone)]
 pub struct PlayerSteamInfo {
     pub steamid: SteamID,
+    pub public_profile: bool,
     pub name: String,
     pub avatar: String,
     pub avatarmedium: String,

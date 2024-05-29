@@ -9,16 +9,19 @@ pub mod player_tooltip;
 pub mod recently_left;
 pub mod scoreboard;
 pub mod scoreboard_team;
+pub mod window_status_row;
 
 use self::friendship_indicators::add_friendship_indicators;
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, AppWin},
 };
+use background_image::{add_background_image, ImageDescription};
 use chat::add_chat;
 use eframe::egui;
 use player_details_panel::add_player_details_panel;
 use std::sync::{Arc, Mutex};
+use window_status_row::add_status_row;
 
 pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), eframe::Error> {
     let viewport = egui::ViewportBuilder::default()
@@ -55,7 +58,11 @@ impl eframe::App for AppWin {
 
         self.friendship_positions.clear();
 
+        let mut image_desc: Option<ImageDescription> = None;
+
         egui::CentralPanel::default().show(ctx, |ui| {
+            image_desc = Some(add_background_image(ui));
+
             scoreboard::add_scoreboard(self, ui);
 
             ui.separator();
@@ -70,6 +77,9 @@ impl eframe::App for AppWin {
             }
         });
 
+        egui::TopBottomPanel::bottom("status")
+            .show(ctx, |ui| add_status_row(ui, &image_desc.unwrap()));
+
         ctx.request_repaint();
     }
 }
@@ -77,11 +87,5 @@ impl eframe::App for AppWin {
 // fn add_menu_row(ctx: &egui::Context) {
 //     egui::TopBottomPanel::top("menu").show(ctx, |ui| {
 //         ui.label("Menus...");
-//     });
-// }
-
-// fn add_status_row(ctx: &egui::Context) {
-//     egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
-//         ui.label("Status: Online");
 //     });
 // }
