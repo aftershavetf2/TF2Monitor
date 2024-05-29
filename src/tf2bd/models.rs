@@ -11,10 +11,10 @@ use std::path::Path;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RulesFile {
     #[serde(rename = "$schema")]
-    schema: String,
-    file_info: Option<FileInfo>,
-    rules: Option<Vec<Rule>>,
-    players: Vec<PlayerInfo>,
+    pub schema: String,
+    pub file_info: Option<FileInfo>,
+    pub rules: Option<Vec<Rule>>,
+    pub players: Vec<PlayerInfo>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -104,7 +104,7 @@ pub enum PlayerAttribute {
 }
 
 #[derive(Debug)]
-pub struct RulesStats {
+struct RulesStats {
     pub rules: usize,
 
     pub players: usize,
@@ -148,7 +148,7 @@ impl RulesFile {
         serde_json::from_str(json).unwrap()
     }
 
-    pub fn get_stats(&self) -> RulesStats {
+    fn get_stats(&self) -> RulesStats {
         let mut result = RulesStats {
             rules: 0,
             players: self.players.len(),

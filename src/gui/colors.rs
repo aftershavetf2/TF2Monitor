@@ -2,7 +2,7 @@
 use eframe::egui;
 use eframe::egui::Color32;
 
-use crate::models::PlayerFlags;
+use crate::tf2::lobby::PlayerFlag;
 
 // Colors taken from https://lospec.com/palette-list/team-fortress-2-official
 
@@ -47,14 +47,14 @@ pub fn set_style(ctx: &egui::Context) {
 }
 
 /// Returns the (text color, background color) for a given flag.
-pub fn color_for_flag(flag: PlayerFlags) -> (Color32, Color32) {
+pub fn color_for_flag(flag: PlayerFlag) -> (Color32, Color32) {
     match flag {
-        PlayerFlags::Awesome => (Color32::BLACK, Color32::GOLD),
-        PlayerFlags::Cheater => (Color32::BLACK, hexrgb(0xff006e)),
-        PlayerFlags::Bot => (Color32::BLACK, hexrgb(0xff0000)),
-        PlayerFlags::Sus => (Color32::BLACK, Color32::from_rgb(0xf0, 0x81, 0x49)),
-        PlayerFlags::Toxic => (Color32::BLACK, Color32::WHITE),
-        PlayerFlags::Exploiter => (Color32::BLACK, Color32::LIGHT_GREEN),
+        PlayerFlag::Awesome => (Color32::BLACK, Color32::GOLD),
+        PlayerFlag::Cheater => (Color32::BLACK, hexrgb(0xff006e)),
+        PlayerFlag::Bot => (Color32::BLACK, hexrgb(0xff0000)),
+        PlayerFlag::Suspicious => (Color32::BLACK, Color32::from_rgb(0xf0, 0x81, 0x49)),
+        PlayerFlag::Toxic => (Color32::BLACK, Color32::WHITE),
+        PlayerFlag::Exploiter => (Color32::BLACK, Color32::LIGHT_GREEN),
     }
 }
 

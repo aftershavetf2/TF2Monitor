@@ -1,3 +1,4 @@
+use super::{models::RulesFile, ruleset_handler::RulesetHandler};
 use crate::{
     appbus::AppBus,
     models::app_settings::AppSettings,
@@ -8,8 +9,6 @@ use std::{
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
-
-use super::models::RulesFile;
 
 const FILENAME: &str = "playerlist.json";
 
@@ -25,37 +24,70 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 pub struct Tf2bdThread {
     bus: Arc<Mutex<AppBus>>,
     lobby_bus_rx: BusReader<Lobby>,
+
+    ruleset_handler: RulesetHandler,
 }
 
 impl Tf2bdThread {
     pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let lobby_bus_rx = bus.lock().unwrap().lobby_report_bus.add_rx();
 
-        let _rules = RulesFile::from_file(FILENAME);
+        let rules = RulesFile::from_file(FILENAME);
+        let ruleset_handler = RulesetHandler::new(&rules, FILENAME, false);
 
         Self {
             bus: Arc::clone(bus),
             lobby_bus_rx,
+            ruleset_handler,
         }
     }
 
     pub fn run(&mut self) {
         log::info!("TF2BD background thread started");
 
+        let mut nth = 0;
         loop {
-            self.process_bus();
+            nth = (nth + 1) % 10;
+            let apply_rules = nth == 0;
+            self.process_bus(apply_rules);
 
             sleep(LOOP_DELAY);
         }
     }
 
-    fn send(&mut self, msg: SteamApiMsg) {
+    fn send(&self, msg: SteamApiMsg) {
         self.bus.lock().unwrap().steamapi_bus.broadcast(msg);
     }
 
-    fn process_bus(&mut self) {
-        while let Ok(_lobby) = self.lobby_bus_rx.try_recv() {
-            // log::info!("process_bus - received lobby");
+    fn process_bus(&mut self, apply_rules: bool) {
+        if apply_rules {
+            if let Ok(_lobby) = self.lobby_bus_rx.try_recv() {
+                log::info!("Applying rules to lobby");
+                self.apply_rules_to_lobby(&_lobby);
+            }
+        }
+
+        // Drain the lobby bus
+        while let Ok(_lobby) = self.lobby_bus_rx.try_recv() {}
+    }
+
+    fn apply_rules_to_lobby(&mut self, lobby: &Lobby) {
+        for player in &lobby.players {
+            if let Some(data) = self.ruleset_handler.get_player_marking(&player.steamid) {
+                log::info!(
+                    "Player matched: {} - flags: {}",
+                    player.name,
+                    data.flags
+                        .iter()
+                        .map(|x| format!("{:?}", x))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                );
+                self.send(SteamApiMsg::Tf2bdPlayerMarking(
+                    player.steamid,
+                    data.clone(),
+                ));
+            }
         }
     }
 }

@@ -85,6 +85,11 @@ impl LobbyThread {
                         player.steam_bans = Some(steam_bans);
                     }
                 }
+                SteamApiMsg::Tf2bdPlayerMarking(steamid, marking) => {
+                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                        player.flags.insert(marking.source.clone(), marking);
+                    }
+                }
             }
         }
     }
@@ -174,7 +179,8 @@ impl LobbyThread {
             friends: None,
             tf2_play_minutes: None,
             steam_bans: None,
-            markings: Default::default(),
+            tf2bd_flags: String::new(),
+            flags: Default::default(),
         });
     }
 
@@ -209,7 +215,8 @@ impl LobbyThread {
             friends: None,
             tf2_play_minutes: None,
             steam_bans: None,
-            markings: Default::default(),
+            tf2bd_flags: String::new(),
+            flags: Default::default(),
         });
     }
 

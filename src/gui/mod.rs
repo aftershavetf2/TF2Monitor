@@ -3,6 +3,7 @@ pub mod chat;
 pub mod colors;
 pub mod friendship_indicators;
 pub mod image_creds;
+pub mod markings;
 pub mod player_details_panel;
 pub mod player_menu;
 pub mod player_tooltip;

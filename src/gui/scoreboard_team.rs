@@ -1,4 +1,4 @@
-use super::player_tooltip::add_player_tooltip;
+use super::{markings::add_flags, player_tooltip::add_player_tooltip};
 use crate::{
     models::{steamid::SteamID, AppWin},
     tf2::lobby::{Player, Team},
@@ -82,7 +82,7 @@ pub fn scoreboard_team(
                 }
             });
 
-            // add_flags(ui, &player);
+            add_flags(ui, player);
 
             ui.end_row();
         }
@@ -192,79 +192,3 @@ fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, pla
         });
     });
 }
-
-// #[allow(dead_code)]
-// fn add_flags(ui: &mut Ui, player: &Player) {
-//     ui.horizontal_wrapped(|ui| {
-//         ui.set_max_width(140.0);
-
-//         let flags = vec![
-//             PlayerFlags::Cheater,
-//             PlayerFlags::Bot,
-//             PlayerFlags::Sus,
-//             PlayerFlags::New,
-//             PlayerFlags::Racist,
-//             PlayerFlags::Exploiter,
-//         ];
-
-//         for flag in flags {
-//             let is_active = player.flags.contains(&flag);
-
-//             let (fgcolor, bgcolor) = if is_active {
-//                 color_for_flag(flag)
-//             } else {
-//                 (Color32::WHITE, Color32::DARK_GRAY)
-//             };
-
-//             let text = flag_shortname(flag);
-//             let tooltip = format!("{}. Click to toggle", flag_description(flag));
-
-//             ui.scope(|ui| {
-//                 ui.style_mut().visuals.override_text_color = Some(fgcolor);
-
-//                 // ui.style_mut().
-//                 ui.style_mut().visuals.widgets.active.fg_stroke.color = fgcolor;
-//                 ui.style_mut().visuals.widgets.active.weak_bg_fill = bgcolor;
-//                 ui.style_mut().visuals.widgets.inactive.fg_stroke.color = fgcolor;
-//                 ui.style_mut().visuals.widgets.inactive.weak_bg_fill = bgcolor;
-//                 ui.style_mut().visuals.widgets.hovered.fg_stroke.color = fgcolor;
-//                 ui.style_mut().visuals.widgets.hovered.weak_bg_fill = bgcolor;
-
-//                 if ui.button(text).on_hover_text(tooltip).clicked() {
-//                     if is_active {
-//                         log::trace!("Removing flag: {:?}", flag);
-//                         // player.flags.retain(|&f| f != flag);
-//                     } else {
-//                         log::trace!("Adding flag: {:?}", flag);
-//                         // player.flags.push(flag);
-//                     }
-//                 }
-//             });
-
-//             // let frame = egui::containers::Frame::default()
-//             //     .fill(bgcolor)
-//             //     .stroke(egui::Stroke::new(1.0, Color32::BLACK))
-//             //     .inner_margin(4.0)
-//             //     .rounding(3.0);
-
-//             // frame.show(ui, |ui| {
-//             //     ui.scope(|ui| {
-//             //         ui.style_mut().wrap = Some(false);
-//             //         let rich_text = RichText::new(text).color(fgcolor).strong();
-
-//             //         ui.label(rich_text).on_hover_text_at_pointer(tooltip)
-//             //     });
-//             // });
-
-//             //     Frame::default()
-//             //         .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
-//             //         .rounding(ui.visuals().widgets.noninteractive.rounding)
-//             //         .show(ui, |ui| {
-//             //             self.frame.show(ui, |ui| {
-//             //                 ui.style_mut().wrap = Some(false);
-//             //                 ui.label(egui::RichText::new("Content").color(egui::Color32::WHITE));
-//             //             });
-//             //         });
-//         }
-//     });
-// }

@@ -1,4 +1,4 @@
-use super::colors::hexrgb;
+use super::{colors::hexrgb, markings::add_flags};
 use crate::{
     models::AppWin,
     tf2::lobby::{Player, PlayerKill},
@@ -19,6 +19,9 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
 
                 ui.vertical(|ui| {
                     ui.heading(format!("{} ({})", player.name, player.id));
+
+                    add_player_kick_buttons(app_win, player, ui);
+
                     ui.label(format!("SteamID: {}", player.steamid.to_u64()));
 
                     // ui.label(format!("Console ID in game: {}", player.id));
@@ -41,8 +44,6 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
                     } else {
                         ui.label("TF2 playtime: Loading...");
                     }
-
-                    add_player_kick_buttons(app_win, player, ui);
                 });
             });
 
@@ -64,6 +65,10 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
             }
 
             add_player_kills(player, ui);
+
+            ui.label("Flags:");
+            ui.separator();
+            add_flags(ui, player);
         }
     } else {
         ui.label("Select a player to see their details.");

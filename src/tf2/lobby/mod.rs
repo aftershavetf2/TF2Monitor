@@ -1,9 +1,9 @@
 pub mod lobby_thread;
 
 use super::steamapi::SteamPlayerBan;
-use crate::models::{steamid::SteamID, PlayerFlags};
+use crate::models::steamid::SteamID;
 use chrono::{DateTime, Local};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Default, Debug, Clone)]
 pub struct Lobby {
@@ -45,28 +45,41 @@ pub struct Player {
     pub tf2_play_minutes: Option<u32>,
     pub steam_bans: Option<SteamPlayerBan>,
 
-    pub markings: PlayerMarkings,
-}
+    pub tf2bd_flags: String,
 
-#[derive(Default, Debug, Clone)]
-pub struct PlayerMarkings {
-    pub markings: Vec<PlayerMarking>,
+    // This is the PlayerFlags(Cheater etc) for the player
+    // The String is the source of the flags.
+    // The source is filename of the rules file that set the flags.
+    pub flags: HashMap<String, PlayerMarking>,
 }
 
 #[derive(Debug, Clone)]
 pub struct PlayerMarking {
-    /*
-       /// The rules file which resulted in this marking
-       pub source: String,
+    /// The rules file which resulted in this marking
+    pub source: String,
 
+    /// Some rules files may suggest a marking,
+    /// but it is not enforced unless the user
+    /// adds the rule file as trusted
+    pub suggestion: bool,
+
+    /*
        /// Any comment on why the player was marked
        pub reason: String,
 
-       /// Some rules files may suggest a marking, but not enforce it
-       pub suggestion: bool,
     */
     /// The actual flags that were set
-    pub flags: Vec<PlayerFlags>,
+    pub flags: Vec<PlayerFlag>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum PlayerFlag {
+    Awesome,
+    Cheater,
+    Bot,
+    Suspicious,
+    Toxic,
+    Exploiter,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -235,5 +248,27 @@ impl Lobby {
             .collect();
 
         friends
+    }
+}
+
+pub fn flag_shortname(flag: PlayerFlag) -> &'static str {
+    match flag {
+        PlayerFlag::Awesome => "A",
+        PlayerFlag::Cheater => "C",
+        PlayerFlag::Bot => "B",
+        PlayerFlag::Suspicious => "S",
+        PlayerFlag::Toxic => "T",
+        PlayerFlag::Exploiter => "E",
+    }
+}
+
+pub fn flag_description(flag: PlayerFlag) -> &'static str {
+    match flag {
+        PlayerFlag::Awesome => "Awesome",
+        PlayerFlag::Cheater => "Cheater",
+        PlayerFlag::Bot => "Bot",
+        PlayerFlag::Suspicious => "Suspicious",
+        PlayerFlag::Toxic => "Toxic",
+        PlayerFlag::Exploiter => "Exploiter",
     }
 }

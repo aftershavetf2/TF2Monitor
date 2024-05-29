@@ -45,35 +45,3 @@ impl AppWin {
         }
     }
 }
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum PlayerFlags {
-    Awesome,
-    Cheater,
-    Bot,
-    Sus,
-    Toxic,
-    Exploiter,
-}
-
-pub fn flag_shortname(flag: PlayerFlags) -> &'static str {
-    match flag {
-        PlayerFlags::Awesome => "A",
-        PlayerFlags::Cheater => "C",
-        PlayerFlags::Bot => "B",
-        PlayerFlags::Sus => "S",
-        PlayerFlags::Toxic => "T",
-        PlayerFlags::Exploiter => "E",
-    }
-}
-
-pub fn flag_description(flag: PlayerFlags) -> &'static str {
-    match flag {
-        PlayerFlags::Awesome => "Awesome",
-        PlayerFlags::Cheater => "Cheater",
-        PlayerFlags::Bot => "Bot",
-        PlayerFlags::Sus => "Suspicious",
-        PlayerFlags::Toxic => "Toxic",
-        PlayerFlags::Exploiter => "Exploiter",
-    }
-}
