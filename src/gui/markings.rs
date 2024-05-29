@@ -72,19 +72,13 @@ fn add_flag(ui: &mut Ui, marking: &Marking) {
         ui.style_mut().visuals.widgets.hovered.fg_stroke.color = fgcolor;
         ui.style_mut().visuals.widgets.hovered.weak_bg_fill = bgcolor;
 
-        let trusted_mark = if marking.sources.is_empty() { "" } else { "!" };
-        let suggested_mark = if marking.suggestion.is_empty() {
-            ""
-        } else {
-            "?"
-        };
+        let mut suggested_mark = "";
 
-        let text = format!(
-            "{} {}{}",
-            flag_shortname(flag),
-            trusted_mark,
-            suggested_mark
-        );
+        if marking.sources.is_empty() && !marking.suggestion.is_empty() {
+            suggested_mark = "?";
+        }
+
+        let text = format!("{}{}", flag_description(flag), suggested_mark);
 
         ui.button(text)
             .on_hover_ui(|ui| add_flag_tooltip(ui, marking));

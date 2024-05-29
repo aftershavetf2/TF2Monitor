@@ -62,7 +62,7 @@ impl Tf2bdThread {
     fn process_bus(&mut self, apply_rules: bool) {
         if apply_rules {
             if let Ok(_lobby) = self.lobby_bus_rx.try_recv() {
-                log::info!("Applying rules to lobby");
+                // log::info!("Applying rules to lobby");
                 self.apply_rules_to_lobby(&_lobby);
             }
         }

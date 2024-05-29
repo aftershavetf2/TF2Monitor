@@ -12,10 +12,8 @@ With this app you can:
 
   - Steam account creating time
   - Player's public avatar picture - Buttons with links to popular sites such as SteamHistory.net and SteamCommunity.com for each player.
-  - TODO: Number of TF2 hours
-  - TODO: VAC bans etc.
-
-- TODO: Keep track of people you know are bots, cheaters, racists and so on.
+  - Number of TF2 hours
+  - VAC bans etc.
 
 # Screenshot
 
@@ -29,9 +27,9 @@ First column in the table is:
 - Team colored box
 - Heart is a friend of yours(settings file, self_steamid64)
 
-Hover on a player to show its friends. Players marked yellow are friends. Tooltip for a player also shows the friend's names.
+Hover on a player name to see some brief information about the player. Players marked yellow are friends. Click on the player's name to see more details in the bottom-right panel.
 
-Under scoreboard there's a list of players that left recently. Names are links to SteamHistory for now. They remain there for 1 minute.
+Under scoreboard there's a list of players that left recently. Players remain there for 1 minute. Click on a player name to see details.
 
 When "Show friendships" is checked, there are white connections between friends.
 
