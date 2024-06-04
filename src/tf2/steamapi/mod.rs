@@ -27,7 +27,6 @@ pub enum SteamApiMsg {
     FriendsList(SteamID, HashSet<SteamID>),
     Tf2Playtime(SteamID, u32),
     SteamBans(SteamID, SteamPlayerBan),
-    Tf2bdPlayerMarking(SteamID, PlayerMarking),
 }
 
 pub struct SteamApi {

@@ -18,10 +18,10 @@ use std::{
 const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
 
 /// For each loop, fetch this many players' TF2 playtimes
-const NUM_PLAYTIMES_TO_FETCH: usize = 2;
+const NUM_PLAYTIMES_TO_FETCH: usize = 3;
 
 /// For each loop, fetch this many players' friends list
-const NUM_FRIENDS_TO_FETCH: usize = 5;
+const NUM_FRIENDS_TO_FETCH: usize = 24;
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -119,13 +119,15 @@ impl SteamApiThread {
             return;
         }
 
-        while let Ok(lobby) = self.lobby_bus_rx.try_recv() {
+        if let Ok(lobby) = self.lobby_bus_rx.try_recv() {
             // log::info!("process_bus - received lobby");
             self.fetch_summaries(&lobby);
+            self.fetch_steam_bans(&lobby);
             self.fetch_friends(&lobby);
             self.fetch_playtimes(&lobby);
-            self.fetch_steam_bans(&lobby);
         }
+
+        while let Ok(_lobby) = self.lobby_bus_rx.try_recv() {}
     }
 
     fn fetch_summaries(&mut self, lobby: &Lobby) {

@@ -1,23 +1,87 @@
-use super::models::{PlayerAttribute, PlayerInfo, RulesFile};
+use super::models::{PlayerAttribute, PlayerInfo, PlayerLastSeen, RulesFile};
 use crate::{
     models::steamid::SteamID,
     tf2::lobby::{PlayerFlag, PlayerMarking},
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub struct RulesetHandler {
     pub player_rules: HashMap<SteamID, PlayerMarking>,
+    pub source: String,
+    pub suggestion: bool,
 }
 
 impl RulesetHandler {
-    pub fn new(rules_file: &RulesFile, source: &str, suggestion: bool) -> Self {
-        let player_rules = get_player_rules(rules_file, source, suggestion);
+    pub fn new(source: &str, suggestion: bool) -> Self {
+        let rules_file = RulesFile::load(source);
 
-        Self { player_rules }
+        let player_rules = get_player_rules(&rules_file, source, suggestion);
+
+        Self {
+            player_rules,
+            source: source.to_string(),
+            suggestion,
+        }
     }
 
     pub fn get_player_marking(&self, steamid: &SteamID) -> Option<&PlayerMarking> {
         self.player_rules.get(steamid)
+    }
+
+    pub fn set_player_flags(&mut self, steamid: SteamID, flag: PlayerFlag, enable: bool) {
+        if let Some(marking) = self.player_rules.get_mut(&steamid) {
+            if enable {
+                marking.flags.insert(flag);
+            } else {
+                marking.flags.remove(&flag);
+            }
+        } else {
+            let mut marking = PlayerMarking {
+                source: self.source.clone(),
+                suggestion: self.suggestion,
+                flags: HashSet::from_iter(vec![flag]),
+            };
+            if enable {
+                marking.flags.insert(flag);
+            } else {
+                marking.flags.remove(&flag);
+            }
+            self.player_rules.insert(steamid, marking);
+        }
+
+        self.save();
+
+        // self.player_rules.insert(steamid, marking);
+    }
+
+    fn save(&mut self) {
+        let mut rules_file = RulesFile::new();
+        rules_file.schema = "https://raw.githubusercontent.com/PazerOP/tf2_bot_detector/master/schemas/v3/playerlist.schema.json".to_string();
+
+        for (steamid, marking) in &self.player_rules {
+            let player = PlayerInfo {
+                steamid32: steamid.to_steam_id32(),
+                last_seen: None,
+                attributes: marking
+                    .flags
+                    .iter()
+                    .filter_map(|flag| match flag {
+                        PlayerFlag::Cheater => Some(PlayerAttribute::Cheater),
+                        PlayerFlag::Suspicious => Some(PlayerAttribute::Suspicious),
+                        PlayerFlag::Exploiter => Some(PlayerAttribute::Exploiter),
+                        PlayerFlag::Toxic => Some(PlayerAttribute::Racist),
+                        PlayerFlag::Bot => Some(PlayerAttribute::Bot),
+                        PlayerFlag::Awesome => Some(PlayerAttribute::Awesome),
+                    })
+                    .collect(),
+            };
+
+            if !player.attributes.is_empty() {
+                rules_file.players.push(player);
+            }
+        }
+
+        rules_file.save(&self.source);
     }
 }
 
@@ -46,6 +110,8 @@ fn get_marking_from_rule(rule: &PlayerInfo, source: &str, suggestion: bool) -> P
             PlayerAttribute::Suspicious => PlayerFlag::Suspicious,
             PlayerAttribute::Exploiter => PlayerFlag::Exploiter,
             PlayerAttribute::Racist => PlayerFlag::Toxic,
+            PlayerAttribute::Bot => PlayerFlag::Bot,
+            PlayerAttribute::Awesome => PlayerFlag::Awesome,
         })
         .collect();
 

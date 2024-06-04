@@ -1,4 +1,4 @@
-use super::{colors::hexrgb, markings::add_flags};
+use super::{colors::hexrgb, markings::add_flags, player_flag_editor::add_player_flag_editor};
 use crate::{
     models::AppWin,
     tf2::lobby::{Player, PlayerKill},
@@ -7,6 +7,7 @@ use eframe::egui::{Image, OpenUrl, Ui, Vec2};
 
 pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
     ui.label("Player Details");
+
     // ui.separator();
     if let Some(steamid) = app_win.selected_player {
         if let Some(player) = app_win.lobby.get_player(None, Some(steamid)) {
@@ -19,12 +20,6 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
 
                 ui.vertical(|ui| {
                     ui.heading(format!("{} ({})", player.name, player.id));
-
-                    add_player_kick_buttons(app_win, player, ui);
-
-                    ui.label(format!("SteamID: {}", player.steamid.to_u64()));
-
-                    // ui.label(format!("Console ID in game: {}", player.id));
 
                     if let Some(steam_info) = &player.steam_info {
                         if steam_info.public_profile {
@@ -39,21 +34,30 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
                         ));
                     }
 
+                    ui.label(format!("SteamID64: {}", player.steamid.to_u64()));
+                    ui.label(format!("SteamID32: {}", player.steamid.to_steam_id32()));
+
+                    // ui.label(format!("Console ID in game: {}", player.id));
+
                     if let Some(playtime) = player.tf2_play_minutes {
                         ui.label(format!("TF2 playtime: {} hours", playtime / 60));
                     } else {
                         ui.label("TF2 playtime: Loading...");
+                    }
+
+                    // ui.label("");
+
+                    if let Some(friends) = &player.friends {
+                        ui.label(format!("{} friends", friends.len()));
+                    } else {
+                        ui.label("Loading friends...");
                     }
                 });
             });
 
             ui.label("");
 
-            if let Some(friends) = &player.friends {
-                ui.label(format!("{} friends", friends.len()));
-            } else {
-                ui.label("Loading friends...");
-            }
+            add_player_kills(player, ui);
 
             if let Some(reason) = player.has_steam_bans() {
                 ui.label(reason);
@@ -64,11 +68,11 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
                 ui.label("No Steam bans");
             }
 
-            add_player_kills(player, ui);
+            add_player_kick_buttons(app_win, player, ui);
 
-            ui.label("Flags:");
-            ui.separator();
-            add_flags(ui, player);
+            ui.label("");
+
+            add_player_flag_editor(app_win, ui, player);
         }
     } else {
         ui.label("Select a player to see their details.");
@@ -124,6 +128,8 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
 }
 
 fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
+    ui.heading("Actions");
+
     ui.horizontal_wrapped(|ui| {
         ui.scope(|ui| {
             ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hexrgb(0x89161D);

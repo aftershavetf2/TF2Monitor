@@ -27,6 +27,11 @@ impl SteamID {
         Self::from_u64(steamid32 + 76561197960265728)
     }
 
+    /// Converts a SteamID64 to a SteamID32
+    pub fn to_steam_id32(&self) -> String {
+        format!("[U:1:{}]", self.0 - 76561197960265728)
+    }
+
     pub fn to_u64(self) -> u64 {
         self.0
     }
@@ -69,6 +74,22 @@ mod tests {
         assert_eq!(
             SteamID::from_steam_id32("[U:1:1218982957]"),
             SteamID::from_u64(76561199179248685)
+        );
+    }
+
+    #[test]
+    fn test_to_steamdid32() {
+        assert_eq!(
+            SteamID::from_steam_id32("[U:1:169802]").to_steam_id32(),
+            "[U:1:169802]".to_string()
+        );
+        assert_eq!(
+            SteamID::from_steam_id32("[U:1:34093805]").to_steam_id32(),
+            "[U:1:34093805]".to_string()
+        );
+        assert_eq!(
+            SteamID::from_steam_id32("[U:1:1218982957]").to_steam_id32(),
+            "[U:1:1218982957]".to_string()
         );
     }
 }

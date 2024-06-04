@@ -1,8 +1,8 @@
-use super::{models::RulesFile, ruleset_handler::RulesetHandler};
+use super::{models::RulesFile, ruleset_handler::RulesetHandler, Tf2bdMsg};
 use crate::{
-    appbus::AppBus,
-    models::app_settings::AppSettings,
-    tf2::{lobby::Lobby, steamapi::SteamApiMsg},
+    appbus::{AppBus, AppEventMsg},
+    models::{app_settings::AppSettings, steamid},
+    tf2::lobby::{Lobby, PlayerFlag},
 };
 use bus::BusReader;
 use std::{
@@ -24,6 +24,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 pub struct Tf2bdThread {
     bus: Arc<Mutex<AppBus>>,
     lobby_bus_rx: BusReader<Lobby>,
+    app_event_bus_rx: BusReader<AppEventMsg>,
 
     ruleset_handler: RulesetHandler,
 }
@@ -31,13 +32,14 @@ pub struct Tf2bdThread {
 impl Tf2bdThread {
     pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let lobby_bus_rx = bus.lock().unwrap().lobby_report_bus.add_rx();
+        let app_event_bus_rx = bus.lock().unwrap().app_event_bus.add_rx();
 
-        let rules = RulesFile::from_file(FILENAME);
-        let ruleset_handler = RulesetHandler::new(&rules, FILENAME, false);
+        let ruleset_handler = RulesetHandler::new(FILENAME, false);
 
         Self {
             bus: Arc::clone(bus),
             lobby_bus_rx,
+            app_event_bus_rx,
             ruleset_handler,
         }
     }
@@ -45,30 +47,50 @@ impl Tf2bdThread {
     pub fn run(&mut self) {
         log::info!("TF2BD background thread started");
 
-        let mut nth = 0;
         loop {
-            nth = (nth + 1) % 10;
-            let apply_rules = nth == 0;
-            self.process_bus(apply_rules);
+            self.process_bus();
 
             sleep(LOOP_DELAY);
         }
     }
 
-    fn send(&self, msg: SteamApiMsg) {
-        self.bus.lock().unwrap().steamapi_bus.broadcast(msg);
+    fn send(&self, msg: Tf2bdMsg) {
+        self.bus.lock().unwrap().tf2bd_bus.broadcast(msg);
     }
 
-    fn process_bus(&mut self, apply_rules: bool) {
-        if apply_rules {
-            if let Ok(_lobby) = self.lobby_bus_rx.try_recv() {
-                // log::info!("Applying rules to lobby");
-                self.apply_rules_to_lobby(&_lobby);
+    fn process_bus(&mut self) {
+        self.process_lobby_bus();
+        self.process_app_event_bus();
+    }
+
+    fn process_app_event_bus(&mut self) {
+        while let Ok(app_event) = self.app_event_bus_rx.try_recv() {
+            match app_event {
+                AppEventMsg::SetPlayerFlag(steamid, flag, enable) => {
+                    self.set_player_flag(steamid, flag, enable)
+                }
             }
         }
+    }
 
-        // Drain the lobby bus
-        while let Ok(_lobby) = self.lobby_bus_rx.try_recv() {}
+    fn set_player_flag(&mut self, steamid: steamid::SteamID, flag: PlayerFlag, enable: bool) {
+        log::info!(
+            "Setting player flag {:?} for {} to {}",
+            flag,
+            steamid.to_u64(),
+            enable
+        );
+        self.ruleset_handler.set_player_flags(steamid, flag, enable);
+        if let Some(data) = self.ruleset_handler.get_player_marking(&steamid) {
+            self.send(Tf2bdMsg::Tf2bdPlayerMarking(steamid, data.clone()));
+        }
+    }
+
+    fn process_lobby_bus(&mut self) {
+        while let Ok(lobby) = self.lobby_bus_rx.try_recv() {
+            // log::info!("Applying rules to lobby");
+            self.apply_rules_to_lobby(&lobby);
+        }
     }
 
     fn apply_rules_to_lobby(&mut self, lobby: &Lobby) {
@@ -83,10 +105,7 @@ impl Tf2bdThread {
                         .collect::<Vec<String>>()
                         .join(", ")
                 );
-                self.send(SteamApiMsg::Tf2bdPlayerMarking(
-                    player.steamid,
-                    data.clone(),
-                ));
+                self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.clone()));
             }
         }
     }

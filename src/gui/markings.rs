@@ -1,18 +1,15 @@
+use super::colors::color_for_flag;
+use crate::tf2::lobby::{flag_description, flag_shortname, Player, PlayerFlag, PlayerMarking};
+use eframe::egui::Ui;
 use std::collections::{HashMap, HashSet};
 
-use eframe::egui::Ui;
-
-use crate::tf2::lobby::{flag_description, flag_shortname, Player, PlayerFlag, PlayerMarking};
-
-use super::colors::color_for_flag;
-
-struct Marking {
-    sources: HashSet<String>,
-    suggestion: HashSet<String>,
-    flag: PlayerFlag,
+pub struct Marking {
+    pub sources: HashSet<String>,
+    pub suggestion: HashSet<String>,
+    pub flag: PlayerFlag,
 }
 
-fn transform_data(markings: &HashMap<String, PlayerMarking>) -> HashMap<PlayerFlag, Marking> {
+pub fn transform_data(markings: &HashMap<String, PlayerMarking>) -> HashMap<PlayerFlag, Marking> {
     let mut result: HashMap<PlayerFlag, Marking> = HashMap::new();
 
     for (source, marking) in markings {
@@ -85,11 +82,10 @@ fn add_flag(ui: &mut Ui, marking: &Marking) {
     });
 }
 
-fn add_flag_tooltip(ui: &mut Ui, marking: &Marking) {
-    let text = flag_shortname(marking.flag);
+pub fn add_flag_tooltip(ui: &mut Ui, marking: &Marking) {
     let desc = flag_description(marking.flag);
 
-    ui.heading(format!("{} - {}", text, desc));
+    ui.heading(format!("{}", desc));
 
     if !marking.sources.is_empty() {
         ui.label(format!("{} claims the following sources:", desc));
@@ -104,39 +100,4 @@ fn add_flag_tooltip(ui: &mut Ui, marking: &Marking) {
             ui.label(format!("- {}", source));
         }
     }
-
-    // ui.heading(format!("({}) {}", player.id, &player.name));
-
-    // if let Some(steam_info) = &player.steam_info {
-    //     let image = Image::from_uri(&steam_info.avatarfull)
-    //         .max_width(100.0)
-    //         .rounding(3.0);
-
-    //     ui.add(image);
-
-    //     ui.label(format!(
-    //         "Account created: {}",
-    //         steam_info.get_account_created()
-    //     ));
-    // }
-
-    // if let Some(playtime) = player.tf2_play_minutes {
-    //     ui.label(format!("TF2 playtime: {} hours", playtime / 60));
-    // } else {
-    //     ui.label("TF2 playtime: Loading...");
-    // }
-
-    // ui.label("");
-
-    // if let Some(friends) = &player.friends {
-    //     ui.label(format!("{} friends", friends.len()));
-    // } else {
-    //     ui.label("Loading friends...");
-    // }
-
-    // if let Some(reason) = player.has_steam_bans() {
-    //     ui.label(reason);
-    // } else {
-    //     ui.label("No Steam bans");
-    // }
 }

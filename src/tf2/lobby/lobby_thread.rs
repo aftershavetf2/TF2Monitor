@@ -1,6 +1,7 @@
 use super::Lobby;
 use super::{LobbyChat, Player, PlayerKill, Team};
 use crate::tf2::steamapi::SteamApiMsg;
+use crate::tf2bd::Tf2bdMsg;
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
@@ -14,12 +15,13 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(1000);
 
 pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
     logfile_bus_rx: BusReader<LogLine>,
     steamapi_bus_rx: BusReader<SteamApiMsg>,
+    tf2bd_bus_rx: BusReader<Tf2bdMsg>,
     lobby: Lobby,
 }
 
@@ -34,10 +36,12 @@ impl LobbyThread {
     pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
+        let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
         Self {
             bus: Arc::clone(bus),
             logfile_bus_rx,
             steamapi_bus_rx,
+            tf2bd_bus_rx,
             lobby: Lobby::new(),
         }
     }
@@ -56,11 +60,23 @@ impl LobbyThread {
     fn process_bus(&mut self) {
         self.process_logfile_bus();
         self.process_steamapi_bus();
+        self.process_tf2bd_bus();
+    }
+
+    fn process_tf2bd_bus(&mut self) {
+        while let Ok(msg) = self.tf2bd_bus_rx.try_recv() {
+            match msg {
+                Tf2bdMsg::Tf2bdPlayerMarking(steamid, marking) => {
+                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                        player.flags.insert(marking.source.clone(), marking);
+                    }
+                }
+            }
+        }
     }
 
     fn process_steamapi_bus(&mut self) {
         while let Ok(msg) = self.steamapi_bus_rx.try_recv() {
-            // log::info!("LobbyThread: Got SteamAPI message: {:?}", msg);
             match msg {
                 SteamApiMsg::FriendsList(steamid, friends) => {
                     if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
@@ -85,18 +101,12 @@ impl LobbyThread {
                         player.steam_bans = Some(steam_bans);
                     }
                 }
-                SteamApiMsg::Tf2bdPlayerMarking(steamid, marking) => {
-                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
-                        player.flags.insert(marking.source.clone(), marking);
-                    }
-                }
             }
         }
     }
 
     fn process_logfile_bus(&mut self) {
         while let Ok(cmd) = self.logfile_bus_rx.try_recv() {
-            // log::info!("LobbyThread: Got message: {:?}", cmd);
             match cmd {
                 LogLine::Unknown { line: _ } => {}
                 LogLine::StatusHeader { when } => self.purge_old_players(when),
@@ -280,7 +290,7 @@ impl LobbyThread {
         }
     }
 
-    /// Players who has a last_seen older than 12 seconds are removed from the lobby
+    /// Players who has a last_seen older than 15 seconds are removed from the lobby
     /// and instead added to the recently_left collection.
     /// Recently_left players remain there until 30 seconds has passed.
     fn purge_old_players(&mut self, when: DateTime<Local>) {
@@ -288,7 +298,7 @@ impl LobbyThread {
 
         for player in self.lobby.players.iter_mut() {
             let age_seconds = (when - player.last_seen).num_seconds();
-            if age_seconds < 12 {
+            if age_seconds < 15 {
                 // Player is still active, keep it
                 new_vec.push(player.clone());
             } else {

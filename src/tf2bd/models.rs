@@ -26,7 +26,10 @@ pub struct PlayerLastSeen {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct PlayerInfo {
     pub attributes: Vec<PlayerAttribute>,
-    pub last_seen: PlayerLastSeen,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_seen: Option<PlayerLastSeen>,
+
     #[serde(rename = "steamid")]
     pub steamid32: String,
 }
@@ -101,6 +104,8 @@ pub enum PlayerAttribute {
     Suspicious,
     Exploiter,
     Racist,
+    Bot,
+    Awesome,
 }
 
 #[derive(Debug)]
@@ -125,7 +130,7 @@ impl RulesFile {
         }
     }
 
-    pub fn from_file(filename: &str) -> RulesFile {
+    pub fn load(filename: &str) -> RulesFile {
         if Path::new(filename).exists() {
             log::info!("Loading TF2BD rules file: {}", filename);
             let mut f = File::open(filename).unwrap();
@@ -142,6 +147,14 @@ impl RulesFile {
             );
             RulesFile::new()
         }
+    }
+
+    pub fn save(&self, filename: &str) {
+        log::info!("Saving TF2BD rules file: {}", filename);
+        let json = serde_json::to_string_pretty(self).unwrap();
+        let mut f = File::create(filename).unwrap();
+        f.write_all(json.as_bytes()).unwrap();
+        log::info!("Saving done");
     }
 
     pub fn from_json_str(json: &str) -> RulesFile {
@@ -214,7 +227,19 @@ mod tests {
                         ]
                     }
                 }
-            ]
+            ],
+            "players": [
+                {
+                    "attributes": [
+                        "cheater"
+                    ],
+                    "last_seen": {
+                        "player_name": "(3)HEXATRONIC",
+                        "time": 1686592260
+                    },
+                    "steamid": "[U:1:1532246671]"
+                }
+           ]
         }"#;
         let rules_file = RulesFile::from_json_str(json);
         let rules = rules_file.rules.unwrap();
@@ -240,5 +265,8 @@ mod tests {
                 patterns: vec!["pattern 1".to_string(), "pattern 2".to_string()]
             })
         );
+
+        assert!(rules_file.players.len() == 1);
+        assert!(rules_file.players[0].steamid32 == "[U:1:1532246671]".to_string());
     }
 }

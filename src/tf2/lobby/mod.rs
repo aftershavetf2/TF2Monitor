@@ -69,7 +69,7 @@ pub struct PlayerMarking {
 
     */
     /// The actual flags that were set
-    pub flags: Vec<PlayerFlag>,
+    pub flags: HashSet<PlayerFlag>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

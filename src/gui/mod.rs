@@ -5,6 +5,7 @@ pub mod friendship_indicators;
 pub mod image_creds;
 pub mod markings;
 pub mod player_details_panel;
+pub mod player_flag_editor;
 pub mod player_menu;
 pub mod player_tooltip;
 pub mod recently_left;
@@ -19,15 +20,19 @@ use crate::{
 };
 use background_image::{add_background_image, ImageDescription};
 use chat::add_chat;
-use eframe::egui;
+use eframe::egui::{self};
 use player_details_panel::add_player_details_panel;
 use std::sync::{Arc, Mutex};
 use window_status_row::add_status_row;
 
 pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), eframe::Error> {
+    let icon_image_bytes = include_bytes!("../../images/icon.png");
+    let icon_data = Arc::new(eframe::icon_data::from_png_bytes(icon_image_bytes).unwrap());
+
     let viewport = egui::ViewportBuilder::default()
         .with_inner_size([1024.0, 768.0])
-        .with_min_inner_size([800.0, 600.0]);
+        .with_min_inner_size([800.0, 600.0])
+        .with_icon(icon_data);
 
     let options = eframe::NativeOptions {
         vsync: true,

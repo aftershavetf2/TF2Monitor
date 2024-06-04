@@ -1,8 +1,13 @@
 use bus::Bus;
 
 use crate::{
-    tf2::{lobby::Lobby, logfile::LogLine, steamapi::SteamApiMsg},
-    tf2bd::Tf2dMsg,
+    models::steamid::SteamID,
+    tf2::{
+        lobby::{Lobby, PlayerFlag},
+        logfile::LogLine,
+        steamapi::SteamApiMsg,
+    },
+    tf2bd::Tf2bdMsg,
 };
 
 pub struct AppBus {
@@ -10,7 +15,11 @@ pub struct AppBus {
     pub rcon_bus: Bus<String>,
     pub lobby_report_bus: Bus<Lobby>,
     pub steamapi_bus: Bus<SteamApiMsg>,
-    pub tf2bd_bus: Bus<Tf2dMsg>,
+    pub tf2bd_bus: Bus<Tf2bdMsg>,
+
+    /// The events mostly from the user interface.
+    /// Many different parts of the application can listen to these events.
+    pub app_event_bus: Bus<AppEventMsg>,
 
     pub rcon_thread_handle: Option<std::thread::JoinHandle<()>>,
     pub lobby_thread_handle: Option<std::thread::JoinHandle<()>>,
@@ -33,6 +42,7 @@ impl AppBus {
             lobby_report_bus: Bus::new(10),
             steamapi_bus: Bus::new(1000),
             tf2bd_bus: Bus::new(1000),
+            app_event_bus: Bus::new(100),
 
             rcon_thread_handle: None,
             lobby_thread_handle: None,
@@ -75,4 +85,10 @@ impl AppBus {
     //             .is_finished()
     //     );
     // }
+}
+
+#[derive(Debug, Clone)]
+pub enum AppEventMsg {
+    /// Sets or removes a flag(Cheater, Exploiter, etc) for a SteamID
+    SetPlayerFlag(SteamID, PlayerFlag, bool),
 }
