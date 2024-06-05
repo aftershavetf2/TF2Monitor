@@ -12,7 +12,6 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
     if let Some(steamid) = app_win.selected_player {
         if let Some(player) = app_win.lobby.get_player(None, Some(steamid)) {
             add_player_community_links(player, ui);
-
             // ui.label("");
 
             ui.horizontal(|ui| {
@@ -52,27 +51,29 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
                     } else {
                         ui.label("Loading friends...");
                     }
+
+                    if let Some(reason) = player.has_steam_bans() {
+                        ui.label(reason);
+                    } else if player.steam_info.is_none() {
+                        ui.label("Loading Steam bans...");
+                        return;
+                    } else {
+                        ui.label("No Steam bans");
+                    }
                 });
             });
 
             ui.label("");
-
-            add_player_kills(player, ui);
-
-            if let Some(reason) = player.has_steam_bans() {
-                ui.label(reason);
-            } else if player.steam_info.is_none() {
-                ui.label("Loading Steam bans...");
-                return;
-            } else {
-                ui.label("No Steam bans");
-            }
 
             add_player_kick_buttons(app_win, player, ui);
 
             ui.label("");
 
             add_player_flag_editor(app_win, ui, player);
+
+            ui.label("");
+
+            add_player_kills(player, ui);
         }
     } else {
         ui.label("Select a player to see their details.");
@@ -118,6 +119,7 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
         }
     }
 
+    // ui.heading("More info:");
     ui.horizontal(|ui| {
         // ui.label("View on");
         make_link(ui, player.steamid.steam_history_url(), "SteamH istory");
@@ -128,8 +130,6 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
 }
 
 fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
-    ui.heading("Actions");
-
     ui.horizontal_wrapped(|ui| {
         ui.scope(|ui| {
             ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hexrgb(0x89161D);
