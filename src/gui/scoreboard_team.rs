@@ -155,8 +155,7 @@ fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, pla
             response.on_hover_text("Team color");
 
             let pos = rect.center();
-            app_win.friendship_positions.push((player.steamid, pos));
-            app_win.friendship_positions2.insert(player.steamid, pos);
+            app_win.friendship_positions.insert(player.steamid, pos);
 
             if player.steamid == self_steamid {
                 let (rect, response) = ui.allocate_at_least(size, Sense::hover());

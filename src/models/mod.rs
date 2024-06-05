@@ -23,11 +23,9 @@ pub struct AppWin {
 
     pub show_friendships: bool,
 
-    // When drawing the scoreboard, we remember the center positions of eacg player's team indicator.
+    // When drawing the scoreboard, we remember the center positions of each player's team indicator.
     // This is used to draw friendship indicators between players.
-    // This should be a HashMap but f32 doesn't implement Hash.
-    pub friendship_positions: Vec<(SteamID, Pos2)>,
-    pub friendship_positions2: HashMap<SteamID, Pos2>,
+    pub friendship_positions: HashMap<SteamID, Pos2>,
 }
 
 impl AppWin {
@@ -43,8 +41,7 @@ impl AppWin {
             self_steamid: settings.self_steamid64,
             selected_player: None,
 
-            friendship_positions: Vec::new(),
-            friendship_positions2: HashMap::new(),
+            friendship_positions: HashMap::new(),
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::models::{steamid::SteamID, AppWin};
+use crate::models::AppWin;
 use eframe::egui::{Color32, Pos2, Stroke, Ui};
 
 pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
@@ -9,26 +9,22 @@ pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
     for player in app_win.lobby.players.iter() {
         let friends = app_win.lobby.friendships.get_friends(player.steamid);
 
-        if let Some(start_pos) = find_pos_for_player(app_win, &player.steamid) {
+        if let Some(start_pos) = app_win.friendship_positions.get(&player.steamid) {
             for steamid in friends {
                 // Friendship is bidirectional, so only draw the line once
                 if steamid.to_u64() > player.steamid.to_u64() {
                     continue;
                 }
 
-                if let Some(end_pos) = find_pos_for_player(app_win, steamid) {
+                if let Some(end_pos) = app_win.friendship_positions.get(steamid) {
                     // Draw a line between the two players
                     // The direction of the line depends on the difference between the two steamids
                     let dir = 1 == (player.steamid.to_u64() ^ steamid.to_u64()) & 1;
-                    draw_curve(ui, start_pos, end_pos, &stroke, dir);
+                    draw_curve(ui, *start_pos, *end_pos, &stroke, dir);
                 }
             }
         }
     }
-}
-
-fn find_pos_for_player(app_win: &AppWin, steamid: &SteamID) -> Option<Pos2> {
-    app_win.friendship_positions2.get(steamid).cloned()
 }
 
 fn draw_curve(ui: &mut Ui, start_pos: Pos2, end_pos: Pos2, stroke: &Stroke, dir: bool) {
