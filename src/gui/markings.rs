@@ -1,5 +1,5 @@
 use super::colors::color_for_flag;
-use crate::tf2::lobby::{flag_description, flag_shortname, Player, PlayerFlag, PlayerMarking};
+use crate::tf2::lobby::{flag_description, Player, PlayerFlag, PlayerMarking};
 use eframe::egui::Ui;
 use std::collections::{HashMap, HashSet};
 
@@ -85,7 +85,7 @@ fn add_flag(ui: &mut Ui, marking: &Marking) {
 pub fn add_flag_tooltip(ui: &mut Ui, marking: &Marking) {
     let desc = flag_description(marking.flag);
 
-    ui.heading(format!("{}", desc));
+    ui.heading(desc.to_string());
 
     if !marking.sources.is_empty() {
         ui.label(format!("{} claims the following sources:", desc));

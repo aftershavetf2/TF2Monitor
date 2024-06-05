@@ -1,73 +1,38 @@
-use crate::{
-    models::{steamid::SteamID, AppWin},
-    tf2::lobby::Player,
-};
+use crate::models::{steamid::SteamID, AppWin};
 use eframe::egui::{Color32, Pos2, Stroke, Ui};
-use std::collections::HashSet;
 
 pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
     let indicator_color = Color32::WHITE;
     let stroke = Stroke::new(0.6f32, indicator_color);
 
-    // Get info about me and my friendlist
-    let me = app_win
-        .lobby
-        .players
-        .iter()
-        .find(|p| p.steamid == app_win.self_steamid);
-    if me.is_none() {
-        return;
-    }
-    let me = me.unwrap();
-    let empty_friends = HashSet::new();
-    let my_friends: &HashSet<SteamID> = if let Some(friends) = &me.friends {
-        friends
-    } else {
-        &empty_friends
-    };
-
     // Loop through all players and draw lines between their friends
-    // but only if they are not friends with me
     for player in app_win.lobby.players.iter() {
-        if me.steamid == player.steamid {
-            // Skip lines *from* me to friends
-            continue;
-        }
+        let friends = app_win.lobby.friendships.get_friends(player.steamid);
 
-        if let Some(friends) = &player.friends {
-            if let Some(start_pos) = find_pos_for_player(app_win, player) {
-                for (steamid, end_pos) in app_win.friendship_positions.iter() {
-                    if me.steamid == player.steamid {
-                        // Skip lines *to* self from friends
-                        continue;
-                    }
+        if let Some(start_pos) = find_pos_for_player(app_win, &player.steamid) {
+            for steamid in friends {
+                // Friendship is bidirectional, so only draw the line once
+                if steamid.to_u64() > player.steamid.to_u64() {
+                    continue;
+                }
 
-                    if my_friends.contains(&player.steamid) && my_friends.contains(steamid) {
-                        // Skip lines between two of my friends
-                        continue;
-                    }
-
-                    if friends.contains(steamid) {
-                        if steamid.to_u64() > player.steamid.to_u64() {
-                            continue;
-                        }
-
-                        let dir = 1 == (player.steamid.to_u64() ^ steamid.to_u64()) & 1;
-                        draw_curve(ui, start_pos, *end_pos, &stroke, dir);
-                    }
+                if let Some(end_pos) = find_pos_for_player(app_win, steamid) {
+                    draw_curve(ui, start_pos, end_pos, &stroke, false);
                 }
             }
+
+            // for (steamid, end_pos) in app_win.friendship_positions.iter() {
+            //     if friends.contains(steamid) {
+            //         let dir = 1 == (player.steamid.to_u64() ^ steamid.to_u64()) & 1;
+            //         draw_curve(ui, start_pos, *end_pos, &stroke, dir);
+            //     }
+            // }
         }
     }
 }
 
-fn find_pos_for_player(app_win: &AppWin, player: &Player) -> Option<Pos2> {
-    for (id, pos) in app_win.friendship_positions.iter() {
-        if id == &player.steamid {
-            return Some(*pos);
-        }
-    }
-    None
+fn find_pos_for_player(app_win: &AppWin, steamid: &SteamID) -> Option<Pos2> {
+    app_win.friendship_positions2.get(steamid).cloned()
 }
 
 fn draw_curve(ui: &mut Ui, start_pos: Pos2, end_pos: Pos2, stroke: &Stroke, dir: bool) {

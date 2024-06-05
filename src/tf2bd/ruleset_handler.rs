@@ -1,4 +1,4 @@
-use super::models::{PlayerAttribute, PlayerInfo, PlayerLastSeen, RulesFile};
+use super::models::{PlayerAttribute, PlayerInfo, RulesFile};
 use crate::{
     models::steamid::SteamID,
     tf2::lobby::{PlayerFlag, PlayerMarking},
@@ -65,13 +65,13 @@ impl RulesetHandler {
                 attributes: marking
                     .flags
                     .iter()
-                    .filter_map(|flag| match flag {
-                        PlayerFlag::Cheater => Some(PlayerAttribute::Cheater),
-                        PlayerFlag::Suspicious => Some(PlayerAttribute::Suspicious),
-                        PlayerFlag::Exploiter => Some(PlayerAttribute::Exploiter),
-                        PlayerFlag::Toxic => Some(PlayerAttribute::Racist),
-                        PlayerFlag::Bot => Some(PlayerAttribute::Bot),
-                        PlayerFlag::Awesome => Some(PlayerAttribute::Awesome),
+                    .map(|flag| match flag {
+                        PlayerFlag::Cheater => PlayerAttribute::Cheater,
+                        PlayerFlag::Suspicious => PlayerAttribute::Suspicious,
+                        PlayerFlag::Exploiter => PlayerAttribute::Exploiter,
+                        PlayerFlag::Toxic => PlayerAttribute::Racist,
+                        PlayerFlag::Bot => PlayerAttribute::Bot,
+                        PlayerFlag::Awesome => PlayerAttribute::Awesome,
                     })
                     .collect(),
             };

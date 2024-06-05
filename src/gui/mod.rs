@@ -6,7 +6,6 @@ pub mod image_creds;
 pub mod markings;
 pub mod player_details_panel;
 pub mod player_flag_editor;
-pub mod player_menu;
 pub mod player_tooltip;
 pub mod recently_left;
 pub mod scoreboard;

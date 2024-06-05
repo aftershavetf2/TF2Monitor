@@ -1,14 +1,17 @@
+pub mod friendships;
 pub mod lobby_thread;
 
 use super::steamapi::SteamPlayerBan;
 use crate::models::steamid::SteamID;
 use chrono::{DateTime, Local};
+use friendships::Friendships;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default, Debug, Clone)]
 pub struct Lobby {
     pub players: Vec<Player>,
     pub chat: Vec<LobbyChat>,
+    pub friendships: Friendships,
 
     /// Players who no longer show up in the status command output
     /// or in tf_lobby_debug output. Players are kept in here for 1 minute.
@@ -202,6 +205,7 @@ impl Lobby {
         Self {
             players: Vec::new(),
             chat: Vec::new(),
+            friendships: Friendships::default(),
             recently_left_players: Vec::new(),
         }
     }
@@ -246,43 +250,8 @@ impl Lobby {
         player
     }
 
-    pub fn is_friend_of_self(&self, self_steamid: SteamID, steamid: SteamID) -> bool {
-        if let Some(me) = self.get_player(None, Some(self_steamid)) {
-            if let Some(friends) = &me.friends {
-                return friends.contains(&steamid);
-            }
-        }
-
-        false
-    }
-
-    pub fn get_friendlist_of(&self, steamid: SteamID) -> Vec<&Player> {
-        // TODO: First look up the player, if it has a friendlist, use that
-        // Otherwise, check all players' friendlists
-        let friends: Vec<&Player> = self
-            .players
-            .iter()
-            .filter(|player| {
-                if let Some(friends) = &player.friends {
-                    return friends.contains(&steamid);
-                }
-
-                false
-            })
-            .collect();
-
-        friends
-    }
-}
-
-pub fn flag_shortname(flag: PlayerFlag) -> &'static str {
-    match flag {
-        PlayerFlag::Awesome => "A",
-        PlayerFlag::Cheater => "C",
-        PlayerFlag::Bot => "B",
-        PlayerFlag::Suspicious => "S",
-        PlayerFlag::Toxic => "T",
-        PlayerFlag::Exploiter => "E",
+    fn update_friendships(&mut self) {
+        self.friendships = Friendships::from_lobby(self);
     }
 }
 

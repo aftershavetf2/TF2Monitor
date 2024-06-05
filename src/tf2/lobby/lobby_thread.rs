@@ -51,6 +51,7 @@ impl LobbyThread {
 
         loop {
             self.process_bus();
+            self.lobby.update_friendships();
             self.update_scoreboard();
 
             sleep(LOOP_DELAY);

@@ -93,48 +93,41 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
     // Player icon and name
     ui.horizontal(|ui| {
         ui.push_id(player.steamid.to_u64(), |ui| {
-            // add_player_menu(ui, &app_win.bus, player);
-
             ui.scope(|ui| {
-                let marked_color = Some(Color32::YELLOW);
-                // log::info!("Selected player: {:?}", app_win.selected_player);
+                // Mark selected player and friends of selected player
                 if let Some(steamid) = app_win.selected_player {
-                    if steamid == player.steamid {
-                        // Mark selected player
+                    if steamid == player.steamid
+                        || app_win
+                            .lobby
+                            .friendships
+                            .are_friends(player.steamid, steamid)
+                    {
+                        let marked_color = Some(Color32::YELLOW);
                         ui.visuals_mut().override_text_color = marked_color;
                         ui.style_mut().visuals.override_text_color = marked_color;
-                    } else {
-                        // Mark friends of selected player
-                        if let Some(friends) = &player.friends {
-                            if friends.contains(&steamid) {
-                                ui.visuals_mut().override_text_color = marked_color;
-                                ui.style_mut().visuals.override_text_color = marked_color;
-                            }
-                        }
                     }
                 }
 
+                // Player avatar and hover tooltip
                 if let Some(steam_info) = &player.steam_info {
                     ui.image(&steam_info.avatar)
                         .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
                 }
 
+                // Player name and hover tooltip
                 if ui
                     .label(&player.name)
                     .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
                     .clicked()
                 {
-                    // log::info!("Clicked on player: {}", player.name);
+                    // Toggle selected player
                     if let Some(steamid) = app_win.selected_player {
                         if steamid == player.steamid {
-                            // log::info!("Deselected player: {}", player.name);
-                            // app_win.selected_player = None;
+                            app_win.selected_player = None;
                         } else {
-                            // log::info!("Selected player: {}", player.name);
                             app_win.selected_player = Some(player.steamid);
                         }
                     } else {
-                        // log::info!("Selected player: {}", player.name);
                         app_win.selected_player = Some(player.steamid);
                     }
                 }
@@ -163,6 +156,7 @@ fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, pla
 
             let pos = rect.center();
             app_win.friendship_positions.push((player.steamid, pos));
+            app_win.friendship_positions2.insert(player.steamid, pos);
 
             if player.steamid == self_steamid {
                 let (rect, response) = ui.allocate_at_least(size, Sense::hover());
@@ -184,7 +178,8 @@ fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, pla
 
             if app_win
                 .lobby
-                .is_friend_of_self(app_win.self_steamid, player.steamid)
+                .friendships
+                .are_friends(self_steamid, player.steamid)
             {
                 ui.colored_label(Color32::RED, "❤")
                     .on_hover_text(format!("{} is in your friendlist", player.name));

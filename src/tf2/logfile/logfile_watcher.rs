@@ -3,7 +3,6 @@ use crate::appbus::AppBus;
 use crate::models::app_settings::AppSettings;
 use crate::utils::BoxResult;
 use fs_err as fs;
-use image::math;
 use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
@@ -75,17 +74,10 @@ impl LogfileWatcher {
         self.last_pos = 0;
 
         let file = fs::File::open(self.filename.as_str());
-        match file {
-            Ok(file) => {
-                let metadata = file.metadata();
-                match metadata {
-                    Ok(metadata) => {
-                        self.last_pos = metadata.len();
-                    }
-                    Err(_) => {}
-                }
+        if let Ok(file) = file {
+            if let Ok(metadata) = file.metadata() {
+                self.last_pos = metadata.len();
             }
-            Err(_) => {}
         }
     }
 

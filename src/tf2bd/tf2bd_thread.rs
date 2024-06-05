@@ -1,4 +1,4 @@
-use super::{models::RulesFile, ruleset_handler::RulesetHandler, Tf2bdMsg};
+use super::{ruleset_handler::RulesetHandler, Tf2bdMsg};
 use crate::{
     appbus::{AppBus, AppEventMsg},
     models::{app_settings::AppSettings, steamid},
@@ -13,7 +13,7 @@ use std::{
 const FILENAME: &str = "playerlist.json";
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(1000);
 
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let mut tf2bd_thread = Tf2bdThread::new(settings, bus);

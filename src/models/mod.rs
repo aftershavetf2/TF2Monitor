@@ -5,7 +5,10 @@ use self::{app_settings::AppSettings, steamid::SteamID};
 use crate::{appbus::AppBus, tf2::lobby::Lobby};
 use bus::BusReader;
 use eframe::egui::Pos2;
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 pub struct AppWin {
     pub bus: Arc<Mutex<AppBus>>,
@@ -19,7 +22,12 @@ pub struct AppWin {
     pub selected_player: Option<SteamID>,
 
     pub show_friendships: bool,
+
+    // When drawing the scoreboard, we remember the center positions of eacg player's team indicator.
+    // This is used to draw friendship indicators between players.
+    // This should be a HashMap but f32 doesn't implement Hash.
     pub friendship_positions: Vec<(SteamID, Pos2)>,
+    pub friendship_positions2: HashMap<SteamID, Pos2>,
 }
 
 impl AppWin {
@@ -36,6 +44,7 @@ impl AppWin {
             selected_player: None,
 
             friendship_positions: Vec::new(),
+            friendship_positions2: HashMap::new(),
         }
     }
 

@@ -1,4 +1,4 @@
-use super::{colors::hexrgb, markings::add_flags, player_flag_editor::add_player_flag_editor};
+use super::{colors::hexrgb, player_flag_editor::add_player_flag_editor};
 use crate::{
     models::AppWin,
     tf2::lobby::{Player, PlayerKill},

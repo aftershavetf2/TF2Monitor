@@ -15,7 +15,7 @@ mod get_tf2_play_minutes;
 pub mod steamapi_thread;
 
 use self::get_player_summariess::get_player_summaries;
-use super::lobby::{PlayerMarking, PlayerSteamInfo};
+use super::lobby::PlayerSteamInfo;
 use crate::models::{app_settings::AppSettings, steamid::SteamID};
 use chrono::{DateTime, Local, TimeZone};
 use serde::Deserialize;

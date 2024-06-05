@@ -28,7 +28,7 @@ impl SteamID {
     }
 
     /// Converts a SteamID64 to a SteamID32
-    pub fn to_steam_id32(&self) -> String {
+    pub fn to_steam_id32(self) -> String {
         format!("[U:1:{}]", self.0 - 76561197960265728)
     }
 
