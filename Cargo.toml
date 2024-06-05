@@ -15,7 +15,7 @@ serde_json = "1.0"
 
 log = { version = "0.4.21", features = [
     "max_level_info",
-    "release_max_level_off",
+    "release_max_level_info",
 ] }
 
 simple_logger = { version = "5.0.0", default-features = false, features = [
