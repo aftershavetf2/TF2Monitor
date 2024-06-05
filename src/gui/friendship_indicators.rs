@@ -17,16 +17,12 @@ pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
                 }
 
                 if let Some(end_pos) = find_pos_for_player(app_win, steamid) {
-                    draw_curve(ui, start_pos, end_pos, &stroke, false);
+                    // Draw a line between the two players
+                    // The direction of the line depends on the difference between the two steamids
+                    let dir = 1 == (player.steamid.to_u64() ^ steamid.to_u64()) & 1;
+                    draw_curve(ui, start_pos, end_pos, &stroke, dir);
                 }
             }
-
-            // for (steamid, end_pos) in app_win.friendship_positions.iter() {
-            //     if friends.contains(steamid) {
-            //         let dir = 1 == (player.steamid.to_u64() ^ steamid.to_u64()) & 1;
-            //         draw_curve(ui, start_pos, *end_pos, &stroke, dir);
-            //     }
-            // }
         }
     }
 }
