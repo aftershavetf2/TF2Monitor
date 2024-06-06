@@ -15,7 +15,7 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
 
 pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
@@ -158,6 +158,10 @@ impl LobbyThread {
         new_lobby
             .recently_left_players
             .append(&mut self.lobby.recently_left_players);
+
+        for player in new_lobby.recently_left_players.iter_mut() {
+            player.last_seen = Local::now();
+        }
 
         self.lobby = new_lobby;
     }
