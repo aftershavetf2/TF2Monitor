@@ -13,7 +13,7 @@ use std::{
 const FILENAME: &str = "playerlist.json";
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(2000);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
 
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let mut tf2bd_thread = Tf2bdThread::new(settings, bus);
