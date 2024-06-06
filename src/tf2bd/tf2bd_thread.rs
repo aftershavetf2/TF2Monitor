@@ -100,15 +100,6 @@ impl Tf2bdThread {
     fn apply_rules_to_lobby(&mut self, lobby: &Lobby) {
         for player in &lobby.players {
             if let Some(data) = self.ruleset_handler.get_player_marking(&player.steamid) {
-                log::info!(
-                    "Player matched: {} - flags: {}",
-                    player.name,
-                    data.flags
-                        .iter()
-                        .map(|x| format!("{:?}", x))
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                );
                 self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.clone()));
             }
         }
