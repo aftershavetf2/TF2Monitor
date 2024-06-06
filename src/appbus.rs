@@ -39,7 +39,7 @@ impl AppBus {
         Self {
             logfile_bus: Bus::new(10000),
             rcon_bus: Bus::new(100),
-            lobby_report_bus: Bus::new(100),
+            lobby_report_bus: Bus::new(5),
             steamapi_bus: Bus::new(10000),
             tf2bd_bus: Bus::new(10000),
             app_event_bus: Bus::new(1000),
@@ -57,7 +57,7 @@ impl AppBus {
     }
 
     pub fn send_lobby_report(&mut self, lobby: Lobby) {
-        self.lobby_report_bus.broadcast(lobby);
+        let _ = self.lobby_report_bus.try_broadcast(lobby);
     }
 
     /// Send a RCON command to the TF2 RCON
