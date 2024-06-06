@@ -35,19 +35,19 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
 
     sorted_players.sort_by(cmp_for_scoreboard);
 
-    let blu: Vec<&Player> = sorted_players
+    let blu_players: Vec<&Player> = sorted_players
         .iter()
         .filter(|p| p.team == Team::Invaders)
         .collect();
 
-    let red: Vec<&Player> = sorted_players
+    let red_players: Vec<&Player> = sorted_players
         .iter()
         .filter(|p| p.team == Team::Defendes)
         .collect();
 
     ui.columns(2, |ui| {
-        scoreboard_team(app_win, &mut ui[0], "Blu", &blu, "blu");
-        scoreboard_team(app_win, &mut ui[1], "Red", &red, "red");
+        scoreboard_team(app_win, &mut ui[0], "Blu", &blu_players, "blu");
+        scoreboard_team(app_win, &mut ui[1], "Red", &red_players, "red");
     });
 
     let spectator_players: Vec<&Player> = sorted_players

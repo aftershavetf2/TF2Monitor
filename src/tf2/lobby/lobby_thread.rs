@@ -167,71 +167,66 @@ impl LobbyThread {
         // log::info!("Player seen: {} ({})", name, steam_id32);
         let steamid = SteamID::from_steam_id32(steam_id32.as_str());
 
-        // Update last_seen for existing player
-        for player in self.lobby.players.iter_mut() {
-            if player.steamid == steamid {
-                player.id = id;
-                player.name.clone_from(&name);
-                player.last_seen = when;
-                return;
-            }
+        if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+            // Update last_seen for existing player
+            player.id = id;
+            player.name.clone_from(&name);
+            player.last_seen = when;
+        } else {
+            // Add new player if not found in the list
+            self.lobby.players.push(Player {
+                id,
+                steamid,
+                name: name.clone(),
+                team: Team::Unknown,
+                kills: 0,
+                deaths: 0,
+                crit_kills: 0,
+                crit_deaths: 0,
+                kills_with: Vec::new(),
+                last_seen: when,
+                steam_info: None,
+                friends: None,
+                tf2_play_minutes: None,
+                steam_bans: None,
+                flags: Default::default(),
+            });
         }
-
-        // Add new player if not found in the list
-        self.lobby.players.push(Player {
-            id,
-            steamid,
-            name: name.clone(),
-            team: Team::Unknown,
-            kills: 0,
-            deaths: 0,
-            crit_kills: 0,
-            crit_deaths: 0,
-            kills_with: Vec::new(),
-            last_seen: when,
-            steam_info: None,
-            friends: None,
-            tf2_play_minutes: None,
-            steam_bans: None,
-            tf2bd_flags: String::new(),
-            flags: Default::default(),
-        });
     }
 
     fn assign_team(&mut self, steam_id32: String, team: String) {
         let steamid = SteamID::from_steam_id32(steam_id32.as_str());
 
-        for player in self.lobby.players.iter_mut() {
-            if player.steamid == steamid {
-                match team.as_str() {
-                    "INVADERS" => player.team = Team::Invaders,
-                    "DEFENDERS" => player.team = Team::Defendes,
-                    "SPEC" => player.team = Team::Spec,
-                    _ => player.team = Team::Unknown,
-                }
-                return;
-            }
-        }
+        let team = match team.as_str() {
+            "INVADERS" => Team::Invaders,
+            "DEFENDERS" => Team::Defendes,
+            "SPEC" => Team::Spec,
+            _ => Team::Unknown,
+        };
 
-        // Add new player if not found in the list
-        self.lobby.players.push(Player {
-            id: 0,
-            steamid,
-            name: steam_id32.clone(),
-            team: Team::Unknown,
-            kills: 0,
-            deaths: 0,
-            crit_kills: 0,
-            crit_deaths: 0,
-            kills_with: Vec::new(),
-            last_seen: Local::now(),
-            steam_info: None,
-            friends: None,
-            tf2_play_minutes: None,
-            steam_bans: None,
-            tf2bd_flags: String::new(),
-            flags: Default::default(),
-        });
+        if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+            player.team = team;
+            return;
+        } else {
+            // Add new player if not found in the list
+            self.lobby.players.push(Player {
+                id: 0,
+                steamid,
+                name: steam_id32.clone(),
+                team,
+                kills: 0,
+                deaths: 0,
+                crit_kills: 0,
+                crit_deaths: 0,
+                kills_with: Vec::new(),
+                last_seen: Local::now(),
+                steam_info: None,
+                friends: None,
+                tf2_play_minutes: None,
+                steam_bans: None,
+                flags: Default::default(),
+            });
+        }
     }
 
     fn kill(
@@ -303,7 +298,7 @@ impl LobbyThread {
 
         for player in self.lobby.players.iter_mut() {
             let age_seconds = (when - player.last_seen).num_seconds();
-            if age_seconds < 15 {
+            if age_seconds < 10 {
                 // Player is still active, keep it
                 new_vec.push(player.clone());
             } else {
@@ -326,7 +321,7 @@ impl LobbyThread {
             }
 
             let age = when - player.last_seen;
-            if age.num_seconds() < 60 {
+            if age.num_seconds() < 1200 {
                 new_vec.push(player.clone());
             }
         }

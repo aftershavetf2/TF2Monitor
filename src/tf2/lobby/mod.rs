@@ -48,8 +48,6 @@ pub struct Player {
     pub tf2_play_minutes: Option<u32>,
     pub steam_bans: Option<SteamPlayerBan>,
 
-    pub tf2bd_flags: String,
-
     // This is the PlayerFlags(Cheater etc) for the player
     // The String is the source of the flags.
     // The source is filename of the rules file that set the flags.

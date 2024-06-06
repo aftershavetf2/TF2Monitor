@@ -83,7 +83,7 @@ impl eframe::App for AppWin {
         });
 
         egui::TopBottomPanel::bottom("status")
-            .show(ctx, |ui| add_status_row(ui, &image_desc.unwrap()));
+            .show(ctx, |ui| add_status_row(self, ui, &image_desc.unwrap()));
 
         ctx.request_repaint();
     }
