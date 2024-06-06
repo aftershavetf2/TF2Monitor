@@ -38,11 +38,11 @@ impl AppBus {
     pub fn new() -> Self {
         Self {
             logfile_bus: Bus::new(10000),
-            rcon_bus: Bus::new(10),
-            lobby_report_bus: Bus::new(10),
-            steamapi_bus: Bus::new(1000),
-            tf2bd_bus: Bus::new(1000),
-            app_event_bus: Bus::new(100),
+            rcon_bus: Bus::new(100),
+            lobby_report_bus: Bus::new(100),
+            steamapi_bus: Bus::new(10000),
+            tf2bd_bus: Bus::new(10000),
+            app_event_bus: Bus::new(1000),
 
             rcon_thread_handle: None,
             lobby_thread_handle: None,

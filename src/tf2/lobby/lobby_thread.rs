@@ -15,7 +15,7 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(1000);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
 
 pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
@@ -65,6 +65,7 @@ impl LobbyThread {
     }
 
     fn process_tf2bd_bus(&mut self) {
+        log::debug!("Processing tf2bd bus");
         while let Ok(msg) = self.tf2bd_bus_rx.try_recv() {
             match msg {
                 Tf2bdMsg::Tf2bdPlayerMarking(steamid, marking) => {
@@ -77,6 +78,7 @@ impl LobbyThread {
     }
 
     fn process_steamapi_bus(&mut self) {
+        log::debug!("Processing steamapi bus");
         while let Ok(msg) = self.steamapi_bus_rx.try_recv() {
             match msg {
                 SteamApiMsg::FriendsList(steamid, friends) => {
@@ -107,6 +109,7 @@ impl LobbyThread {
     }
 
     fn process_logfile_bus(&mut self) {
+        log::debug!("Processing logfile bus");
         while let Ok(cmd) = self.logfile_bus_rx.try_recv() {
             match cmd {
                 LogLine::Unknown { line: _ } => {}
@@ -239,6 +242,7 @@ impl LobbyThread {
         weapon: String,
         crit: bool,
     ) {
+        // log::info!("Kill: {} killed {} with {}", killer, victim, weapon);
         if let Some(player) = self.lobby.get_player_mut(Some(killer.as_str()), None) {
             player.kills += 1;
             if crit {

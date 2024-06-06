@@ -18,10 +18,10 @@ use std::{
 const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
 
 /// For each loop, fetch this many players' TF2 playtimes
-const NUM_PLAYTIMES_TO_FETCH: usize = 3;
+const NUM_PLAYTIMES_TO_FETCH: usize = 1;
 
 /// For each loop, fetch this many players' friends list
-const NUM_FRIENDS_TO_FETCH: usize = 24;
+const NUM_FRIENDS_TO_FETCH: usize = 1;
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {

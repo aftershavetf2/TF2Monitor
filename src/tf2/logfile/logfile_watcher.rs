@@ -14,10 +14,10 @@ use std::{thread, time};
 use thread::sleep;
 
 /// The delay between loops in run()
-const LOOP_DELAY: Duration = time::Duration::from_millis(100);
+const LOOP_DELAY: Duration = time::Duration::from_millis(500);
 
 // The delay between checking if the file exists
-const FILE_NOT_EXIST_DELAY: Duration = time::Duration::from_millis(20 * 1000);
+const FILE_NOT_EXIST_DELAY: Duration = time::Duration::from_millis(10 * 1000);
 
 /// Start the logfile watcher thread to run in the background
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -76,6 +76,8 @@ impl LogfileWatcher {
         let file = fs::File::open(self.filename.as_str());
         if let Ok(file) = file {
             if let Ok(metadata) = file.metadata() {
+                log::info!("Moving to the end of TF2 console.log.");
+
                 self.last_pos = metadata.len();
             }
         }
@@ -84,7 +86,7 @@ impl LogfileWatcher {
     pub fn process_new_data(&mut self, parser: &LogLineParser) {
         if !Path::new(&self.filename).exists() {
             log::warn!(
-                "Log file does not exist (yet?), or wrong path? Waiting a bit... Filename: {}",
+                "TF2 console.log file does not exist (yet?), or wrong path? Waiting a bit... Filename: {}",
                 self.filename
             );
             sleep(FILE_NOT_EXIST_DELAY);
@@ -120,6 +122,7 @@ impl LogfileWatcher {
 
         // File was truncated, start from beginning
         if file_len < self.last_pos {
+            log::info!("TF2 console.log file was truncated, starting from beginning.");
             self.last_pos = 0;
         }
 

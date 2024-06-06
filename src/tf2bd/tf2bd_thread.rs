@@ -13,7 +13,7 @@ use std::{
 const FILENAME: &str = "playerlist.json";
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(2000);
 
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let mut tf2bd_thread = Tf2bdThread::new(settings, bus);
@@ -87,9 +87,13 @@ impl Tf2bdThread {
     }
 
     fn process_lobby_bus(&mut self) {
-        while let Ok(lobby) = self.lobby_bus_rx.try_recv() {
+        if let Ok(lobby) = self.lobby_bus_rx.try_recv() {
             // log::info!("Applying rules to lobby");
             self.apply_rules_to_lobby(&lobby);
+        }
+
+        while let Ok(_lobby) = self.lobby_bus_rx.try_recv() {
+            // Skip processing of the rest of the queue for now
         }
     }
 
