@@ -3,9 +3,9 @@ use crate::models::AppWin;
 use eframe::egui::Ui;
 
 pub fn add_recently_left_players(app_win: &mut AppWin, ui: &mut Ui) {
-    // if app_win.lobby.recently_left_players.is_empty() {
-    //     return;
-    // }
+    if app_win.lobby.recently_left_players.is_empty() {
+        return;
+    }
 
     ui.separator();
 
