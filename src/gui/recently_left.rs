@@ -10,7 +10,10 @@ pub fn add_recently_left_players(app_win: &mut AppWin, ui: &mut Ui) {
     ui.separator();
 
     ui.horizontal_wrapped(|ui| {
-        ui.label("Recent players:\n");
+        ui.label(format!(
+            "Recent players ({}):\n",
+            app_win.lobby.recently_left_players.len(),
+        ));
         ui.separator();
 
         for player in &app_win.lobby.recently_left_players {
