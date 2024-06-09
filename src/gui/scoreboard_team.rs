@@ -86,6 +86,15 @@ pub fn scoreboard_team(
 
             ui.end_row();
         }
+
+        // Add empty rows to fill the grid
+        for _ in 0..(12 - players.len()) {
+            ui.label("");
+            ui.label("");
+            ui.label("");
+            ui.label("");
+            ui.end_row();
+        }
     });
 }
 
