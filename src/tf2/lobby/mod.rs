@@ -209,21 +209,9 @@ impl Lobby {
     }
 
     pub fn get_player(&self, name: Option<&str>, steamid: Option<SteamID>) -> Option<&Player> {
-        let player = self
-            .players
+        self.players
             .iter()
-            .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid);
-
-        if player.is_some() {
-            return player;
-        }
-
-        let player = self
-            .recently_left_players
-            .iter()
-            .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid);
-
-        player
+            .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid)
     }
 
     pub fn get_player_mut(
@@ -231,21 +219,9 @@ impl Lobby {
         name: Option<&str>,
         steamid: Option<SteamID>,
     ) -> Option<&mut Player> {
-        let player = self
-            .players
+        self.players
             .iter_mut()
-            .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid);
-
-        if player.is_some() {
-            return player;
-        }
-
-        let player = self
-            .recently_left_players
-            .iter_mut()
-            .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid);
-
-        player
+            .find(|player| Some(player.name.as_str()) == name || Some(player.steamid) == steamid)
     }
 
     fn update_friendships(&mut self) {

@@ -8,76 +8,92 @@ use eframe::egui::{Image, OpenUrl, Ui, Vec2};
 pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
     ui.label("Player Details");
 
-    // ui.separator();
-    if let Some(steamid) = app_win.selected_player {
-        if let Some(player) = app_win.lobby.get_player(None, Some(steamid)) {
-            add_player_community_links(player, ui);
+    let steamid = app_win.selected_player;
+    if steamid.is_none() {
+        ui.label("Select a player to see their details.");
+        return;
+    }
+
+    let steamid = steamid.unwrap();
+    let player = app_win.lobby.get_player(None, Some(steamid)).or_else(|| {
+        app_win
+            .lobby
+            .recently_left_players
+            .iter()
+            .find(|p| p.steamid == steamid)
+    });
+
+    if player.is_none() {
+        ui.label(format!(
+            "Player with SteamID {} not found.",
+            steamid.to_u64()
+        ));
+        return;
+    }
+    let player = player.unwrap();
+
+    add_player_community_links(player, ui);
+
+    ui.horizontal(|ui| {
+        add_player_avatar(player, ui);
+
+        ui.vertical(|ui| {
+            ui.heading(format!("{} ({})", player.name, player.id));
+
+            if let Some(steam_info) = &player.steam_info {
+                if steam_info.public_profile {
+                    ui.label("Public profile");
+                } else {
+                    ui.label("Private profile");
+                }
+
+                ui.label(format!(
+                    "Account created: {}",
+                    steam_info.get_account_created()
+                ));
+            }
+
+            ui.label(format!("SteamID64: {}", player.steamid.to_u64()));
+            ui.label(format!("SteamID32: {}", player.steamid.to_steam_id32()));
+
+            // ui.label(format!("Console ID in game: {}", player.id));
+
+            if let Some(playtime) = player.tf2_play_minutes {
+                ui.label(format!("TF2 playtime: {} hours", playtime / 60));
+            } else {
+                ui.label("TF2 playtime: Loading...");
+            }
+
             // ui.label("");
 
-            ui.horizontal(|ui| {
-                add_player_avatar(player, ui);
+            if let Some(friends) = &player.friends {
+                ui.label(format!("{} friends", friends.len()));
+            } else {
+                ui.label("Loading friends...");
+            }
 
-                ui.vertical(|ui| {
-                    ui.heading(format!("{} ({})", player.name, player.id));
+            if let Some(reason) = player.has_steam_bans() {
+                ui.label(reason);
+            } else if player.steam_info.is_none() {
+                ui.label("Loading Steam bans...");
+                return;
+            } else {
+                ui.label("No Steam bans");
+            }
+        });
+    });
 
-                    if let Some(steam_info) = &player.steam_info {
-                        if steam_info.public_profile {
-                            ui.label("Public profile");
-                        } else {
-                            ui.label("Private profile");
-                        }
+    ui.label("");
 
-                        ui.label(format!(
-                            "Account created: {}",
-                            steam_info.get_account_created()
-                        ));
-                    }
+    add_player_kick_buttons(app_win, player, ui);
 
-                    ui.label(format!("SteamID64: {}", player.steamid.to_u64()));
-                    ui.label(format!("SteamID32: {}", player.steamid.to_steam_id32()));
+    ui.label("");
 
-                    // ui.label(format!("Console ID in game: {}", player.id));
+    add_player_flag_editor(app_win, ui, player);
 
-                    if let Some(playtime) = player.tf2_play_minutes {
-                        ui.label(format!("TF2 playtime: {} hours", playtime / 60));
-                    } else {
-                        ui.label("TF2 playtime: Loading...");
-                    }
+    ui.label("");
 
-                    // ui.label("");
-
-                    if let Some(friends) = &player.friends {
-                        ui.label(format!("{} friends", friends.len()));
-                    } else {
-                        ui.label("Loading friends...");
-                    }
-
-                    if let Some(reason) = player.has_steam_bans() {
-                        ui.label(reason);
-                    } else if player.steam_info.is_none() {
-                        ui.label("Loading Steam bans...");
-                        return;
-                    } else {
-                        ui.label("No Steam bans");
-                    }
-                });
-            });
-
-            ui.label("");
-
-            add_player_kick_buttons(app_win, player, ui);
-
-            ui.label("");
-
-            add_player_flag_editor(app_win, ui, player);
-
-            ui.label("");
-
-            add_player_kills(player, ui);
-        }
-    } else {
-        ui.label("Select a player to see their details.");
-    }
+    add_player_kills(player, ui);
 }
 
 fn add_player_avatar(player: &Player, ui: &mut Ui) {

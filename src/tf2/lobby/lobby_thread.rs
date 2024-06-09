@@ -150,20 +150,26 @@ impl LobbyThread {
     fn new_lobby(&mut self) {
         log::info!("Creating new lobby");
 
-        let mut new_lobby = Lobby::new();
-
-        new_lobby
+        self.lobby
             .recently_left_players
             .append(&mut self.lobby.players);
-        new_lobby
-            .recently_left_players
-            .append(&mut self.lobby.recently_left_players);
 
-        for player in new_lobby.recently_left_players.iter_mut() {
+        log::info!(
+            "Moving players to recently_left_players: {}",
+            self.lobby
+                .recently_left_players
+                .iter()
+                .map(|p| p.name.clone())
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
+
+        for player in self.lobby.recently_left_players.iter_mut() {
             player.last_seen = Local::now();
         }
 
-        self.lobby = new_lobby;
+        self.lobby.players.clear();
+        self.lobby.chat.clear();
     }
 
     /// Add this player to the list of players if not already added
@@ -175,7 +181,7 @@ impl LobbyThread {
             // Update last_seen for existing player
             player.id = id;
             player.name.clone_from(&name);
-            player.last_seen = when;
+            player.last_seen = Local::now();
         } else {
             // Add new player if not found in the list
             self.lobby.players.push(Player {
@@ -188,7 +194,7 @@ impl LobbyThread {
                 crit_kills: 0,
                 crit_deaths: 0,
                 kills_with: Vec::new(),
-                last_seen: when,
+                last_seen: Local::now(),
                 steam_info: None,
                 friends: None,
                 tf2_play_minutes: None,
@@ -298,38 +304,56 @@ impl LobbyThread {
     /// and instead added to the recently_left collection.
     /// Recently_left players remain there until 30 seconds has passed.
     fn purge_old_players(&mut self, when: DateTime<Local>) {
-        let mut new_vec: Vec<Player> = vec![];
+        let when = Local::now();
 
+        let mut players_to_keep: Vec<Player> = vec![];
         for player in self.lobby.players.iter_mut() {
             let age_seconds = (when - player.last_seen).num_seconds();
-            if age_seconds < 10 {
+            if age_seconds < 20 {
                 // Player is still active, keep it
-                new_vec.push(player.clone());
+                players_to_keep.push(player.clone());
             } else {
                 // Player has left the game
+                // Add to recently_left_players
+                // and update last_seen so it remains in the list for a while
+
+                log::info!(
+                    "Player left: {}. Changing last_seen from {} to {}",
+                    player.name,
+                    player.last_seen,
+                    when
+                );
+                player.last_seen = Local::now();
                 self.lobby.recently_left_players.push(player.clone());
             }
         }
 
-        self.lobby.players = new_vec;
-
-        let mut new_vec: Vec<Player> = vec![];
+        self.lobby.players = players_to_keep;
 
         // Go through the recently_left_players
         // and remove those who are still active
         // and remove those who are older than 60 seconds
+        let mut recently_left_to_keep: Vec<Player> = vec![];
         for player in self.lobby.recently_left_players.iter() {
-            if self.lobby.get_player(None, Some(player.steamid)).is_some() {
+            if self
+                .lobby
+                .players
+                .iter()
+                .any(|p| p.steamid == player.steamid)
+            {
                 // The player also exists in the active player list
+                log::info!("Player {} has returned", player.name);
                 continue;
             }
 
             let age = when - player.last_seen;
-            if age.num_seconds() < 1200 {
-                new_vec.push(player.clone());
+            if age.num_seconds() < 120 {
+                recently_left_to_keep.push(player.clone());
+            } else {
+                log::info!("Player {} has left for good", player.name);
             }
         }
 
-        self.lobby.recently_left_players = new_vec;
+        self.lobby.recently_left_players = recently_left_to_keep;
     }
 }
