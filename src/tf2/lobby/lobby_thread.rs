@@ -150,6 +150,10 @@ impl LobbyThread {
     fn new_lobby(&mut self) {
         log::info!("Creating new lobby");
 
+        for player in self.lobby.players.iter_mut() {
+            player.last_seen = Local::now();
+        }
+
         self.lobby
             .recently_left_players
             .append(&mut self.lobby.players);
@@ -163,10 +167,6 @@ impl LobbyThread {
                 .collect::<Vec<String>>()
                 .join(", ")
         );
-
-        for player in self.lobby.recently_left_players.iter_mut() {
-            player.last_seen = Local::now();
-        }
 
         self.lobby.players.clear();
         self.lobby.chat.clear();
@@ -309,7 +309,7 @@ impl LobbyThread {
         let mut players_to_keep: Vec<Player> = vec![];
         for player in self.lobby.players.iter_mut() {
             let age_seconds = (when - player.last_seen).num_seconds();
-            if age_seconds < 20 {
+            if age_seconds < 10 {
                 // Player is still active, keep it
                 players_to_keep.push(player.clone());
             } else {
@@ -347,7 +347,7 @@ impl LobbyThread {
             }
 
             let age = when - player.last_seen;
-            if age.num_seconds() < 120 {
+            if age.num_seconds() < 90 {
                 recently_left_to_keep.push(player.clone());
             } else {
                 log::info!("Player {} has left for good", player.name);
