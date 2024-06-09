@@ -6,9 +6,6 @@ use crate::{
 use eframe::egui::{Color32, Ui};
 
 pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
-    // ui.heading("Scoreboard");
-    // let image_desc = add_background_image(ui);
-
     let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
 
     ui.horizontal(|ui| {
@@ -17,8 +14,6 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
         }
         ui.checkbox(&mut app_win.show_crits, "Show crits");
         ui.checkbox(&mut app_win.show_friendships, "Show friendships");
-
-        // add_image_creds(ui, &image_desc);
     });
 
     if app_win.swap_team_colors {
