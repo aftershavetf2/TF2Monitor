@@ -75,7 +75,7 @@ pub struct PlayerMarking {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum PlayerFlag {
-    Awesome,
+    Cool,
     Cheater,
     Bot,
     Suspicious,
@@ -231,7 +231,7 @@ impl Lobby {
 
 pub fn flag_description(flag: PlayerFlag) -> &'static str {
     match flag {
-        PlayerFlag::Awesome => "Awesome",
+        PlayerFlag::Cool => "Cool",
         PlayerFlag::Cheater => "Cheater",
         PlayerFlag::Bot => "Bot",
         PlayerFlag::Suspicious => "Suspicious",

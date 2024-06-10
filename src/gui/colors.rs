@@ -52,7 +52,7 @@ pub fn set_style(ctx: &egui::Context) {
 /// Returns the (text color, background color) for a given flag.
 pub fn color_for_flag(flag: PlayerFlag) -> (Color32, Color32) {
     match flag {
-        PlayerFlag::Awesome => (Color32::BLACK, Color32::GOLD),
+        PlayerFlag::Cool => (Color32::BLACK, Color32::GOLD),
         PlayerFlag::Cheater => (Color32::BLACK, hexrgb(0xff006e)),
         PlayerFlag::Bot => (Color32::BLACK, hexrgb(0xff0000)),
         PlayerFlag::Suspicious => (Color32::BLACK, Color32::from_rgb(0xf0, 0x81, 0x49)),

@@ -15,7 +15,7 @@ With this app you can:
   - Number of TF2 hours
   - VAC bans etc.
 
-Players marked are saved in playerlist.json. The format is based on TF2BD file format but only the SteamID -> flags section are used, and flags for Awesome(soft-friendship) and Bot are added.
+Players marked are saved in playerlist.json. The format is based on TF2BD file format but only the SteamID -> flags section are used, and flags for Cool(soft-friendship) and Bot are added.
 
 # Screenshot
 

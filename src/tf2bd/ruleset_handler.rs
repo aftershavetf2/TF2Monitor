@@ -71,7 +71,7 @@ impl RulesetHandler {
                         PlayerFlag::Exploiter => PlayerAttribute::Exploiter,
                         PlayerFlag::Toxic => PlayerAttribute::Racist,
                         PlayerFlag::Bot => PlayerAttribute::Bot,
-                        PlayerFlag::Awesome => PlayerAttribute::Awesome,
+                        PlayerFlag::Cool => PlayerAttribute::Cool,
                     })
                     .collect(),
             };
@@ -111,7 +111,7 @@ fn get_marking_from_rule(rule: &PlayerInfo, source: &str, suggestion: bool) -> P
             PlayerAttribute::Exploiter => PlayerFlag::Exploiter,
             PlayerAttribute::Racist => PlayerFlag::Toxic,
             PlayerAttribute::Bot => PlayerFlag::Bot,
-            PlayerAttribute::Awesome => PlayerFlag::Awesome,
+            PlayerAttribute::Cool => PlayerFlag::Cool,
         })
         .collect();
 

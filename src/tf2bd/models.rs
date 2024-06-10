@@ -105,7 +105,7 @@ pub enum PlayerAttribute {
     Exploiter,
     Racist,
     Bot,
-    Awesome,
+    Cool,
 }
 
 #[derive(Debug)]

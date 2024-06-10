@@ -41,7 +41,7 @@ pub fn add_flags(ui: &mut Ui, player: &Player) {
         ui.set_max_width(140.0);
 
         let flags = vec![
-            PlayerFlag::Awesome,
+            PlayerFlag::Cool,
             PlayerFlag::Cheater,
             PlayerFlag::Bot,
             PlayerFlag::Suspicious,
