@@ -113,13 +113,13 @@ impl LobbyThread {
         while let Ok(cmd) = self.logfile_bus_rx.try_recv() {
             match cmd {
                 LogLine::Unknown { line: _ } => {}
-                LogLine::StatusHeader { when } => self.purge_old_players(when),
+                LogLine::StatusHeader { when: _ } => self.purge_old_players(),
                 LogLine::StatusForPlayer {
-                    when,
+                    when: _,
                     id,
                     name,
                     steam_id32,
-                } => self.player_seen(when, id, name, steam_id32),
+                } => self.player_seen(id, name, steam_id32),
                 LogLine::Kill {
                     when,
                     killer,
@@ -173,7 +173,7 @@ impl LobbyThread {
     }
 
     /// Add this player to the list of players if not already added
-    fn player_seen(&mut self, when: DateTime<Local>, id: u32, name: String, steam_id32: String) {
+    fn player_seen(&mut self, id: u32, name: String, steam_id32: String) {
         // log::info!("Player seen: {} ({})", name, steam_id32);
         let steamid = SteamID::from_steam_id32(steam_id32.as_str());
 
@@ -216,7 +216,6 @@ impl LobbyThread {
 
         if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
             player.team = team;
-            return;
         } else {
             // Add new player if not found in the list
             self.lobby.players.push(Player {
@@ -303,7 +302,7 @@ impl LobbyThread {
     /// Players who has a last_seen older than 15 seconds are removed from the lobby
     /// and instead added to the recently_left collection.
     /// Recently_left players remain there until 30 seconds has passed.
-    fn purge_old_players(&mut self, when: DateTime<Local>) {
+    fn purge_old_players(&mut self) {
         let when = Local::now();
 
         let mut players_to_keep: Vec<Player> = vec![];

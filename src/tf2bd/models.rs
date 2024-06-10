@@ -175,6 +175,8 @@ impl RulesFile {
             result.rules = rules.len();
         }
 
+        result.players = self.players.len();
+
         for player in &self.players {
             if player.attributes.contains(&PlayerAttribute::Cheater) {
                 result.cheaters += 1;

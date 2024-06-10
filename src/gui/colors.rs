@@ -30,6 +30,9 @@ pub const LIGHT_BEIGE: Color32 = hexrgb(0xdabdab);
 pub const TEAM_BLU_COLOR: Color32 = BLUE;
 pub const TEAM_RED_COLOR: Color32 = RED;
 
+pub const CHAT_BLU_COLOR: Color32 = hexrgb(0x99CCFF);
+pub const CHAT_RED_COLOR: Color32 = hexrgb(0xFF4040);
+
 pub const PANEL_FILL: Color32 = hexrgb(0x36312B);
 // pub const WIDGET_FILL: Color32 = DARK_BROWN_GRAY;
 pub const TEXT_COLOR: Color32 = hexrgb(0xEBE2CA);

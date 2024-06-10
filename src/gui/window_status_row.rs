@@ -1,5 +1,5 @@
 use super::{background_image::ImageDescription, image_creds::add_image_creds};
-use crate::{models::AppWin, tf2::lobby};
+use crate::models::AppWin;
 use eframe::egui::{Align, Layout, Ui};
 
 pub fn add_status_row(app_win: &AppWin, ui: &mut Ui, image_desc: &ImageDescription) {

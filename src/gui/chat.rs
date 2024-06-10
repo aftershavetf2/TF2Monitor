@@ -87,18 +87,16 @@ fn add_chat_row(ui: &mut Ui, lobby: &Lobby, chat: &LobbyChat, swap_team_colors: 
         }
     }
     let color = match team {
-        Team::Invaders => super::colors::TEAM_BLU_COLOR,
-        Team::Defendes => super::colors::TEAM_RED_COLOR,
+        Team::Invaders => super::colors::CHAT_BLU_COLOR,
+        Team::Defendes => super::colors::CHAT_RED_COLOR,
         _ => Color32::GRAY,
     };
-
-    let new_color = Color32::from_rgb(color.r() + 30, color.g() + 30, color.b() + 30);
 
     job.append(
         &player.name,
         0.0,
         TextFormat {
-            color: new_color,
+            color,
             ..Default::default()
         },
     );
