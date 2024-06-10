@@ -61,7 +61,6 @@ impl AppBus {
     }
 
     /// Send a RCON command to the TF2 RCON
-    #[allow(dead_code)]
     pub fn send_rcon_cmd(&mut self, cmd: &str) {
         log::info!("Sending RCON command: {}", cmd);
         self.rcon_bus.broadcast(cmd.to_string());

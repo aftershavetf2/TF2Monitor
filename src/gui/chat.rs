@@ -1,10 +1,12 @@
+use super::{
+    colors::{hexrgb, CHAT_BLU_COLOR, CHAT_RED_COLOR},
+    markings::add_flags,
+};
 use crate::{
     models::AppWin,
     tf2::lobby::{Player, Team},
 };
 use eframe::egui::{text::LayoutJob, Color32, ScrollArea, TextFormat, TextStyle, Ui};
-
-use super::{colors::hexrgb, markings::add_flags};
 
 pub fn add_chat(ui: &mut Ui, app_win: &mut AppWin) {
     let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
@@ -92,8 +94,8 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, row: usize) {
             }
         }
         let color = match team {
-            Team::Invaders => super::colors::CHAT_BLU_COLOR,
-            Team::Defendes => super::colors::CHAT_RED_COLOR,
+            Team::Invaders => CHAT_BLU_COLOR,
+            Team::Defendes => CHAT_RED_COLOR,
             _ => Color32::GRAY,
         };
 

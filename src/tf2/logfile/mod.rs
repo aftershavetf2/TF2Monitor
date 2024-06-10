@@ -7,9 +7,6 @@ use chrono::prelude::*;
 /// It's unprocessed data mostly, so it's names instead of SteamIDs.
 #[derive(Debug, PartialEq, Clone)]
 pub enum LogLine {
-    #[allow(dead_code)]
-    Unknown { line: String },
-
     /// The output of the status command. The first line is the header, the following lines are player data.
     // 05/08/2024 - 14:25:11: # userid name                uniqueid            connected ping loss state
     StatusHeader {

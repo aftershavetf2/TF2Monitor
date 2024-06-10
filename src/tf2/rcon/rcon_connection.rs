@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::io::prelude::*;
 use std::net::TcpStream;
 use std::time::Duration;
@@ -28,6 +27,7 @@ pub struct RConConnection {
     id: u32,
 }
 
+#[allow(dead_code)]
 const PKT_TYPE_RESPONSE_VALUE: u32 = 0;
 const PKT_TYPE_EXEC_COMMAND: u32 = 2;
 const PKT_TYPE_AUTH_RESPONSE: u32 = 2;

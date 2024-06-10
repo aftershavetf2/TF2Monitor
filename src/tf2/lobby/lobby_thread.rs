@@ -112,7 +112,6 @@ impl LobbyThread {
         log::debug!("Processing logfile bus");
         while let Ok(cmd) = self.logfile_bus_rx.try_recv() {
             match cmd {
-                LogLine::Unknown { line: _ } => {}
                 LogLine::StatusHeader { when: _ } => self.purge_old_players(),
                 LogLine::StatusForPlayer {
                     when: _,

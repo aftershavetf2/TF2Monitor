@@ -1,4 +1,8 @@
-use super::{markings::add_flags, player_tooltip::add_player_tooltip};
+use super::{
+    colors::{TEAM_BLU_COLOR, TEAM_RED_COLOR},
+    markings::add_flags,
+    player_tooltip::add_player_tooltip,
+};
 use crate::{
     models::{steamid::SteamID, AppWin},
     tf2::lobby::{Player, Team},
@@ -105,6 +109,16 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
     ui.horizontal(|ui| {
         ui.push_id(player.steamid.to_u64(), |ui| {
             ui.scope(|ui| {
+                // let color = match player.team {
+                //     Team::Invaders => TEAM_BLU_COLOR,
+                //     Team::Defendes => TEAM_RED_COLOR,
+                //     _ => Color32::GRAY,
+                // };
+                // let color = Color32::WHITE;
+
+                // ui.visuals_mut().override_text_color = Some(color);
+                // ui.style_mut().visuals.override_text_color = Some(color);
+
                 // Mark selected player and friends of selected player
                 if let Some(steamid) = app_win.selected_player {
                     if steamid == player.steamid
@@ -139,12 +153,9 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
 }
 
 fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, player: &Player) {
-    let invader_color = super::colors::TEAM_BLU_COLOR;
-    let defender_color = super::colors::TEAM_RED_COLOR;
-
     let color = match player.team {
-        Team::Invaders => invader_color,
-        Team::Defendes => defender_color,
+        Team::Invaders => TEAM_BLU_COLOR,
+        Team::Defendes => TEAM_RED_COLOR,
         _ => Color32::GRAY,
     };
 

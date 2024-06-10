@@ -32,7 +32,6 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
     thread::spawn(move || watcher.run())
 }
 
-#[allow(dead_code)]
 fn remove_log_file(filename: &str) {
     if Path::new(filename).exists() {
         log::info!("Removing log file: {}", filename);
