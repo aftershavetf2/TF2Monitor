@@ -1,13 +1,15 @@
+use crate::{
+    models::AppWin,
+    tf2::lobby::{Player, Team},
+};
 use eframe::egui::{text::LayoutJob, Color32, ScrollArea, TextFormat, TextStyle, Ui};
 
-use crate::tf2::lobby::{Lobby, LobbyChat, Player, Team};
+use super::{colors::hexrgb, markings::add_flags};
 
-use super::colors::hexrgb;
+pub fn add_chat(ui: &mut Ui, app_win: &mut AppWin) {
+    let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
 
-pub fn add_chat(ui: &mut Ui, lobby: &Lobby, swap_team_colors: &mut bool) {
-    let mut sorted_players: Vec<Player> = lobby.players.clone();
-
-    if *swap_team_colors {
+    if app_win.swap_team_colors {
         sorted_players.iter_mut().for_each(|p| {
             p.team = match p.team {
                 Team::Invaders => Team::Defendes,
@@ -24,7 +26,7 @@ pub fn add_chat(ui: &mut Ui, lobby: &Lobby, swap_team_colors: &mut bool) {
     // hexrgb(0x756B5E);
     let text_style = TextStyle::Body;
     let row_height = ui.text_style_height(&text_style);
-    let num_rows = lobby.chat.len();
+    let num_rows = app_win.lobby.chat.len();
     ScrollArea::vertical()
         .stick_to_bottom(true)
         .auto_shrink(false)
@@ -33,93 +35,99 @@ pub fn add_chat(ui: &mut Ui, lobby: &Lobby, swap_team_colors: &mut bool) {
                 ui.style_mut().visuals.panel_fill = hexrgb(0xffffff);
 
                 for row in row_range {
-                    let chat = &lobby.chat[row];
-                    add_chat_row(ui, lobby, chat, swap_team_colors);
+                    add_chat_row(ui, app_win, row);
                 }
             });
         });
 }
 
-fn add_chat_row(ui: &mut Ui, lobby: &Lobby, chat: &LobbyChat, swap_team_colors: &mut bool) {
-    let player = lobby.get_player(None, Some(chat.steamid));
+fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, row: usize) {
+    let chat = &app_win.lobby.chat[row].clone();
+    let player = app_win.lobby.get_player(None, Some(chat.steamid));
     if player.is_none() {
         return;
     }
 
-    let player = player.unwrap();
+    let player = &player.unwrap().clone();
 
-    let mut job = LayoutJob::default();
+    ui.horizontal(|ui| {
+        add_flags(ui, player);
 
-    if chat.dead && chat.team {
-        job.append(
-            "*DEAD*(TEAM) ",
-            0.0,
-            TextFormat {
-                color: Color32::WHITE,
-                ..Default::default()
-            },
-        );
-    } else if chat.dead {
-        job.append(
-            "*DEAD* ",
-            0.0,
-            TextFormat {
-                color: Color32::LIGHT_GRAY,
-                ..Default::default()
-            },
-        );
-    } else if chat.team {
-        job.append(
-            "(TEAM) ",
-            0.0,
-            TextFormat {
-                color: Color32::LIGHT_GRAY,
-                ..Default::default()
-            },
-        );
-    }
-    let mut team = player.team;
-    if *swap_team_colors {
-        team = match team {
-            Team::Invaders => Team::Defendes,
-            Team::Defendes => Team::Invaders,
-            x => x,
+        let mut job = LayoutJob::default();
+
+        if chat.dead && chat.team {
+            job.append(
+                "*DEAD*(TEAM) ",
+                0.0,
+                TextFormat {
+                    color: Color32::WHITE,
+                    ..Default::default()
+                },
+            );
+        } else if chat.dead {
+            job.append(
+                "*DEAD* ",
+                0.0,
+                TextFormat {
+                    color: Color32::LIGHT_GRAY,
+                    ..Default::default()
+                },
+            );
+        } else if chat.team {
+            job.append(
+                "(TEAM) ",
+                0.0,
+                TextFormat {
+                    color: Color32::LIGHT_GRAY,
+                    ..Default::default()
+                },
+            );
         }
-    }
-    let color = match team {
-        Team::Invaders => super::colors::CHAT_BLU_COLOR,
-        Team::Defendes => super::colors::CHAT_RED_COLOR,
-        _ => Color32::GRAY,
-    };
+        let mut team = player.team;
+        if app_win.swap_team_colors {
+            team = match team {
+                Team::Invaders => Team::Defendes,
+                Team::Defendes => Team::Invaders,
+                x => x,
+            }
+        }
+        let color = match team {
+            Team::Invaders => super::colors::CHAT_BLU_COLOR,
+            Team::Defendes => super::colors::CHAT_RED_COLOR,
+            _ => Color32::GRAY,
+        };
 
-    job.append(
-        &player.name,
-        0.0,
-        TextFormat {
-            color,
-            ..Default::default()
-        },
-    );
+        job.append(
+            &player.name,
+            0.0,
+            TextFormat {
+                color,
+                ..Default::default()
+            },
+        );
 
-    job.append(
-        ": ",
-        0.0,
-        TextFormat {
-            color: Color32::LIGHT_GRAY,
-            ..Default::default()
-        },
-    );
+        job.append(
+            ": ",
+            0.0,
+            TextFormat {
+                color: Color32::LIGHT_GRAY,
+                ..Default::default()
+            },
+        );
 
-    job.append(
-        &chat.message,
-        0.0,
-        TextFormat {
-            color: Color32::from_rgb(210, 210, 210),
-            ..Default::default()
-        },
-    );
+        job.append(
+            &chat.message,
+            0.0,
+            TextFormat {
+                color: Color32::from_rgb(210, 210, 210),
+                ..Default::default()
+            },
+        );
 
-    ui.label(job);
+        if ui.label(job).clicked() {
+            app_win.set_selected_player(player.steamid);
+        }
+    });
 }
 // pub fn add_chat(ui: &mut Ui, lobby: &Lobby) {
 //     let text_style = TextStyle::Body;

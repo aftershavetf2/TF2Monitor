@@ -73,7 +73,7 @@ impl eframe::App for AppWin {
             ui.separator();
 
             ui.columns(2, |ui| {
-                add_chat(&mut ui[0], &self.lobby, &mut self.swap_team_colors);
+                add_chat(&mut ui[0], self);
                 add_player_details_panel(self, &mut ui[1]);
             });
 

@@ -131,16 +131,7 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                     .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
                     .clicked()
                 {
-                    // Toggle selected player
-                    if let Some(steamid) = app_win.selected_player {
-                        if steamid == player.steamid {
-                            app_win.selected_player = None;
-                        } else {
-                            app_win.selected_player = Some(player.steamid);
-                        }
-                    } else {
-                        app_win.selected_player = Some(player.steamid);
-                    }
+                    app_win.set_selected_player(player.steamid);
                 }
             });
         });

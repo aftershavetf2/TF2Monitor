@@ -10,6 +10,9 @@ pub fn add_status_row(app_win: &AppWin, ui: &mut Ui, image_desc: &ImageDescripti
             lobby.players.len(),
             lobby.chat.len()
         ));
+
+        ui.label("Zoom with ctrl +/-");
+
         // ui.label("Status: Online");
 
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

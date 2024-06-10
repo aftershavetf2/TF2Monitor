@@ -16,7 +16,7 @@ pub fn add_recently_left_players(app_win: &mut AppWin, ui: &mut Ui) {
         ));
         ui.separator();
 
-        for player in &app_win.lobby.recently_left_players {
+        for player in &app_win.lobby.recently_left_players.clone() {
             // ui.horizontal_wrapped(|ui| {
             if let Some(steam_info) = &player.steam_info {
                 ui.image(&steam_info.avatar)
@@ -28,7 +28,7 @@ pub fn add_recently_left_players(app_win: &mut AppWin, ui: &mut Ui) {
                 .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
                 .clicked()
             {
-                app_win.selected_player = Some(player.steamid);
+                app_win.set_selected_player(player.steamid);
             }
 
             // ui.hyperlink_to(player.name.as_str(), player.steamid.steam_history_url())

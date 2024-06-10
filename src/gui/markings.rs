@@ -32,6 +32,10 @@ pub fn transform_data(markings: &HashMap<String, PlayerMarking>) -> HashMap<Play
 }
 
 pub fn add_flags(ui: &mut Ui, player: &Player) {
+    if player.flags.is_empty() {
+        return;
+    }
+
     let data = transform_data(&player.flags);
     ui.horizontal_wrapped(|ui| {
         ui.set_max_width(140.0);
