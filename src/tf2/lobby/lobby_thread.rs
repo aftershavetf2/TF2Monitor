@@ -17,6 +17,14 @@ use std::{
 /// The delay between loops in run()
 const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
 
+/// The number of seconds a player can be inactive before being removed from the lobby
+/// and added to the recently_left_players collection.
+/// With inactive means it has not been seen in the output from rcon status command.
+const PLAYER_NOT_ACTIVE_TIMEOUT_SECONDS: i64 = 15;
+
+/// The number of seconds a player can be in the recently_left_players collection
+const RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS: i64 = 60;
+
 pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
     logfile_bus_rx: BusReader<LogLine>,
@@ -307,7 +315,7 @@ impl LobbyThread {
         let mut players_to_keep: Vec<Player> = vec![];
         for player in self.lobby.players.iter_mut() {
             let age_seconds = (when - player.last_seen).num_seconds();
-            if age_seconds < 10 {
+            if age_seconds < PLAYER_NOT_ACTIVE_TIMEOUT_SECONDS {
                 // Player is still active, keep it
                 players_to_keep.push(player.clone());
             } else {
@@ -330,7 +338,7 @@ impl LobbyThread {
 
         // Go through the recently_left_players
         // and remove those who are still active
-        // and remove those who are older than 60 seconds
+        // and remove those who are older than a certain seconds
         let mut recently_left_to_keep: Vec<Player> = vec![];
         for player in self.lobby.recently_left_players.iter() {
             if self
@@ -345,7 +353,7 @@ impl LobbyThread {
             }
 
             let age = when - player.last_seen;
-            if age.num_seconds() < 90 {
+            if age.num_seconds() < RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS {
                 recently_left_to_keep.push(player.clone());
             } else {
                 log::info!("Player {} has left for good", player.name);
