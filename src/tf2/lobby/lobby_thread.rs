@@ -20,10 +20,10 @@ const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
 /// The number of seconds a player can be inactive before being removed from the lobby
 /// and added to the recently_left_players collection.
 /// With inactive means it has not been seen in the output from rcon status command.
-const PLAYER_NOT_ACTIVE_TIMEOUT_SECONDS: i64 = 10;
+const PLAYER_NOT_ACTIVE_TIMEOUT_SECONDS: i64 = 15;
 
 /// The number of seconds a player can be in the recently_left_players collection
-const RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS: i64 = 60;
+const RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS: i64 = 90;
 
 pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
