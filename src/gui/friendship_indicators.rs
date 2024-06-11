@@ -5,20 +5,39 @@ pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
     let indicator_color = Color32::WHITE;
     let stroke = Stroke::new(0.6f32, indicator_color);
 
+    let me = app_win.self_steamid;
+    let my_friends = app_win.lobby.friendships.get_friends(me);
+
     // Loop through all players and draw lines between their friends
     for player in app_win.lobby.players.iter() {
+        // Lines from me are not drawn
+        if player.steamid == me {
+            continue;
+        }
+
         let friends = app_win.lobby.friendships.get_friends(player.steamid);
 
         if let Some(start_pos) = app_win.friendship_positions.get(&player.steamid) {
             for steamid in friends {
-                // Friendship is bidirectional, so only draw the line once
+                // Friendship is bidirectional, so only draw the line one way,
                 if steamid.to_u64() > player.steamid.to_u64() {
+                    continue;
+                }
+
+                // Lines to me are not drawn
+                if *steamid == me {
+                    continue;
+                }
+
+                // Lines between two of my friends are not drawn
+                if my_friends.contains(steamid) && my_friends.contains(&player.steamid) {
                     continue;
                 }
 
                 if let Some(end_pos) = app_win.friendship_positions.get(steamid) {
                     // Draw a line between the two players
-                    // The direction of the line depends on the difference between the two steamids
+                    // The left/right direction of the line
+                    // depends on the two steamids
                     let dir = 1 == (player.steamid.to_u64() ^ steamid.to_u64()) & 1;
                     draw_curve(ui, *start_pos, *end_pos, &stroke, dir);
                 }
