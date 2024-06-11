@@ -17,6 +17,10 @@ With this app you can:
 
 Players marked are saved in playerlist.json. The format is based on TF2BD file format but only the SteamID -> flags section are used, and flags for Cool(one-way soft-friendship) and Bot are added.
 
+# Discord
+
+https://discord.gg/d2G2UstY
+
 # Screenshot
 
 ![Alt text](/screenshots/TF2Monitor.png?raw=true "TF2Monitor")
