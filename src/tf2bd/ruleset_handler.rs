@@ -35,18 +35,32 @@ impl RulesetHandler {
             } else {
                 marking.flags.remove(&flag);
             }
-        } else {
-            let mut marking = PlayerMarking {
-                source: self.source.clone(),
-                suggestion: self.suggestion,
-                flags: HashSet::from_iter(vec![flag]),
-            };
-            if enable {
-                marking.flags.insert(flag);
-            } else {
-                marking.flags.remove(&flag);
+
+            if marking.flags.is_empty() {
+                self.player_rules.remove(&steamid);
             }
-            self.player_rules.insert(steamid, marking);
+        } else {
+            // let mut marking = PlayerMarking {
+            //     source: self.source.clone(),
+            //     suggestion: self.suggestion,
+            //     flags: HashSet::from_iter(vec![flag]),
+            // };
+            // if enable {
+            //     marking.flags.insert(flag);
+            // } else {
+            //     marking.flags.remove(&flag);
+            // }
+            // self.player_rules.insert(steamid, marking);
+
+            if enable {
+                let mut marking = PlayerMarking {
+                    source: self.source.clone(),
+                    suggestion: self.suggestion,
+                    flags: HashSet::from_iter(vec![flag]),
+                };
+                marking.flags.insert(flag);
+                self.player_rules.insert(steamid, marking);
+            }
         }
 
         self.save();

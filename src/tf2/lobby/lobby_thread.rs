@@ -76,9 +76,13 @@ impl LobbyThread {
         log::debug!("Processing tf2bd bus");
         while let Ok(msg) = self.tf2bd_bus_rx.try_recv() {
             match msg {
-                Tf2bdMsg::Tf2bdPlayerMarking(steamid, marking) => {
+                Tf2bdMsg::Tf2bdPlayerMarking(steamid, source, marking) => {
                     if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
-                        player.flags.insert(marking.source.clone(), marking);
+                        if let Some(marking) = marking {
+                            player.flags.insert(source.clone(), marking);
+                        } else {
+                            player.flags.remove(&source);
+                        }
                     }
                 }
             }

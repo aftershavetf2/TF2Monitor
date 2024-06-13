@@ -6,5 +6,6 @@ use crate::{models::steamid::SteamID, tf2::lobby::PlayerMarking};
 
 #[derive(Debug, Clone)]
 pub enum Tf2bdMsg {
-    Tf2bdPlayerMarking(SteamID, PlayerMarking),
+    /// SteamID, Source, PlayerMarking
+    Tf2bdPlayerMarking(SteamID, String, Option<PlayerMarking>),
 }

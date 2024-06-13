@@ -81,9 +81,14 @@ impl Tf2bdThread {
             enable
         );
         self.ruleset_handler.set_player_flags(steamid, flag, enable);
-        if let Some(data) = self.ruleset_handler.get_player_marking(&steamid) {
-            self.send(Tf2bdMsg::Tf2bdPlayerMarking(steamid, data.clone()));
-        }
+
+        // Send out the updated marking
+        let data = self.ruleset_handler.get_player_marking(&steamid);
+        self.send(Tf2bdMsg::Tf2bdPlayerMarking(
+            steamid,
+            self.ruleset_handler.source.clone(),
+            data.cloned(),
+        ));
     }
 
     fn process_lobby_bus(&mut self) {
@@ -99,9 +104,12 @@ impl Tf2bdThread {
 
     fn apply_rules_to_lobby(&mut self, lobby: &Lobby) {
         for player in &lobby.players {
-            if let Some(data) = self.ruleset_handler.get_player_marking(&player.steamid) {
-                self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.clone()));
-            }
+            let data = self.ruleset_handler.get_player_marking(&player.steamid);
+            self.send(Tf2bdMsg::Tf2bdPlayerMarking(
+                player.steamid,
+                self.ruleset_handler.source.clone(),
+                data.cloned(),
+            ));
         }
     }
 }
