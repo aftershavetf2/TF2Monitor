@@ -1,8 +1,7 @@
 use crate::tf2::lobby::Player;
 use eframe::egui::{Image, Ui};
 
-// pub const IMAGE_URL: &str =
-//     "https://avatars.cloudflare.steamstatic.com/f39ba23bc07d2de9b77abcabae13ee2541f9c938_full.jpg";
+use super::markings::add_flags;
 
 pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
     ui.heading(format!("{} ({})", player.name, player.id));
@@ -41,4 +40,6 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
     } else {
         ui.label("No Steam bans");
     }
+
+    add_flags(ui, player);
 }
