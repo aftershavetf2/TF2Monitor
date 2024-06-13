@@ -122,10 +122,8 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, row: usize) {
             {
                 app_win.set_selected_player(chat_row.steamid);
             }
-        } else {
-            if ui.label(job).clicked() {
-                app_win.set_selected_player(chat_row.steamid);
-            }
+        } else if ui.label(job).clicked() {
+            app_win.set_selected_player(chat_row.steamid);
         }
     });
 }
