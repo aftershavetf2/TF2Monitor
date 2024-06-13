@@ -297,6 +297,7 @@ impl LobbyThread {
             self.lobby.chat.push(LobbyChat {
                 when,
                 steamid: player.steamid,
+                player_name: name,
                 message,
                 dead,
                 team,

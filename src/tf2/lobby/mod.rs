@@ -22,6 +22,11 @@ pub struct Lobby {
 pub struct LobbyChat {
     pub when: DateTime<Local>,
     pub steamid: SteamID,
+
+    /// The name of the player who sent the message,
+    /// Used when the player has left the lobby.
+    pub player_name: String,
+
     pub message: String,
     pub dead: bool,
     pub team: bool,
