@@ -1,6 +1,7 @@
 use super::{
     colors::{hexrgb, CHAT_BLU_COLOR, CHAT_RED_COLOR},
     markings::add_flags,
+    player_tooltip::add_player_tooltip,
 };
 use crate::{models::AppWin, tf2::lobby::Team};
 use eframe::egui::{text::LayoutJob, Color32, ScrollArea, TextFormat, TextStyle, Ui};
@@ -65,16 +66,18 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, row: usize) {
                 "*DEAD* ",
                 0.0,
                 TextFormat {
-                    color: Color32::LIGHT_GRAY,
+                    color: Color32::WHITE,
                     ..Default::default()
                 },
             );
-        } else if chat_row.team {
+        }
+
+        if chat_row.team {
             job.append(
                 "(TEAM) ",
                 0.0,
                 TextFormat {
-                    color: Color32::LIGHT_GRAY,
+                    color: Color32::WHITE,
                     ..Default::default()
                 },
             );
@@ -111,8 +114,18 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, row: usize) {
         );
 
         // Add the formatted text to the UI and make it clickable
-        if ui.label(job).clicked() {
-            app_win.set_selected_player(chat_row.steamid);
+        if let Some(player) = player {
+            if ui
+                .label(job)
+                .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
+                .clicked()
+            {
+                app_win.set_selected_player(chat_row.steamid);
+            }
+        } else {
+            if ui.label(job).clicked() {
+                app_win.set_selected_player(chat_row.steamid);
+            }
         }
     });
 }
