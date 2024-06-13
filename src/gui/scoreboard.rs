@@ -6,8 +6,7 @@ use crate::{
 use eframe::egui::{Color32, Ui};
 
 pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
-    let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
-
+    // Row with buttons
     ui.horizontal(|ui| {
         if ui.button("Swap team colors").clicked() {
             app_win.swap_team_colors = !app_win.swap_team_colors;
@@ -15,6 +14,12 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
         ui.checkbox(&mut app_win.show_crits, "Show crits");
         ui.checkbox(&mut app_win.show_friendships, "Show friendships");
     });
+
+    ui.separator();
+
+    // Player list, also check if there are teams at all
+    let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
+    sorted_players.sort_by(cmp_for_scoreboard);
 
     if app_win.swap_team_colors {
         sorted_players.iter_mut().for_each(|p| {
@@ -26,25 +31,14 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
         });
     }
 
-    ui.separator();
-
-    sorted_players.sort_by(cmp_for_scoreboard);
-
     let blu_players: Vec<&Player> = sorted_players
         .iter()
         .filter(|p| p.team == Team::Invaders)
         .collect();
-
     let red_players: Vec<&Player> = sorted_players
         .iter()
         .filter(|p| p.team == Team::Defendes)
         .collect();
-
-    ui.columns(2, |ui| {
-        scoreboard_team(app_win, &mut ui[0], "Blu", &blu_players, "blu");
-        scoreboard_team(app_win, &mut ui[1], "Red", &red_players, "red");
-    });
-
     let spectator_players: Vec<&Player> = sorted_players
         .iter()
         .filter(|p| p.team == Team::Spec)
@@ -54,30 +48,46 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
         .filter(|p| p.team == Team::Unknown)
         .collect();
 
+    // If there's a lobby with red/blu teams, show the scoreboard
+    if !blu_players.is_empty() || !red_players.is_empty() {
+        ui.columns(2, |ui| {
+            scoreboard_team(app_win, &mut ui[0], "Blu", &blu_players);
+            scoreboard_team(app_win, &mut ui[1], "Red", &red_players);
+        });
+    } else if !unknown_players.is_empty() {
+        // Make two teams of a maximum of 12 players each,
+        // the player list is sorted so after 24 players there are players
+        // with low scores
+        let team1: Vec<&Player> = unknown_players.iter().take(12).copied().collect();
+        let team2: Vec<&Player> = unknown_players.iter().skip(12).take(12).copied().collect();
+        let rest_team: Vec<&Player> = unknown_players.iter().skip(24).copied().collect();
+        ui.columns(2, |ui| {
+            scoreboard_team(app_win, &mut ui[0], "Players 1-12", &team1);
+            scoreboard_team(app_win, &mut ui[1], "Players 13-24", &team2);
+        });
+
+        if !rest_team.is_empty() {
+            ui.separator();
+            let player_names: String = rest_team
+                .iter()
+                .map(|p| p.name.clone())
+                .collect::<Vec<String>>()
+                .join(", ");
+            ui.colored_label(Color32::GRAY, format!("Unknown team: {}", player_names));
+        }
+    }
+
     if !spectator_players.is_empty() {
         let player_names: String = spectator_players
             .iter()
             .map(|p| p.name.clone())
             .collect::<Vec<String>>()
             .join(", ");
-        ui.colored_label(Color32::GRAY, format!("Spectators: {}", player_names));
+        ui.colored_label(Color32::WHITE, format!("Spectators: {}", player_names));
 
         if !unknown_players.is_empty() {
             ui.separator();
         }
-    }
-
-    let unknown_players: Vec<&Player> = sorted_players
-        .iter()
-        .filter(|p| p.team == Team::Unknown)
-        .collect();
-    if !spectator_players.is_empty() {
-        let player_names: String = unknown_players
-            .iter()
-            .map(|p| p.name.clone())
-            .collect::<Vec<String>>()
-            .join(", ");
-        ui.colored_label(Color32::GRAY, format!("Joined: {}", player_names));
     }
 
     add_recently_left_players(app_win, ui);

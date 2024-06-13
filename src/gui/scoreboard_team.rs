@@ -14,7 +14,7 @@ pub fn scoreboard_team(
     ui: &mut Ui,
     title: &str,
     players: &Vec<&Player>,
-    team_name: &str,
+    
 ) {
     ui.heading(format!("{} - {} players", title, players.len()));
 
@@ -35,7 +35,7 @@ pub fn scoreboard_team(
         }
     });
 
-    Grid::new(team_name).striped(true).show(ui, |ui| {
+    Grid::new(title).striped(true).show(ui, |ui| {
         ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
             ui.label("");
         });
