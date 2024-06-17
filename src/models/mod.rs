@@ -33,7 +33,7 @@ impl AppWin {
         Self {
             bus: Arc::clone(bus),
 
-            lobby: Lobby::new(),
+            lobby: Lobby::new(settings.self_steamid64),
             lobby_report_bus_rx: bus.lock().unwrap().lobby_report_bus.add_rx(),
             swap_team_colors: false,
             show_crits: true,

@@ -5,6 +5,11 @@ pub struct SteamID(u64);
 
 impl SteamID {
     pub fn from_u64(steamid64: u64) -> Self {
+        assert!(
+            steamid64 >= 76561197960265728,
+            "Invalid SteamID64: {}",
+            steamid64
+        );
         Self(steamid64)
     }
 

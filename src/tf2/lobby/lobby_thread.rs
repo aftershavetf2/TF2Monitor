@@ -17,11 +17,6 @@ use std::{
 /// The delay between loops in run()
 const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
 
-/// The number of seconds a player can be inactive before being removed from the lobby
-/// and added to the recently_left_players collection.
-/// With inactive means it has not been seen in the output from rcon status command.
-const PLAYER_NOT_ACTIVE_TIMEOUT_SECONDS: i64 = 15;
-
 /// The number of seconds a player can be in the recently_left_players collection
 const RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS: i64 = 90;
 
@@ -31,6 +26,10 @@ pub struct LobbyThread {
     steamapi_bus_rx: BusReader<SteamApiMsg>,
     tf2bd_bus_rx: BusReader<Tf2bdMsg>,
     lobby: Lobby,
+
+    self_steamid: SteamID,
+
+    last_status_header: DateTime<Local>,
 }
 
 /// Start the background thread for the lobby module
@@ -41,16 +40,18 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 }
 
 impl LobbyThread {
-    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
         Self {
+            self_steamid: settings.self_steamid64,
             bus: Arc::clone(bus),
             logfile_bus_rx,
             steamapi_bus_rx,
             tf2bd_bus_rx,
-            lobby: Lobby::new(),
+            lobby: Lobby::new(settings.self_steamid64),
+            last_status_header: Local::now(),
         }
     }
 
@@ -124,13 +125,13 @@ impl LobbyThread {
         log::debug!("Processing logfile bus");
         while let Ok(cmd) = self.logfile_bus_rx.try_recv() {
             match cmd {
-                LogLine::StatusHeader { when: _ } => self.purge_old_players(),
+                LogLine::StatusHeader { when } => self.purge_old_players(when),
                 LogLine::StatusForPlayer {
-                    when: _,
+                    when,
                     id,
                     name,
                     steam_id32,
-                } => self.player_seen(id, name, steam_id32),
+                } => self.player_seen(when, id, name, steam_id32),
                 LogLine::Kill {
                     when,
                     killer,
@@ -139,7 +140,7 @@ impl LobbyThread {
                     crit,
                 } => self.kill(when, killer, victim, weapon, crit),
                 LogLine::Suicide { when, name } => self.suicide(when, name),
-                LogLine::LobbyCreated { when: _when } => self.new_lobby(),
+                LogLine::LobbyCreated { when } => self.new_lobby(when),
                 LogLine::LobbyDestroyed { when: _when } => {}
                 LogLine::Chat {
                     when,
@@ -158,11 +159,11 @@ impl LobbyThread {
         bus.send_lobby_report(self.lobby.clone());
     }
 
-    fn new_lobby(&mut self) {
-        log::info!("Creating new lobby");
+    fn new_lobby(&mut self, when: DateTime<Local>) {
+        log::info!("*** Creating new lobby ***");
 
         for player in self.lobby.players.iter_mut() {
-            player.last_seen = Local::now();
+            player.last_seen = when;
         }
 
         self.lobby
@@ -184,7 +185,7 @@ impl LobbyThread {
     }
 
     /// Add this player to the list of players if not already added
-    fn player_seen(&mut self, id: u32, name: String, steam_id32: String) {
+    fn player_seen(&mut self, when: DateTime<Local>, id: u32, name: String, steam_id32: String) {
         // log::info!("Player seen: {} ({})", name, steam_id32);
         let steamid = SteamID::from_steam_id32(steam_id32.as_str());
 
@@ -192,7 +193,7 @@ impl LobbyThread {
             // Update last_seen for existing player
             player.id = id;
             player.name.clone_from(&name);
-            player.last_seen = Local::now();
+            player.last_seen = when;
         } else {
             // Add new player if not found in the list
             self.lobby.players.push(Player {
@@ -205,7 +206,7 @@ impl LobbyThread {
                 crit_kills: 0,
                 crit_deaths: 0,
                 kills_with: Vec::new(),
-                last_seen: Local::now(),
+                last_seen: when,
                 steam_info: None,
                 friends: None,
                 tf2_play_minutes: None,
@@ -229,23 +230,23 @@ impl LobbyThread {
             player.team = team;
         } else {
             // Add new player if not found in the list
-            self.lobby.players.push(Player {
-                id: 0,
-                steamid,
-                name: steam_id32.clone(),
-                team,
-                kills: 0,
-                deaths: 0,
-                crit_kills: 0,
-                crit_deaths: 0,
-                kills_with: Vec::new(),
-                last_seen: Local::now(),
-                steam_info: None,
-                friends: None,
-                tf2_play_minutes: None,
-                steam_bans: None,
-                flags: Default::default(),
-            });
+            // self.lobby.players.push(Player {
+            //     id: 0,
+            //     steamid,
+            //     name: steam_id32.clone(),
+            //     team,
+            //     kills: 0,
+            //     deaths: 0,
+            //     crit_kills: 0,
+            //     crit_deaths: 0,
+            //     kills_with: Vec::new(),
+            //     last_seen: Local::now(),
+            //     steam_info: None,
+            //     friends: None,
+            //     tf2_play_minutes: None,
+            //     steam_bans: None,
+            //     flags: Default::default(),
+            // });
         }
     }
 
@@ -314,13 +315,10 @@ impl LobbyThread {
     /// Players who has a last_seen older than 15 seconds are removed from the lobby
     /// and instead added to the recently_left collection.
     /// Recently_left players remain there until 30 seconds has passed.
-    fn purge_old_players(&mut self) {
-        let when = Local::now();
-
+    fn purge_old_players(&mut self, when: DateTime<Local>) {
         let mut players_to_keep: Vec<Player> = vec![];
         for player in self.lobby.players.iter_mut() {
-            let age_seconds = (when - player.last_seen).num_seconds();
-            if age_seconds < PLAYER_NOT_ACTIVE_TIMEOUT_SECONDS {
+            if player.last_seen >= self.last_status_header {
                 // Player is still active, keep it
                 players_to_keep.push(player.clone());
             } else {
@@ -334,7 +332,7 @@ impl LobbyThread {
                     player.last_seen,
                     when
                 );
-                player.last_seen = Local::now();
+                player.last_seen = when;
                 self.lobby.recently_left_players.push(player.clone());
             }
         }
@@ -366,5 +364,7 @@ impl LobbyThread {
         }
 
         self.lobby.recently_left_players = recently_left_to_keep;
+
+        self.last_status_header = when;
     }
 }

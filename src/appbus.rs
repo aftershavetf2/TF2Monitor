@@ -1,14 +1,13 @@
-use bus::Bus;
-
 use crate::{
     models::steamid::SteamID,
     tf2::{
-        lobby::{Lobby, PlayerFlag},
+        lobby::{Lobby, PlayerFlag, Team},
         logfile::LogLine,
         steamapi::SteamApiMsg,
     },
     tf2bd::Tf2bdMsg,
 };
+use bus::Bus;
 
 pub struct AppBus {
     pub logfile_bus: Bus<LogLine>,
@@ -90,4 +89,5 @@ impl AppBus {
 pub enum AppEventMsg {
     /// Sets or removes a flag(Cheater, Exploiter, etc) for a SteamID
     SetPlayerFlag(SteamID, PlayerFlag, bool),
+    CallVote(Team, PlayerFlag, bool),
 }

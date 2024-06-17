@@ -12,10 +12,10 @@ use std::{
 };
 
 /// The delay between RCON commands
-const RCON_DELAY: Duration = time::Duration::from_millis(1000);
+const RCON_DELAY: Duration = time::Duration::from_millis(500);
 
 /// The delay between loops in run()
-const LOOP_DELAY: Duration = time::Duration::from_millis(100);
+const LOOP_DELAY: Duration = time::Duration::from_millis(2000);
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -29,6 +29,7 @@ static LOBBY_DEBUG_RX: Lazy<Regex> = regex_static::lazy_regex!(
 );
 
 fn parse_lobby_debug_line(line: &str) -> Option<(String, String)> {
+    // log::info!("Parsing lobby debug line: {}", line);
     if let Some(caps) = LOBBY_DEBUG_RX.captures(line) {
         let sid = caps.name("sid").unwrap().as_str().to_string();
         let team = caps.name("team").unwrap().as_str().to_string();
@@ -63,8 +64,8 @@ impl RconThread {
         log::info!("Rcon background thread started");
 
         loop {
-            self.send_rcon_command("tf_lobby_debug", true);
             self.send_rcon_command("status", false);
+            self.send_rcon_command("tf_lobby_debug", true);
 
             self.process_bus();
 
@@ -114,7 +115,7 @@ impl RconThread {
         log::debug!("Sending RCON authorize: {}", cmd);
         rcon_client.authorize()?;
 
-        log::debug!("Sending RCON command: {}", cmd);
+        log::info!("Sending RCON command: {}", cmd);
         let reply = rcon_client.exec_command(cmd)?;
         Ok(reply)
     }

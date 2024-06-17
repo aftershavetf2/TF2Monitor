@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Default, Debug, Clone)]
 pub struct Lobby {
+    pub self_steamid: SteamID,
     pub players: Vec<Player>,
     pub chat: Vec<LobbyChat>,
     pub friendships: Friendships,
@@ -88,8 +89,9 @@ pub enum PlayerFlag {
     Exploiter,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum Team {
+    #[default]
     Unknown,
     Invaders,
     Defendes,
@@ -204,8 +206,9 @@ impl PlayerSteamInfo {
 }
 
 impl Lobby {
-    pub fn new() -> Self {
+    pub fn new(self_steamid: SteamID) -> Self {
         Self {
+            self_steamid,
             players: Vec::new(),
             chat: Vec::new(),
             friendships: Friendships::default(),
