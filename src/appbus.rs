@@ -89,5 +89,6 @@ impl AppBus {
 pub enum AppEventMsg {
     /// Sets or removes a flag(Cheater, Exploiter, etc) for a SteamID
     SetPlayerFlag(SteamID, PlayerFlag, bool),
-    CallVote(Team, PlayerFlag, bool),
+    KickBots(bool),
+    KickCheaters(bool),
 }

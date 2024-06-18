@@ -115,7 +115,7 @@ impl RconThread {
         log::debug!("Sending RCON authorize: {}", cmd);
         rcon_client.authorize()?;
 
-        log::info!("Sending RCON command: {}", cmd);
+        log::debug!("Sending RCON command: {}", cmd);
         let reply = rcon_client.exec_command(cmd)?;
         Ok(reply)
     }

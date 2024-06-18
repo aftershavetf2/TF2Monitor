@@ -1,5 +1,6 @@
 use super::{recently_left::add_recently_left_players, scoreboard_team::scoreboard_team};
 use crate::{
+    appbus::AppEventMsg,
     models::AppWin,
     tf2::lobby::{Player, Team},
 };
@@ -13,6 +14,27 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
         }
         ui.checkbox(&mut app_win.show_crits, "Show crits");
         ui.checkbox(&mut app_win.show_friendships, "Show friendships");
+
+        if ui
+            .checkbox(&mut app_win.kick_cheaters, "Kick cheaters")
+            .changed()
+        {
+            app_win
+                .bus
+                .lock()
+                .unwrap()
+                .app_event_bus
+                .broadcast(AppEventMsg::KickCheaters(app_win.kick_cheaters))
+        }
+
+        if ui.checkbox(&mut app_win.kick_bots, "Kick bots").changed() {
+            app_win
+                .bus
+                .lock()
+                .unwrap()
+                .app_event_bus
+                .broadcast(AppEventMsg::KickBots(app_win.kick_bots))
+        }
     });
 
     ui.separator();

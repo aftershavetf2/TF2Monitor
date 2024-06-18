@@ -216,6 +216,10 @@ impl Lobby {
         }
     }
 
+    pub fn get_me(&self) -> Option<&Player> {
+        self.get_player(None, Some(self.self_steamid))
+    }
+
     pub fn get_player(&self, name: Option<&str>, steamid: Option<SteamID>) -> Option<&Player> {
         self.players
             .iter()

@@ -23,6 +23,9 @@ pub struct AppWin {
 
     pub show_friendships: bool,
 
+    pub kick_bots: bool,
+    pub kick_cheaters: bool,
+
     // When drawing the scoreboard, we remember the center positions of each player's team indicator.
     // This is used to draw friendship indicators between players.
     pub friendship_positions: HashMap<SteamID, Pos2>,
@@ -40,6 +43,9 @@ impl AppWin {
             show_friendships: true,
             self_steamid: settings.self_steamid64,
             selected_player: None,
+
+            kick_bots: true,
+            kick_cheaters: false,
 
             friendship_positions: HashMap::new(),
         }

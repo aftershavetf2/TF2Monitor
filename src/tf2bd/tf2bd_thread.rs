@@ -5,7 +5,7 @@ use crate::{
         app_settings::AppSettings,
         steamid::{self, SteamID},
     },
-    tf2::lobby::{Lobby, Player, PlayerFlag},
+    tf2::lobby::{Lobby, Player, PlayerFlag, Team},
 };
 use bus::BusReader;
 use std::{
@@ -19,7 +19,7 @@ const FILENAME: &str = "playerlist.json";
 /// The delay between loops in run()
 const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
 
-const VOTE_PERIOD_SECONDS: u64 = 15;
+const VOTE_PERIOD_SECONDS: u64 = 10;
 
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let mut tf2bd_thread = Tf2bdThread::new(settings, bus);
@@ -36,6 +36,9 @@ struct Tf2bdThread {
 
     last_lobbty: Lobby,
     last_vote_time: Instant,
+
+    kick_bots: bool,
+    kick_cheaters: bool,
 }
 
 impl Tf2bdThread {
@@ -54,6 +57,9 @@ impl Tf2bdThread {
             last_lobbty: Lobby::new(settings.self_steamid64),
 
             last_vote_time: Instant::now(),
+
+            kick_bots: true,
+            kick_cheaters: false,
         }
     }
 
@@ -65,7 +71,7 @@ impl Tf2bdThread {
 
             self.apply_rules_to_lobby();
 
-            // self.do_callvotes();
+            self.do_callvotes();
 
             sleep(LOOP_DELAY);
         }
@@ -80,13 +86,20 @@ impl Tf2bdThread {
         self.process_app_event_bus();
     }
 
+    fn process_lobby_bus(&mut self) {
+        while let Ok(lobby) = self.lobby_bus_rx.try_recv() {
+            self.last_lobbty = lobby;
+        }
+    }
+
     fn process_app_event_bus(&mut self) {
         while let Ok(app_event) = self.app_event_bus_rx.try_recv() {
             match app_event {
                 AppEventMsg::SetPlayerFlag(steamid, flag, enable) => {
                     self.set_player_flag(steamid, flag, enable)
                 }
-                AppEventMsg::CallVote(_, _, _) => todo!(),
+                AppEventMsg::KickBots(enable) => self.kick_bots = enable,
+                AppEventMsg::KickCheaters(enable) => self.kick_cheaters = enable,
             }
         }
     }
@@ -107,12 +120,6 @@ impl Tf2bdThread {
             self.ruleset_handler.source.clone(),
             data.cloned(),
         ));
-    }
-
-    fn process_lobby_bus(&mut self) {
-        while let Ok(lobby) = self.lobby_bus_rx.try_recv() {
-            self.last_lobbty = lobby;
-        }
     }
 
     fn apply_rules_to_lobby(&mut self) {
@@ -143,20 +150,62 @@ impl Tf2bdThread {
         let player_to_kick = player_to_kick.unwrap();
 
         log::info!("Calling vote to kick player {}", player_to_kick.name);
+        let cmd = format!("callvote kick \"{} cheating\"", player_to_kick.id);
+        self.bus.lock().unwrap().send_rcon_cmd(cmd.as_str());
 
         self.last_vote_time = Instant::now();
     }
 
     fn find_player_to_kick(&self) -> Option<&Player> {
-        // let me = self.last_lobbty.get_player(None, Some())
-        // let player = self.last_lobbty.players.iter().find(|player| {
-        //     let marking = self.ruleset_handler.get_player_marking(&player.steamid);
-        //     marking.is_some()
-        // });
+        let me = self.last_lobbty.get_me();
+        if me.is_none() {
+            return None;
+        }
+        let me = me.unwrap();
+        let team = me.team;
 
-        // if let Some(player) = player {
-        //     self.send(Tf2bdMsg::Tf2bdCallVote(player.steamid));
-        // }
+        if self.kick_bots {
+            if let Some(bot_to_kick) = self.find_player_in_team(team, PlayerFlag::Bot) {
+                return Some(bot_to_kick);
+            }
+        }
+
+        if self.kick_cheaters {
+            if let Some(cheater_to_kick) = self.find_player_in_team(team, PlayerFlag::Cheater) {
+                return Some(cheater_to_kick);
+            }
+        }
+
         None
+    }
+
+    fn find_player_in_team(&self, team: Team, flag: PlayerFlag) -> Option<&Player> {
+        let candidates: Vec<&Player> = self
+            .last_lobbty
+            .players
+            .iter()
+            .filter(|player| Self::ok_to_kick(player, team, flag))
+            .collect();
+
+        candidates.first().copied()
+    }
+
+    fn ok_to_kick(player: &Player, team: Team, flag: PlayerFlag) -> bool {
+        if player.team != team {
+            return false;
+        }
+
+        for (_, marking) in &player.flags {
+            if marking.suggestion {
+                // This marking was just a suggestion from some rule set
+                continue;
+            }
+
+            if marking.flags.contains(&flag) {
+                return true;
+            }
+        }
+
+        false
     }
 }
