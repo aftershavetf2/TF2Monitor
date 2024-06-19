@@ -28,7 +28,7 @@ pub fn add_chat(ui: &mut Ui, app_win: &mut AppWin) {
 }
 
 fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, row: usize) {
-    ui.horizontal(|ui| {
+    ui.horizontal_wrapped(|ui| {
         let chat_row = &app_win.lobby.chat[row];
         let player = app_win.lobby.get_player(None, Some(chat_row.steamid));
 
