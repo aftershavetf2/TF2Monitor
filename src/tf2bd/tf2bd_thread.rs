@@ -3,7 +3,7 @@ use crate::{
     appbus::{AppBus, AppEventMsg},
     models::{
         app_settings::AppSettings,
-        steamid::{self, SteamID},
+        steamid::{self},
     },
     tf2::lobby::{Lobby, Player, PlayerFlag, Team},
 };
@@ -158,9 +158,8 @@ impl Tf2bdThread {
 
     fn find_player_to_kick(&self) -> Option<&Player> {
         let me = self.last_lobbty.get_me();
-        if me.is_none() {
-            return None;
-        }
+        me?;
+
         let me = me.unwrap();
         let team = me.team;
 
@@ -195,7 +194,7 @@ impl Tf2bdThread {
             return false;
         }
 
-        for (_, marking) in &player.flags {
+        for marking in player.flags.values() {
             if marking.suggestion {
                 // This marking was just a suggestion from some rule set
                 continue;

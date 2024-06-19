@@ -1,7 +1,7 @@
 use crate::{
     models::steamid::SteamID,
     tf2::{
-        lobby::{Lobby, PlayerFlag, Team},
+        lobby::{Lobby, PlayerFlag},
         logfile::LogLine,
         steamapi::SteamApiMsg,
     },
