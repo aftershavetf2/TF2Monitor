@@ -33,7 +33,7 @@ pub struct LobbyChat {
     pub team: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Player {
     /// The player's ID in the lobby, used when votekicking etc
     pub id: u32,
