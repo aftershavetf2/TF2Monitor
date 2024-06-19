@@ -3,10 +3,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SteamID(u64);
 
+pub const MIN_STEAMID64: u64 = 76561197960265728;
+
 impl SteamID {
     pub fn from_u64(steamid64: u64) -> Self {
         assert!(
-            steamid64 >= 76561197960265728,
+            steamid64 >= MIN_STEAMID64,
             "Invalid SteamID64: {}",
             steamid64
         );
@@ -29,12 +31,12 @@ impl SteamID {
             .parse::<u64>()
             .unwrap();
 
-        Self::from_u64(steamid32 + 76561197960265728)
+        Self::from_u64(steamid32 + MIN_STEAMID64)
     }
 
     /// Converts a SteamID64 to a SteamID32
     pub fn to_steam_id32(self) -> String {
-        format!("[U:1:{}]", self.0 - 76561197960265728)
+        format!("[U:1:{}]", self.0 - MIN_STEAMID64)
     }
 
     pub fn to_u64(self) -> u64 {
@@ -42,7 +44,7 @@ impl SteamID {
     }
 
     pub fn is_valid(self) -> bool {
-        self.0 >= 76561197960265728
+        self.0 >= MIN_STEAMID64
     }
 
     pub fn steam_history_url(&self) -> String {
