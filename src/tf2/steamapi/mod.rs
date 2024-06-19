@@ -10,11 +10,11 @@
 
 mod get_bans;
 mod get_friendlist;
-mod get_player_summariess;
+mod get_player_summaries;
 mod get_tf2_play_minutes;
 pub mod steamapi_thread;
 
-use self::get_player_summariess::get_player_summaries;
+use self::get_player_summaries::get_player_summaries;
 use super::lobby::PlayerSteamInfo;
 use crate::models::{app_settings::AppSettings, steamid::SteamID};
 use chrono::{DateTime, Local, TimeZone};
