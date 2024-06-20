@@ -40,4 +40,5 @@ reqwest = { version = "0.12.4", features = ["blocking", "json"] }
 #
 # Platform specific crates
 #
+[target.'cfg(windows)'.dependencies]
 winreg = "0.52.0"
