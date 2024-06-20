@@ -7,11 +7,6 @@ pub const MIN_STEAMID64: u64 = 76561197960265728;
 
 impl SteamID {
     pub fn from_u64(steamid64: u64) -> Self {
-        assert!(
-            steamid64 >= MIN_STEAMID64,
-            "Invalid SteamID64: {}",
-            steamid64
-        );
         Self(steamid64)
     }
 
