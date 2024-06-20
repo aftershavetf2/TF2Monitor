@@ -201,6 +201,11 @@ pub fn get_current_user_steamid() -> Option<SteamID> {
 
     let active_user = active_user.unwrap();
 
+    if active_user == "0" {
+        log::warn!("Could not find the ActiveUser registry key. Are you sure Steam is running?");
+        return None;
+    }
+
     let s = format!("[U:1:{}]", active_user);
     Some(SteamID::from_steam_id32(&s))
 }
