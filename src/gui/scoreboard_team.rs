@@ -5,17 +5,15 @@ use super::{
 };
 use crate::{
     models::{steamid::SteamID, AppWin},
-    tf2::lobby::{Player, Team},
+    tf2::lobby::{
+        AccountAge::{Approx, Loaded, Loading, Private, Unknown},
+        Player, Team,
+    },
+    utils::duration_as_string,
 };
 use eframe::egui::{Align, Color32, Grid, Layout, Sense, Ui, Vec2};
 
-pub fn scoreboard_team(
-    app_win: &mut AppWin,
-    ui: &mut Ui,
-    title: &str,
-    players: &Vec<&Player>,
-    
-) {
+pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: &Vec<&Player>) {
     ui.heading(format!("{} - {} players", title, players.len()));
 
     ui.horizontal(|ui| {
@@ -51,6 +49,10 @@ pub fn scoreboard_team(
             // ui.label(RichText::new("Deaths").strong());
             ui.label("Deaths");
         });
+        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+            // ui.label(RichText::new("Deaths").strong());
+            ui.label("Age").on_hover_text("Account age");
+        });
         // ui.label("Flags");
         ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
             // ui.label(RichText::new("Links").strong());
@@ -85,6 +87,30 @@ pub fn scoreboard_team(
                         .on_hover_text("Number of deaths due to crits");
                 }
             });
+
+            match player.account_age {
+                Loading => {
+                    ui.spinner();
+                }
+                Loaded(when) => {
+                    ui.label(duration_as_string(when))
+                        .on_hover_text(format!("Account created: {}", when.format("%Y-%m-%d")));
+                }
+                Private => {
+                    ui.label("Private").on_hover_text(
+                        "Profile is private. Will approximate account age by looking at neighboring SteamIDs",
+                    );
+                }
+                Approx(when) => {
+                    ui.label(format!("~{}", duration_as_string(when)))
+                        .on_hover_text("Approximated by looking at neighboring SteamIDs");
+                }
+                Unknown => {
+                    ui.label("Unknown")  
+                                          .on_hover_text("Could not approximate account age");
+
+                }
+            }
 
             add_flags(ui, player);
 

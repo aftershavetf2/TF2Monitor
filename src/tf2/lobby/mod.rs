@@ -34,6 +34,26 @@ pub struct LobbyChat {
 }
 
 #[derive(Default, Debug, Clone)]
+pub enum AccountAge {
+    /// Steam info is not loaded yet
+    #[default]
+    Loading,
+
+    /// Steam info has been loaded and the account age is known.
+    Loaded(DateTime<Local>),
+
+    /// Steam info has been loaded but the profile is private.
+    /// This will trigger an approximation of the account age.
+    Private,
+
+    /// Account age has been approximated
+    Approx(DateTime<Local>),
+
+    /// Unknown account age, due to private profile and failed approximation
+    Unknown,
+}
+
+#[derive(Default, Debug, Clone)]
 pub struct Player {
     /// The player's ID in the lobby, used when votekicking etc
     pub id: u32,
@@ -53,6 +73,8 @@ pub struct Player {
     pub friends: Option<HashSet<SteamID>>,
     pub tf2_play_minutes: Option<u32>,
     pub steam_bans: Option<SteamPlayerBan>,
+
+    pub account_age: AccountAge,
 
     // This is the PlayerFlags(Cheater etc) for the player
     // The String is the source of the flags.

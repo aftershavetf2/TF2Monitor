@@ -1,5 +1,6 @@
 use super::Lobby;
 use super::{LobbyChat, Player, PlayerKill, Team};
+use crate::tf2::lobby::AccountAge;
 use crate::tf2::steamapi::SteamApiMsg;
 use crate::tf2bd::Tf2bdMsg;
 use crate::{
@@ -104,6 +105,14 @@ impl LobbyThread {
                         .lobby
                         .get_player_mut(None, Some(player_steam_info.steamid))
                     {
+                        match player_steam_info.account_age {
+                            Some(account_age) => {
+                                player.account_age = AccountAge::Loaded(account_age);
+                            }
+                            None => {
+                                player.account_age = AccountAge::Private;
+                            }
+                        }
                         player.steam_info = Some(player_steam_info);
                     }
                 }
@@ -211,6 +220,7 @@ impl LobbyThread {
                 friends: None,
                 tf2_play_minutes: None,
                 steam_bans: None,
+                account_age: AccountAge::Loading,
                 flags: Default::default(),
             });
         }
