@@ -15,7 +15,7 @@ mod get_tf2_play_minutes;
 pub mod steamapi_thread;
 
 use self::get_player_summaries::get_player_summaries;
-use super::lobby::PlayerSteamInfo;
+use super::lobby::{AccountAge, PlayerSteamInfo};
 use crate::models::{app_settings::AppSettings, steamid::SteamID};
 use chrono::{DateTime, Local, TimeZone};
 use serde::Deserialize;
@@ -27,6 +27,7 @@ pub enum SteamApiMsg {
     FriendsList(SteamID, HashSet<SteamID>),
     Tf2Playtime(SteamID, u32),
     SteamBans(SteamID, SteamPlayerBan),
+    ApproxAccountAge(SteamID, AccountAge),
 }
 
 pub struct SteamApi {

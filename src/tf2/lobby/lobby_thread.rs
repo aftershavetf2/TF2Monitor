@@ -126,6 +126,11 @@ impl LobbyThread {
                         player.steam_bans = Some(steam_bans);
                     }
                 }
+                SteamApiMsg::ApproxAccountAge(steamid, account_age) => {
+                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                        player.account_age = account_age;
+                    }
+                }
             }
         }
     }

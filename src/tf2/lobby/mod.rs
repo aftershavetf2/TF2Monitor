@@ -33,7 +33,7 @@ pub struct LobbyChat {
     pub team: bool,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum AccountAge {
     /// Steam info is not loaded yet
     #[default]

@@ -1,15 +1,12 @@
 use super::{
+    account_age::add_account_age,
     colors::{TEAM_BLU_COLOR, TEAM_RED_COLOR},
     markings::add_flags,
     player_tooltip::add_player_tooltip,
 };
 use crate::{
     models::{steamid::SteamID, AppWin},
-    tf2::lobby::{
-        AccountAge::{Approx, Loaded, Loading, Private, Unknown},
-        Player, Team,
-    },
-    utils::duration_as_string,
+    tf2::lobby::{Player, Team},
 };
 use eframe::egui::{Align, Color32, Grid, Layout, Sense, Ui, Vec2};
 
@@ -88,29 +85,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 }
             });
 
-            match player.account_age {
-                Loading => {
-                    ui.spinner();
-                }
-                Loaded(when) => {
-                    ui.label(duration_as_string(when))
-                        .on_hover_text(format!("Account created: {}", when.format("%Y-%m-%d")));
-                }
-                Private => {
-                    ui.label("Private").on_hover_text(
-                        "Profile is private. Will approximate account age by looking at neighboring SteamIDs",
-                    );
-                }
-                Approx(when) => {
-                    ui.label(format!("~{}", duration_as_string(when)))
-                        .on_hover_text("Approximated by looking at neighboring SteamIDs");
-                }
-                Unknown => {
-                    ui.label("Unknown")  
-                                          .on_hover_text("Could not approximate account age");
-
-                }
-            }
+            add_account_age(player, ui);
 
             add_flags(ui, player);
 
@@ -120,6 +95,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         // Add empty rows to fill the grid
         if players.len() < 12 {
             for _ in 0..(12 - players.len()) {
+                ui.label("");
                 ui.label("");
                 ui.label("");
                 ui.label("");

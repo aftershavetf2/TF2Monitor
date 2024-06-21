@@ -3,7 +3,7 @@ use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
     tf2::{
-        lobby::{Lobby, Player, PlayerSteamInfo},
+        lobby::{AccountAge, Lobby, Player, PlayerSteamInfo},
         steamapi::SteamApiMsg,
     },
 };
@@ -22,6 +22,9 @@ const NUM_PLAYTIMES_TO_FETCH: usize = 1;
 
 /// For each loop, fetch this many players' friends list
 const NUM_FRIENDS_TO_FETCH: usize = 1;
+
+/// For each loop, approximate  this many players' account ages
+const NUM_ACCOUNT_AGES_TO_APPROX: usize = 1;
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -125,6 +128,7 @@ impl SteamApiThread {
             self.fetch_steam_bans(&lobby);
             self.fetch_friends(&lobby);
             self.fetch_playtimes(&lobby);
+            self.approximate_account_ages(&lobby);
         }
 
         while let Ok(_lobby) = self.lobby_bus_rx.try_recv() {}
@@ -254,5 +258,70 @@ impl SteamApiThread {
             .filter(|p| p.tf2_play_minutes.is_none())
             .take(NUM_PLAYTIMES_TO_FETCH)
             .collect()
+    }
+
+    fn get_players_without_account_age<'a>(&self, lobby: &'a Lobby) -> Vec<&'a Player> {
+        lobby
+            .players
+            .iter()
+            .filter(|p: &&Player| p.steam_info.is_some())
+            .filter(|p: &&Player| p.steam_bans.is_some())
+            .filter(|p: &&Player| p.account_age == AccountAge::Private)
+            .take(NUM_ACCOUNT_AGES_TO_APPROX)
+            .collect()
+    }
+
+    fn approximate_account_ages(&mut self, lobby: &Lobby) {
+        let players = self.get_players_without_account_age(lobby);
+        for player in players {
+            self.approximate_account_age(player);
+        }
+    }
+
+    fn approximate_account_age(&mut self, player: &Player) {
+        const NEIGHBORHOOD_SIZE: u64 = 49;
+
+        log::info!(
+            "Approximating account age for {} {}",
+            player.name,
+            player.steamid.to_u64()
+        );
+        let steamid = player.steamid.to_u64();
+
+        let mut ids: Vec<SteamID> = Vec::new();
+        for id in 1..NEIGHBORHOOD_SIZE {
+            let id = steamid - id;
+            ids.push(SteamID::from_u64(id));
+
+            let id = steamid + id;
+            ids.push(SteamID::from_u64(id));
+        }
+
+        let accounts = self.steam_api.get_player_summaries(ids);
+        if let Some(accounts) = accounts {
+            for account in accounts {
+                if let Some(account_age) = account.get_account_age() {
+                    // Found a neighbor with public profile
+                    log::info!(
+                        "Found neighbor with public profile for {}: {}",
+                        player.name,
+                        account.steamid
+                    );
+                    self.send(SteamApiMsg::ApproxAccountAge(
+                        player.steamid,
+                        AccountAge::Approx(account_age),
+                    ));
+
+                    return;
+                }
+            }
+        }
+
+        log::info!("No neighbors with public profile found for {}", player.name);
+
+        self.send(SteamApiMsg::ApproxAccountAge(
+            player.steamid,
+            AccountAge::Unknown,
+        ));
     }
 }
