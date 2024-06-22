@@ -29,7 +29,7 @@ impl LogLineParser {
             let loss = r"\d{1,3}";
             let state = r"(spawning|active)";
             format!(
-                r#"^#\s{{1,6}}({id}) "({name})"\s+({steamid32})\s{{1,8}}{time}\s+{ping}\s{{1,8}}{loss} {state}$"#
+                r#"^#\s{{1,6}}({id}) "({name})"\s+({steamid32})\s{{1,9}}{time}\s+{ping}\s{{1,8}}{loss} {state}$"#
             )
         };
 
@@ -335,6 +335,24 @@ mod tests {
                 id: 1371,
                 name: "Player1".to_string(),
                 steam_id32: "[U:1:169802]".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_status_player_line2() {
+        let parser = LogLineParser::default();
+
+        let when = Local.with_ymd_and_hms(2024, 6, 22, 12, 12, 31).unwrap();
+        let line = r#"#   1580 "Red."              [U:1:53518]         09:51       74    0 active"#;
+        let result = parser.parse_status_player_line(when, line).unwrap();
+        assert_eq!(
+            result,
+            LogLine::StatusForPlayer {
+                when,
+                id: 1580,
+                name: "Red.".to_string(),
+                steam_id32: "[U:1:53518]".to_string()
             }
         );
     }
