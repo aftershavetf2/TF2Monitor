@@ -15,7 +15,7 @@ mod get_tf2_play_minutes;
 pub mod steamapi_thread;
 
 use self::get_player_summaries::get_player_summaries;
-use super::lobby::{AccountAge, PlayerSteamInfo};
+use super::lobby::{AccountAge, PlayerSteamInfo, Tf2PlayMinutes};
 use crate::models::{app_settings::AppSettings, steamid::SteamID};
 use chrono::{DateTime, Local, TimeZone};
 use serde::Deserialize;
@@ -25,7 +25,7 @@ use std::collections::HashSet;
 pub enum SteamApiMsg {
     PlayerSummary(PlayerSteamInfo),
     FriendsList(SteamID, HashSet<SteamID>),
-    Tf2Playtime(SteamID, u32),
+    Tf2Playtime(SteamID, Tf2PlayMinutes),
     SteamBans(SteamID, SteamPlayerBan),
     ApproxAccountAge(SteamID, AccountAge),
 }
@@ -74,7 +74,7 @@ impl SteamApi {
         get_friendlist::get_friendlist(&self.steam_api_key, steamid)
     }
 
-    pub fn get_tf2_play_minutes(&self, steamid: SteamID) -> Option<u32> {
+    pub fn get_tf2_play_minutes(&self, steamid: SteamID) -> Tf2PlayMinutes {
         get_tf2_play_minutes::get_tf2_play_minutes(&self.steam_api_key, steamid)
     }
 

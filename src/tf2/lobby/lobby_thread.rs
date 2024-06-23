@@ -1,6 +1,6 @@
 use super::Lobby;
 use super::{LobbyChat, Player, PlayerKill, Team};
-use crate::tf2::lobby::AccountAge;
+use crate::tf2::lobby::{AccountAge, Tf2PlayMinutes};
 use crate::tf2::steamapi::SteamApiMsg;
 use crate::tf2bd::Tf2bdMsg;
 use crate::{
@@ -118,7 +118,7 @@ impl LobbyThread {
                 }
                 SteamApiMsg::Tf2Playtime(steamid, playtime) => {
                     if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
-                        player.tf2_play_minutes = Some(playtime);
+                        player.tf2_play_minutes = playtime;
                     }
                 }
                 SteamApiMsg::SteamBans(steamid, steam_bans) => {
@@ -223,7 +223,7 @@ impl LobbyThread {
                 last_seen: when,
                 steam_info: None,
                 friends: None,
-                tf2_play_minutes: None,
+                tf2_play_minutes: Tf2PlayMinutes::Loading,
                 steam_bans: None,
                 account_age: AccountAge::Loading,
                 flags: Default::default(),

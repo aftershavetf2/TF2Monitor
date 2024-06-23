@@ -8,6 +8,7 @@ pub mod markings;
 pub mod player_details_panel;
 pub mod player_flag_editor;
 pub mod player_tooltip;
+pub mod playtime;
 pub mod recently_left;
 pub mod scoreboard;
 pub mod scoreboard_team;

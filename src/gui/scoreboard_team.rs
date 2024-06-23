@@ -3,6 +3,7 @@ use super::{
     colors::{TEAM_BLU_COLOR, TEAM_RED_COLOR},
     markings::add_flags,
     player_tooltip::add_player_tooltip,
+    playtime::add_playtime,
 };
 use crate::{
     models::{steamid::SteamID, AppWin},
@@ -46,9 +47,13 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             // ui.label(RichText::new("Deaths").strong());
             ui.label("Deaths");
         });
-        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
             // ui.label(RichText::new("Deaths").strong());
             ui.label("Age").on_hover_text("Account age");
+        });
+        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+            // ui.label(RichText::new("Deaths").strong());
+            ui.label("Hours").on_hover_text("TF2 hours played");
         });
         // ui.label("Flags");
         ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
@@ -85,7 +90,13 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 }
             });
 
-            add_account_age(player, ui);
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                add_account_age(player, ui);
+            });
+
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                add_playtime(ui, player);
+            });
 
             add_flags(ui, player);
 

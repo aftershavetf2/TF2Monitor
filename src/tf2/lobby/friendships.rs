@@ -67,10 +67,7 @@ impl Friendships {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        models::steamid::MIN_STEAMID64,
-        tf2::lobby::{self, Player},
-    };
+    use crate::{models::steamid::MIN_STEAMID64, tf2::lobby::Player};
 
     use super::*;
 

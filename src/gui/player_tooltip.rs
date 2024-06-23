@@ -1,7 +1,7 @@
 use crate::tf2::lobby::Player;
 use eframe::egui::{Image, Ui};
 
-use super::markings::add_flags;
+use super::{markings::add_flags, playtime::add_playtime};
 
 pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
     ui.heading(format!("{} ({})", player.name, player.id));
@@ -21,11 +21,7 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
         ));
     }
 
-    if let Some(playtime) = player.tf2_play_minutes {
-        ui.label(format!("TF2 playtime: {} hours", playtime / 60));
-    } else {
-        ui.label("TF2 playtime: Loading...");
-    }
+    add_playtime(ui, player);
 
     ui.label("");
 

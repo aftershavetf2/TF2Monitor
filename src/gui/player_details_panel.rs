@@ -1,4 +1,4 @@
-use super::{colors::hexrgb, player_flag_editor::add_player_flag_editor};
+use super::{colors::hexrgb, player_flag_editor::add_player_flag_editor, playtime::add_playtime};
 use crate::{
     models::AppWin,
     tf2::lobby::{Player, PlayerKill},
@@ -58,11 +58,7 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
 
             // ui.label(format!("Console ID in game: {}", player.id));
 
-            if let Some(playtime) = player.tf2_play_minutes {
-                ui.label(format!("TF2 playtime: {} hours", playtime / 60));
-            } else {
-                ui.label("TF2 playtime: Loading...");
-            }
+            add_playtime(ui, player);
 
             // ui.label("");
 

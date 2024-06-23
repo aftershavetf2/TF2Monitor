@@ -3,7 +3,7 @@ use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
     tf2::{
-        lobby::{AccountAge, Lobby, Player, PlayerSteamInfo},
+        lobby::{AccountAge, Lobby, Player, PlayerSteamInfo, Tf2PlayMinutes},
         steamapi::SteamApiMsg,
     },
 };
@@ -36,7 +36,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 struct SteamApiCache {
     summaries: HashMap<SteamID, PlayerSteamInfo>,
     friends: HashMap<SteamID, HashSet<SteamID>>,
-    playtimes: HashMap<SteamID, u32>,
+    playtimes: HashMap<SteamID, Tf2PlayMinutes>,
     steam_bans: HashMap<SteamID, SteamPlayerBan>,
 }
 
@@ -66,12 +66,12 @@ impl SteamApiCache {
         self.summaries.insert(summary.steamid, summary);
     }
 
-    fn get_playtime(&self, steamid: SteamID) -> Option<&u32> {
+    fn get_playtime(&self, steamid: SteamID) -> Option<&Tf2PlayMinutes> {
         self.playtimes.get(&steamid)
     }
 
-    fn set_playtime(&mut self, steamid: SteamID, playtime: u32) {
-        self.playtimes.insert(steamid, playtime);
+    fn set_playtime(&mut self, steamid: SteamID, playtime: &Tf2PlayMinutes) {
+        self.playtimes.insert(steamid, playtime.clone());
     }
 
     fn get_steam_ban(&self, steamid: SteamID) -> Option<&SteamPlayerBan> {
@@ -204,16 +204,15 @@ impl SteamApiThread {
             // First check cache
             if let Some(playtime) = self.steam_api_cache.get_playtime(steamid) {
                 // log::info!("Fetched from cache playtime for {}", player.name);
-                self.send(SteamApiMsg::Tf2Playtime(steamid, *playtime));
+                self.send(SteamApiMsg::Tf2Playtime(steamid, playtime.clone()));
                 continue;
             }
 
             // Not in cache, fetch from Steam API and put in cache
             log::info!("Fetching playtime for {}", player.name);
-            if let Some(playtime) = self.steam_api.get_tf2_play_minutes(steamid) {
-                self.steam_api_cache.set_playtime(steamid, playtime);
-                self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
-            }
+            let playtime = self.steam_api.get_tf2_play_minutes(steamid);
+            self.steam_api_cache.set_playtime(steamid, &playtime);
+            self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
         }
     }
 
@@ -255,7 +254,7 @@ impl SteamApiThread {
         lobby
             .players
             .iter()
-            .filter(|p| p.tf2_play_minutes.is_none())
+            .filter(|p| p.tf2_play_minutes == Tf2PlayMinutes::Loading)
             .take(NUM_PLAYTIMES_TO_FETCH)
             .collect()
     }

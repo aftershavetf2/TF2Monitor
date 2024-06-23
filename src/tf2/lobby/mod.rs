@@ -53,6 +53,17 @@ pub enum AccountAge {
     Unknown,
 }
 
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub enum Tf2PlayMinutes {
+    #[default]
+    Loading,
+
+    PlayMinutes(u32),
+
+    /// Unknown playtime
+    Unknown,
+}
+
 #[derive(Default, Debug, Clone)]
 pub struct Player {
     /// The player's ID in the lobby, used when votekicking etc
@@ -71,7 +82,7 @@ pub struct Player {
     pub last_seen: DateTime<Local>,
     pub steam_info: Option<PlayerSteamInfo>,
     pub friends: Option<HashSet<SteamID>>,
-    pub tf2_play_minutes: Option<u32>,
+    pub tf2_play_minutes: Tf2PlayMinutes,
     pub steam_bans: Option<SteamPlayerBan>,
 
     pub account_age: AccountAge,
@@ -181,24 +192,23 @@ impl Player {
             is_new_account = steam_info.is_account_new();
         }
 
-        let mut has_few_hours = false;
-        if let Some(tf2_play_minutes) = self.tf2_play_minutes {
-            let min_minutes = 60 * 500;
-            if tf2_play_minutes > 0 && tf2_play_minutes < min_minutes {
-                has_few_hours = true;
+        let mut hours = 0;
+        let has_few_hours: bool = match self.tf2_play_minutes {
+            Tf2PlayMinutes::Loading => false,
+            Tf2PlayMinutes::PlayMinutes(minutes) => {
+                hours = minutes / 60;
+                minutes < 60 * 500
             }
-        }
+            Tf2PlayMinutes::Unknown => false,
+        };
 
         match (is_new_account, has_few_hours) {
             (true, true) => Some(format!(
                 "Account is < 1 year old and has only {} hours in TF2",
-                self.tf2_play_minutes.unwrap() / 60
+                hours
             )),
             (true, false) => Some("Account is < 1 year old".to_string()),
-            (false, true) => Some(format!(
-                "Account has only {} hours in TF2",
-                self.tf2_play_minutes.unwrap() / 60
-            )),
+            (false, true) => Some(format!("Account has only {} hours in TF2", hours)),
             _ => None,
         }
     }
