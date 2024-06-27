@@ -19,7 +19,7 @@ use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, AppWin},
 };
-use background_image::{add_background_image, ImageDescription};
+use background_image::{draw_background_image, get_background_image_desc};
 use chat::add_chat;
 use eframe::egui::{self};
 use player_details_panel::add_player_details_panel;
@@ -65,10 +65,14 @@ impl eframe::App for AppWin {
 
         self.friendship_positions.clear();
 
-        let mut image_desc: Option<ImageDescription> = None;
+        egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
+            let image_desc = get_background_image_desc();
+
+            add_status_row(self, ui, &image_desc);
+        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            image_desc = Some(add_background_image(ui));
+            draw_background_image(ui);
 
             scoreboard::add_scoreboard(self, ui);
 
@@ -84,15 +88,6 @@ impl eframe::App for AppWin {
             }
         });
 
-        egui::TopBottomPanel::bottom("status")
-            .show(ctx, |ui| add_status_row(self, ui, &image_desc.unwrap()));
-
         ctx.request_repaint();
     }
 }
-
-// fn add_menu_row(ctx: &egui::Context) {
-//     egui::TopBottomPanel::top("menu").show(ctx, |ui| {
-//         ui.label("Menus...");
-//     });
-// }

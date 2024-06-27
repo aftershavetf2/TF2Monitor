@@ -7,7 +7,14 @@ pub struct ImageDescription {
 
 const BACKGROUND_IMAGE_BYTES: ImageSource = include_image!("../../images/scout_slingshot.jpg");
 
-pub fn add_background_image(ui: &mut eframe::egui::Ui) -> ImageDescription {
+pub fn get_background_image_desc() -> ImageDescription {
+    ImageDescription {
+        author: "die_salo".to_string(),
+        url: "https://www.instagram.com/p/CyrMyRos2xQ/?img_index=1".to_string(),
+    }
+}
+
+pub fn draw_background_image(ui: &mut eframe::egui::Ui) {
     let image = eframe::egui::Image::new(BACKGROUND_IMAGE_BYTES)
         // .maintain_aspect_ratio(true)
         .bg_fill(Color32::from_rgb(32, 32, 128))
@@ -18,9 +25,4 @@ pub fn add_background_image(ui: &mut eframe::egui::Ui) -> ImageDescription {
     // println!("rect_vec2: {:?}", rect_vec2);
     let rect = eframe::egui::Rect::from_min_size(Default::default(), rect_vec2);
     image.paint_at(ui, rect);
-
-    ImageDescription {
-        author: "die_salo".to_string(),
-        url: "https://www.instagram.com/p/CyrMyRos2xQ/?img_index=1".to_string(),
-    }
 }
