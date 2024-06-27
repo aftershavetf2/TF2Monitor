@@ -374,7 +374,7 @@ impl LobbyThread {
             if age.num_seconds() < RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS {
                 recently_left_to_keep.push(player.clone());
             } else {
-                log::info!("Player {} has left for good", player.name);
+                log::info!("Player {} is being deleted from recently list", player.name);
             }
         }
 
