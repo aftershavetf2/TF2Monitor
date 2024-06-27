@@ -372,6 +372,7 @@ impl LobbyThread {
 
             let age = when - player.last_seen;
             if age.num_seconds() < RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS {
+                // Keep the player in the recently list for a bit longer
                 recently_left_to_keep.push(player.clone());
             } else {
                 log::info!("Player {} is being deleted from recently list", player.name);
