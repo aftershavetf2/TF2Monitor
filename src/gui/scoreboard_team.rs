@@ -9,7 +9,7 @@ use crate::{
     models::{steamid::SteamID, AppWin},
     tf2::lobby::{Player, Team},
 };
-use eframe::egui::{Align, Color32, Grid, Layout, Sense, Ui, Vec2};
+use eframe::egui::{Align, Color32, CursorIcon, Grid, Layout, Sense, Ui, Vec2};
 
 pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: &Vec<&Player>) {
     ui.heading(format!("{} - {} players", title, players.len()));
@@ -149,12 +149,14 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                 // Player avatar and hover tooltip
                 if let Some(steam_info) = &player.steam_info {
                     ui.image(&steam_info.avatar)
+                        .on_hover_cursor(CursorIcon::Help)
                         .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
                 }
 
                 // Player name and hover tooltip
                 if ui
                     .label(&player.name)
+                    .on_hover_cursor(CursorIcon::Default)
                     .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
                     .clicked()
                 {
