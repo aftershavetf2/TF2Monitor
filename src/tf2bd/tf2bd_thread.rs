@@ -32,13 +32,12 @@ struct Tf2bdThread {
     lobby_bus_rx: BusReader<Lobby>,
     app_event_bus_rx: BusReader<AppEventMsg>,
 
+    app_settings: AppSettings,
+
     ruleset_handler: RulesetHandler,
 
     last_lobbty: Lobby,
     last_vote_time: Instant,
-
-    kick_bots: bool,
-    kick_cheaters: bool,
 }
 
 impl Tf2bdThread {
@@ -52,14 +51,14 @@ impl Tf2bdThread {
             bus: Arc::clone(bus),
             lobby_bus_rx,
             app_event_bus_rx,
+
+            app_settings: settings.clone(),
+
             ruleset_handler,
 
             last_lobbty: Lobby::new(settings.self_steamid64),
 
             last_vote_time: Instant::now(),
-
-            kick_bots: true,
-            kick_cheaters: false,
         }
     }
 
@@ -98,8 +97,7 @@ impl Tf2bdThread {
                 AppEventMsg::SetPlayerFlag(steamid, flag, enable) => {
                     self.set_player_flag(steamid, flag, enable)
                 }
-                AppEventMsg::KickBots(enable) => self.kick_bots = enable,
-                AppEventMsg::KickCheaters(enable) => self.kick_cheaters = enable,
+                AppEventMsg::UpdatedSettings(settings) => self.app_settings = settings,
             }
         }
     }
@@ -134,6 +132,10 @@ impl Tf2bdThread {
     }
 
     fn do_callvotes(&mut self) {
+        if !self.app_settings.kick_cheaters && !self.app_settings.kick_bots {
+            return;
+        }
+
         let passed_time = self.last_vote_time.elapsed().as_secs();
         if passed_time < VOTE_PERIOD_SECONDS {
             // log::info!("Not time yet to call a vote");
@@ -163,13 +165,13 @@ impl Tf2bdThread {
         let me = me.unwrap();
         let team = me.team;
 
-        if self.kick_bots {
+        if self.app_settings.kick_bots {
             if let Some(bot_to_kick) = self.find_player_in_team(team, PlayerFlag::Bot) {
                 return Some(bot_to_kick);
             }
         }
 
-        if self.kick_cheaters {
+        if self.app_settings.kick_cheaters {
             if let Some(cheater_to_kick) = self.find_player_in_team(team, PlayerFlag::Cheater) {
                 return Some(cheater_to_kick);
             }

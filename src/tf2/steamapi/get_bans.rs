@@ -39,9 +39,8 @@ struct PlayerBans {
 
     #[serde(rename = "NumberOfGameBans")]
     number_of_game_bans: u32,
-
-    #[serde(rename = "EconomyBan")]
-    economy_ban: String,
+    // #[serde(rename = "EconomyBan")]
+    // economy_ban: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,7 +77,7 @@ pub fn get_bans(steam_api_key: &String, steamids: Vec<SteamID>) -> Option<Vec<St
                             number_of_vac_bans: ban.number_of_vac_bans,
                             days_since_last_ban: ban.days_since_last_ban,
                             number_of_game_bans: ban.number_of_game_bans,
-                            economy_ban: ban.economy_ban.clone(),
+                            // economy_ban: ban.economy_ban.clone(),
                         })
                         .collect();
 

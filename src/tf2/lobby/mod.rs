@@ -141,9 +141,9 @@ pub struct PlayerKill {
 pub struct PlayerSteamInfo {
     pub steamid: SteamID,
     pub public_profile: bool,
-    pub name: String,
+    // pub name: String,
     pub avatar: String,
-    pub avatarmedium: String,
+    // pub avatarmedium: String,
     pub avatarfull: String,
     pub account_age: Option<DateTime<Local>>,
 }

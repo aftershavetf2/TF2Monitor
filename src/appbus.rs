@@ -1,5 +1,5 @@
 use crate::{
-    models::steamid::SteamID,
+    models::{app_settings::AppSettings, steamid::SteamID},
     tf2::{
         lobby::{Lobby, PlayerFlag},
         logfile::LogLine,
@@ -19,12 +19,11 @@ pub struct AppBus {
     /// The events mostly from the user interface.
     /// Many different parts of the application can listen to these events.
     pub app_event_bus: Bus<AppEventMsg>,
-
-    pub rcon_thread_handle: Option<std::thread::JoinHandle<()>>,
-    pub lobby_thread_handle: Option<std::thread::JoinHandle<()>>,
-    pub steamapi_thread_handle: Option<std::thread::JoinHandle<()>>,
-    pub logfile_watcher_thread_handle: Option<std::thread::JoinHandle<()>>,
-    pub tf2bd_thread_handle: Option<std::thread::JoinHandle<()>>,
+    // pub rcon_thread_handle: Option<std::thread::JoinHandle<()>>,
+    // pub lobby_thread_handle: Option<std::thread::JoinHandle<()>>,
+    // pub steamapi_thread_handle: Option<std::thread::JoinHandle<()>>,
+    // pub logfile_watcher_thread_handle: Option<std::thread::JoinHandle<()>>,
+    // pub tf2bd_thread_handle: Option<std::thread::JoinHandle<()>>,
 }
 
 impl Default for AppBus {
@@ -42,12 +41,11 @@ impl AppBus {
             steamapi_bus: Bus::new(10000),
             tf2bd_bus: Bus::new(10000),
             app_event_bus: Bus::new(1000),
-
-            rcon_thread_handle: None,
-            lobby_thread_handle: None,
-            steamapi_thread_handle: None,
-            logfile_watcher_thread_handle: None,
-            tf2bd_thread_handle: None,
+            // rcon_thread_handle: None,
+            // lobby_thread_handle: None,
+            // steamapi_thread_handle: None,
+            // logfile_watcher_thread_handle: None,
+            // tf2bd_thread_handle: None,
         }
     }
 
@@ -89,6 +87,5 @@ impl AppBus {
 pub enum AppEventMsg {
     /// Sets or removes a flag(Cheater, Exploiter, etc) for a SteamID
     SetPlayerFlag(SteamID, PlayerFlag, bool),
-    KickBots(bool),
-    KickCheaters(bool),
+    UpdatedSettings(AppSettings),
 }

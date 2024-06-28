@@ -28,8 +28,6 @@ pub struct LobbyThread {
     tf2bd_bus_rx: BusReader<Tf2bdMsg>,
     lobby: Lobby,
 
-    self_steamid: SteamID,
-
     last_status_header: DateTime<Local>,
 }
 
@@ -46,7 +44,6 @@ impl LobbyThread {
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
         Self {
-            self_steamid: settings.self_steamid64,
             bus: Arc::clone(bus),
             logfile_bus_rx,
             steamapi_bus_rx,

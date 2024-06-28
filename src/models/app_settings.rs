@@ -8,7 +8,7 @@ use std::process::exit;
 
 const SETTINGS_FILENAME: &str = "settings.json";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppSettings {
     pub log_filename: String,
     pub exe_filename: String,
@@ -24,6 +24,14 @@ pub struct AppSettings {
     pub rcon_password: String,
     pub rcon_ip: String,
     pub rcon_port: u16,
+
+    // View settings
+    pub show_friendship_indicators: bool,
+    pub show_crits: bool,
+
+    // Auto actions
+    pub kick_cheaters: bool,
+    pub kick_bots: bool,
 }
 
 impl Default for AppSettings {
@@ -41,6 +49,12 @@ impl Default for AppSettings {
             rcon_password: "rconpwd".to_string(),
             rcon_ip: "127.0.0.1".to_string(),
             rcon_port: 40434,
+
+            show_friendship_indicators: true,
+            show_crits: true,
+
+            kick_cheaters: false,
+            kick_bots: true,
         }
     }
 }

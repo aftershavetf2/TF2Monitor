@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use eframe::egui::{include_image, Color32, ImageSource};
 
 pub struct ImageDescription {

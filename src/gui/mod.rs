@@ -12,6 +12,7 @@ pub mod playtime;
 pub mod recently_left;
 pub mod scoreboard;
 pub mod scoreboard_team;
+pub mod top_menu;
 pub mod window_status_row;
 
 use self::friendship_indicators::add_friendship_indicators;
@@ -19,11 +20,12 @@ use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, AppWin},
 };
-use background_image::{draw_background_image, get_background_image_desc};
+use background_image::get_background_image_desc;
 use chat::add_chat;
 use eframe::egui::{self};
 use player_details_panel::add_player_details_panel;
 use std::sync::{Arc, Mutex};
+use top_menu::add_top_menu;
 use window_status_row::add_status_row;
 
 pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), eframe::Error> {
@@ -65,6 +67,10 @@ impl eframe::App for AppWin {
 
         self.friendship_positions.clear();
 
+        egui::TopBottomPanel::top("menu").show(ctx, |ui| {
+            add_top_menu(ui, self);
+        });
+
         egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
             let image_desc = get_background_image_desc();
 
@@ -72,7 +78,7 @@ impl eframe::App for AppWin {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            draw_background_image(ui);
+            // draw_background_image(ui);
 
             scoreboard::add_scoreboard(self, ui);
 
@@ -83,7 +89,7 @@ impl eframe::App for AppWin {
                 add_player_details_panel(self, &mut ui[1]);
             });
 
-            if self.show_friendships {
+            if self.app_settings.show_friendship_indicators {
                 add_friendship_indicators(self, ui);
             }
         });

@@ -21,12 +21,12 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         let total_crits_deaths = players.iter().map(|p| p.crit_deaths).sum::<u32>();
 
         ui.label(format!("Kills: {}", total_kills));
-        if app_win.show_crits {
+        if app_win.app_settings.show_crits {
             ui.colored_label(Color32::GRAY, format!("({})", total_crit_kills));
         }
 
         ui.label(format!("Deaths: {}", total_deaths));
-        if app_win.show_crits {
+        if app_win.app_settings.show_crits {
             ui.colored_label(Color32::GRAY, format!("({})", total_crits_deaths));
         }
     });
@@ -73,7 +73,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             ui.horizontal(|ui| {
                 ui.label(format!("{:3}", player.kills))
                     .on_hover_text("Number of kills");
-                if app_win.show_crits {
+                if app_win.app_settings.show_crits {
                     ui.colored_label(Color32::GRAY, format!("({})", player.crit_kills))
                         .on_hover_text("Number of crit kills");
                 }
@@ -84,7 +84,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 ui.label(format!("{:3}", player.deaths))
                     .on_hover_text("Number of deaths");
 
-                if app_win.show_crits {
+                if app_win.app_settings.show_crits {
                     ui.colored_label(Color32::GRAY, format!("({})", player.crit_deaths))
                         .on_hover_text("Number of deaths due to crits");
                 }

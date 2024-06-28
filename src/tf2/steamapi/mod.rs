@@ -37,11 +37,11 @@ pub struct SteamApi {
 #[derive(Debug, Clone, Deserialize)]
 pub struct SteamApiPlayer {
     pub steamid: String,
-    pub personaname: String,
+    // pub personaname: String,
     pub communityvisibilitystate: u8,
     // profileurl: String,
     pub avatar: String,
-    pub avatarmedium: String,
+    // pub avatarmedium: String,
     pub avatarfull: String,
     // avatarhash: String,
     pub timecreated: Option<u64>,
@@ -55,7 +55,7 @@ pub struct SteamPlayerBan {
     pub number_of_vac_bans: u32,
     pub days_since_last_ban: u32,
     pub number_of_game_bans: u32,
-    pub economy_ban: String,
+    // pub economy_ban: String,
 }
 
 impl SteamApi {

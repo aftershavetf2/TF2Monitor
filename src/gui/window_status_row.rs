@@ -1,8 +1,8 @@
-use super::{background_image::ImageDescription, image_creds::add_image_creds};
+use super::background_image::ImageDescription;
 use crate::models::AppWin;
 use eframe::egui::{Align, Layout, Ui};
 
-pub fn add_status_row(app_win: &AppWin, ui: &mut Ui, image_desc: &ImageDescription) {
+pub fn add_status_row(app_win: &AppWin, ui: &mut Ui, _image_desc: &ImageDescription) {
     ui.horizontal(|ui| {
         let lobby = &app_win.lobby;
         ui.label(format!(
@@ -11,12 +11,11 @@ pub fn add_status_row(app_win: &AppWin, ui: &mut Ui, image_desc: &ImageDescripti
             lobby.chat.len()
         ));
 
-        ui.label("Zoom with ctrl +/-");
-
         // ui.label("Status: Online");
 
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            add_image_creds(ui, image_desc);
+            ui.label("Zoom with ctrl +/-");
+            // add_image_creds(ui, image_desc);
         });
     });
 }

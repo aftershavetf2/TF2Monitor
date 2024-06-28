@@ -1,44 +1,11 @@
 use super::{recently_left::add_recently_left_players, scoreboard_team::scoreboard_team};
 use crate::{
-    appbus::AppEventMsg,
     models::AppWin,
     tf2::lobby::{Player, Team},
 };
 use eframe::egui::{Color32, Ui};
 
 pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
-    // Row with buttons
-    ui.horizontal(|ui| {
-        if ui.button("Swap team colors").clicked() {
-            app_win.swap_team_colors = !app_win.swap_team_colors;
-        }
-        ui.checkbox(&mut app_win.show_crits, "Show crits");
-        ui.checkbox(&mut app_win.show_friendships, "Show friendships");
-
-        if ui
-            .checkbox(&mut app_win.kick_cheaters, "Kick cheaters")
-            .changed()
-        {
-            app_win
-                .bus
-                .lock()
-                .unwrap()
-                .app_event_bus
-                .broadcast(AppEventMsg::KickCheaters(app_win.kick_cheaters))
-        }
-
-        if ui.checkbox(&mut app_win.kick_bots, "Kick bots").changed() {
-            app_win
-                .bus
-                .lock()
-                .unwrap()
-                .app_event_bus
-                .broadcast(AppEventMsg::KickBots(app_win.kick_bots))
-        }
-    });
-
-    ui.separator();
-
     // Player list, also check if there are teams at all
     let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
     sorted_players.sort_by(cmp_for_scoreboard);

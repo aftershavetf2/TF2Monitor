@@ -158,9 +158,9 @@ impl SteamApiThread {
                     let info = PlayerSteamInfo {
                         steamid,
                         public_profile,
-                        name: info.personaname.clone(),
+                        // name: info.personaname.clone(),
                         avatar: info.avatar.clone(),
-                        avatarmedium: info.avatarmedium.clone(),
+                        // avatarmedium: info.avatarmedium.clone(),
                         avatarfull: info.avatarfull.clone(),
                         account_age: info.get_account_age(),
                     };
