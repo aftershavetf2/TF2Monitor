@@ -111,19 +111,17 @@ impl AppSettings {
         let settings: AppSettings = serde_json::from_str(&json).unwrap();
 
         log::info!("Settings loaded from file {}", SETTINGS_FILENAME);
-        log::info!("\n{}", json);
+        log::info!(
+            "Settings: \n{}",
+            serde_json::to_string_pretty(&settings).unwrap()
+        );
+
+        settings.save();
 
         if !settings.validate_settings() {
             log::info!("Settings are not valid.");
             exit(1);
         }
-
-        log::info!(
-            "Settings used: \n{}",
-            serde_json::to_string_pretty(&settings).unwrap()
-        );
-
-        settings.save();
 
         Ok(settings)
     }
