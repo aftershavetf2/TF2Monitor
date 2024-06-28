@@ -8,6 +8,10 @@ use std::process::exit;
 
 const SETTINGS_FILENAME: &str = "settings.json";
 
+fn get_true() -> bool {
+    true
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppSettings {
     pub log_filename: String,
@@ -26,11 +30,17 @@ pub struct AppSettings {
     pub rcon_port: u16,
 
     // View settings
+    #[serde(default = "get_true")]
     pub show_friendship_indicators: bool,
+
+    #[serde(default = "get_true")]
     pub show_crits: bool,
 
     // Auto actions
+    #[serde(default = "bool::default")]
     pub kick_cheaters: bool,
+
+    #[serde(default = "get_true")]
     pub kick_bots: bool,
 }
 
@@ -107,6 +117,13 @@ impl AppSettings {
             log::info!("Settings are not valid.");
             exit(1);
         }
+
+        log::info!(
+            "Settings used: \n{}",
+            serde_json::to_string_pretty(&settings).unwrap()
+        );
+
+        settings.save();
 
         Ok(settings)
     }
