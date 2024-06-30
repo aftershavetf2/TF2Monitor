@@ -12,6 +12,7 @@ use std::collections::HashSet;
 
 #[derive(Default, Debug, Clone)]
 pub struct Lobby {
+    pub lobby_id: String,
     pub self_steamid: SteamID,
     pub players: Vec<Player>,
     pub chat: Vec<LobbyChat>,
@@ -214,6 +215,7 @@ impl PlayerSteamInfo {
 impl Lobby {
     pub fn new(self_steamid: SteamID) -> Self {
         Self {
+            lobby_id: Local::now().format("%Y-%m-%d").to_string(),
             self_steamid,
             players: Vec::new(),
             chat: Vec::new(),

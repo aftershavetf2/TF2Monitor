@@ -187,6 +187,8 @@ impl LobbyThread {
                 .join(", ")
         );
 
+        self.lobby.lobby_id = Local::now().format("%Y-%m-%d").to_string();
+
         self.lobby.players.clear();
         self.lobby.chat.clear();
     }

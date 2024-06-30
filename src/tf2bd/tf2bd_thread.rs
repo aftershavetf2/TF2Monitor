@@ -1,11 +1,12 @@
 use super::{models::PlayerAttribute, ruleset_handler::RulesetHandler, Tf2bdMsg};
 use crate::{
     appbus::{AppBus, AppEventMsg},
-    models::app_settings::AppSettings,
+    models::{app_settings::AppSettings, steamid::SteamID},
     tf2::lobby::{Lobby, Player, Team},
 };
 use bus::BusReader;
 use std::{
+    collections::HashSet,
     sync::{Arc, Mutex},
     thread::{self, sleep},
     time::Instant,
@@ -35,6 +36,8 @@ struct Tf2bdThread {
 
     last_lobbty: Lobby,
     last_vote_time: Instant,
+
+    notifications_send: HashSet<SteamID>,
 }
 
 impl Tf2bdThread {
@@ -56,6 +59,8 @@ impl Tf2bdThread {
             last_lobbty: Lobby::new(settings.self_steamid64),
 
             last_vote_time: Instant::now(),
+
+            notifications_send: HashSet::new(),
         }
     }
 
@@ -66,6 +71,7 @@ impl Tf2bdThread {
             self.process_bus();
 
             self.apply_rules_to_lobby();
+            self.send_notifications();
 
             self.do_callvotes();
 
@@ -84,6 +90,11 @@ impl Tf2bdThread {
 
     fn process_lobby_bus(&mut self) {
         while let Ok(lobby) = self.lobby_bus_rx.try_recv() {
+            if self.last_lobbty.lobby_id != lobby.lobby_id {
+                log::info!("New lobby detected: {}", lobby.lobby_id);
+                self.notifications_send.clear();
+            }
+
             self.last_lobbty = lobby;
         }
     }
@@ -118,8 +129,11 @@ impl Tf2bdThread {
 
     fn apply_rules_to_lobby(&mut self) {
         for player in &self.last_lobbty.players {
-            let data = self.ruleset_handler.get_player_marking(&player.steamid);
-            self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.cloned()));
+            let data = self
+                .ruleset_handler
+                .get_player_marking(&player.steamid)
+                .cloned();
+            self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data));
         }
     }
 
@@ -200,5 +214,36 @@ impl Tf2bdThread {
         }
 
         false
+    }
+
+    fn send_notifications(&mut self) {
+        for player in &self.last_lobbty.players {
+            let player_info = self
+                .ruleset_handler
+                .get_player_marking(&player.steamid)
+                .cloned();
+            if let Some(player_info) = player_info {
+                if !self.notifications_send.contains(&player.steamid) {
+                    let is_dodgy = player_info.attributes.contains(&PlayerAttribute::Cheater)
+                        || player_info.attributes.contains(&PlayerAttribute::Bot);
+
+                    if is_dodgy {
+                        log::info!(
+                            "Informing party about flags {:?} on player {}",
+                            player_info.attributes,
+                            player.name
+                        );
+
+                        let cmd = format!(
+                            "say_party \"Player {} is marked as {:?}\"",
+                            player.name, player_info.attributes
+                        );
+                        self.bus.lock().unwrap().send_rcon_cmd(cmd.as_str());
+                    }
+
+                    self.notifications_send.insert(player.steamid);
+                }
+            }
+        }
     }
 }
