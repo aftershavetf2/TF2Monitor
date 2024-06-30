@@ -2,10 +2,13 @@ pub mod friendships;
 pub mod lobby_thread;
 
 use super::steamapi::SteamPlayerBan;
-use crate::models::steamid::SteamID;
+use crate::{
+    models::steamid::SteamID,
+    tf2bd::models::{PlayerAttribute, PlayerInfo},
+};
 use chrono::{DateTime, Local};
 use friendships::Friendships;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 #[derive(Default, Debug, Clone)]
 pub struct Lobby {
@@ -90,36 +93,7 @@ pub struct Player {
     // This is the PlayerFlags(Cheater etc) for the player
     // The String is the source of the flags.
     // The source is filename of the rules file that set the flags.
-    pub flags: HashMap<String, PlayerMarking>,
-}
-
-#[derive(Debug, Clone)]
-pub struct PlayerMarking {
-    /// The rules file which resulted in this marking
-    pub source: String,
-
-    /// Some rules files may suggest a marking,
-    /// but it is not enforced unless the user
-    /// adds the rule file as trusted
-    pub suggestion: bool,
-
-    /*
-       /// Any comment on why the player was marked
-       pub reason: String,
-
-    */
-    /// The actual flags that were set
-    pub flags: HashSet<PlayerFlag>,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum PlayerFlag {
-    Cool,
-    Cheater,
-    Bot,
-    Suspicious,
-    Toxic,
-    Exploiter,
+    pub player_info: Option<PlayerInfo>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -273,13 +247,13 @@ impl Lobby {
     }
 }
 
-pub fn flag_description(flag: PlayerFlag) -> &'static str {
-    match flag {
-        PlayerFlag::Cool => "Cool",
-        PlayerFlag::Cheater => "Cheater",
-        PlayerFlag::Bot => "Bot",
-        PlayerFlag::Suspicious => "Suspicious",
-        PlayerFlag::Toxic => "Toxic",
-        PlayerFlag::Exploiter => "Exploiter",
+pub fn player_attribute_description(player_attribute: PlayerAttribute) -> &'static str {
+    match player_attribute {
+        PlayerAttribute::Cool => "Cool",
+        PlayerAttribute::Cheater => "Cheater",
+        PlayerAttribute::Bot => "Bot",
+        PlayerAttribute::Suspicious => "Suspicious",
+        PlayerAttribute::Toxic => "Toxic",
+        PlayerAttribute::Exploiter => "Exploiter",
     }
 }

@@ -1,11 +1,11 @@
 use crate::{
-    models::{app_settings::AppSettings, steamid::SteamID},
+    models::app_settings::AppSettings,
     tf2::{
-        lobby::{Lobby, PlayerFlag},
+        lobby::{Lobby, Player},
         logfile::LogLine,
         steamapi::SteamApiMsg,
     },
-    tf2bd::Tf2bdMsg,
+    tf2bd::{models::PlayerAttribute, Tf2bdMsg},
 };
 use bus::Bus;
 
@@ -86,6 +86,6 @@ impl AppBus {
 #[derive(Debug, Clone)]
 pub enum AppEventMsg {
     /// Sets or removes a flag(Cheater, Exploiter, etc) for a SteamID
-    SetPlayerFlag(SteamID, PlayerFlag, bool),
+    SetPlayerFlag(Player, PlayerAttribute, bool),
     UpdatedSettings(AppSettings),
 }

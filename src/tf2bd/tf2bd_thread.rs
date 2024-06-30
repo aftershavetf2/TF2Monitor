@@ -1,11 +1,8 @@
-use super::{ruleset_handler::RulesetHandler, Tf2bdMsg};
+use super::{models::PlayerAttribute, ruleset_handler::RulesetHandler, Tf2bdMsg};
 use crate::{
     appbus::{AppBus, AppEventMsg},
-    models::{
-        app_settings::AppSettings,
-        steamid::{self},
-    },
-    tf2::lobby::{Lobby, Player, PlayerFlag, Team},
+    models::app_settings::AppSettings,
+    tf2::lobby::{Lobby, Player, Team},
 };
 use bus::BusReader;
 use std::{
@@ -94,40 +91,35 @@ impl Tf2bdThread {
     fn process_app_event_bus(&mut self) {
         while let Ok(app_event) = self.app_event_bus_rx.try_recv() {
             match app_event {
-                AppEventMsg::SetPlayerFlag(steamid, flag, enable) => {
-                    self.set_player_flag(steamid, flag, enable)
+                AppEventMsg::SetPlayerFlag(player, flag, enable) => {
+                    self.set_player_flag(player, flag, enable)
                 }
                 AppEventMsg::UpdatedSettings(settings) => self.app_settings = settings,
             }
         }
     }
 
-    fn set_player_flag(&mut self, steamid: steamid::SteamID, flag: PlayerFlag, enable: bool) {
+    fn set_player_flag(&mut self, player: Player, player_attribute: PlayerAttribute, enable: bool) {
         log::info!(
-            "Setting player flag {:?} for {} to {}",
-            flag,
-            steamid.to_u64(),
+            "Setting player attribute {:?} for {}({}) to {}",
+            player_attribute,
+            player.name,
+            player.steamid.to_u64(),
             enable
         );
-        self.ruleset_handler.set_player_flags(steamid, flag, enable);
 
         // Send out the updated marking
-        let data = self.ruleset_handler.get_player_marking(&steamid);
-        self.send(Tf2bdMsg::Tf2bdPlayerMarking(
-            steamid,
-            self.ruleset_handler.source.clone(),
-            data.cloned(),
-        ));
+        let data = self.ruleset_handler.get_player_marking(&player.steamid);
+        self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.cloned()));
+
+        self.ruleset_handler
+            .set_player_flags(player, player_attribute, enable);
     }
 
     fn apply_rules_to_lobby(&mut self) {
         for player in &self.last_lobbty.players {
             let data = self.ruleset_handler.get_player_marking(&player.steamid);
-            self.send(Tf2bdMsg::Tf2bdPlayerMarking(
-                player.steamid,
-                self.ruleset_handler.source.clone(),
-                data.cloned(),
-            ));
+            self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.cloned()));
         }
     }
 
@@ -166,13 +158,14 @@ impl Tf2bdThread {
         let team = me.team;
 
         if self.app_settings.kick_bots {
-            if let Some(bot_to_kick) = self.find_player_in_team(team, PlayerFlag::Bot) {
+            if let Some(bot_to_kick) = self.find_player_in_team(team, PlayerAttribute::Bot) {
                 return Some(bot_to_kick);
             }
         }
 
         if self.app_settings.kick_cheaters {
-            if let Some(cheater_to_kick) = self.find_player_in_team(team, PlayerFlag::Cheater) {
+            if let Some(cheater_to_kick) = self.find_player_in_team(team, PlayerAttribute::Cheater)
+            {
                 return Some(cheater_to_kick);
             }
         }
@@ -180,29 +173,28 @@ impl Tf2bdThread {
         None
     }
 
-    fn find_player_in_team(&self, team: Team, flag: PlayerFlag) -> Option<&Player> {
+    fn find_player_in_team(
+        &self,
+        team: Team,
+        player_attribute: PlayerAttribute,
+    ) -> Option<&Player> {
         let candidates: Vec<&Player> = self
             .last_lobbty
             .players
             .iter()
-            .filter(|player| Self::ok_to_kick(player, team, flag))
+            .filter(|player| Self::ok_to_kick(player, team, player_attribute))
             .collect();
 
         candidates.first().copied()
     }
 
-    fn ok_to_kick(player: &Player, team: Team, flag: PlayerFlag) -> bool {
+    fn ok_to_kick(player: &Player, team: Team, player_attribute: PlayerAttribute) -> bool {
         if player.team != team {
             return false;
         }
 
-        for marking in player.flags.values() {
-            if marking.suggestion {
-                // This marking was just a suggestion from some rule set
-                continue;
-            }
-
-            if marking.flags.contains(&flag) {
+        if let Some(player_info) = &player.player_info {
+            if player_info.attributes.contains(&player_attribute) {
                 return true;
             }
         }

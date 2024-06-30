@@ -75,13 +75,9 @@ impl LobbyThread {
         log::debug!("Processing tf2bd bus");
         while let Ok(msg) = self.tf2bd_bus_rx.try_recv() {
             match msg {
-                Tf2bdMsg::Tf2bdPlayerMarking(steamid, source, marking) => {
+                Tf2bdMsg::Tf2bdPlayerMarking(steamid, player_info) => {
                     if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
-                        if let Some(marking) = marking {
-                            player.flags.insert(source.clone(), marking);
-                        } else {
-                            player.flags.remove(&source);
-                        }
+                        player.player_info = player_info;
                     }
                 }
             }
@@ -223,7 +219,7 @@ impl LobbyThread {
                 tf2_play_minutes: Tf2PlayMinutes::Loading,
                 steam_bans: None,
                 account_age: AccountAge::Loading,
-                flags: Default::default(),
+                player_info: None,
             });
         }
     }
