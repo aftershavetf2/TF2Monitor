@@ -1,4 +1,5 @@
 use super::steamid::SteamID;
+use crate::tf2bd::models::PlayerAttribute;
 use crate::utils::BoxResult;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -10,6 +11,10 @@ const SETTINGS_FILENAME: &str = "settings.json";
 
 fn get_true() -> bool {
     true
+}
+
+fn default_party_notifications_for() -> Vec<PlayerAttribute> {
+    vec![PlayerAttribute::Cheater, PlayerAttribute::Bot]
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -42,6 +47,9 @@ pub struct AppSettings {
 
     #[serde(default = "get_true")]
     pub kick_bots: bool,
+
+    #[serde(default = "default_party_notifications_for")]
+    pub party_notifications_for: Vec<PlayerAttribute>,
 }
 
 impl Default for AppSettings {
@@ -65,6 +73,8 @@ impl Default for AppSettings {
 
             kick_cheaters: false,
             kick_bots: true,
+
+            party_notifications_for: default_party_notifications_for(),
         }
     }
 }

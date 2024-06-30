@@ -1,4 +1,4 @@
-use crate::models::AppWin;
+use crate::{models::AppWin, tf2bd::models::PlayerAttribute};
 use eframe::egui::{menu, Ui, ViewportCommand};
 
 /*
@@ -69,12 +69,44 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             {
                 app_win.updated_settings();
             }
-        });
 
-        // ui.menu_button("View", |ui| {
-        //     if ui.button("Swap team colors").clicked() {
-        //         // Do nothing right now
-        //     }
-        // });
+            ui.separator();
+
+            ui.label("Notify party about joining:");
+
+            let player_attributes_to_show = vec![
+                // PlayerAttribute::Cool,
+                PlayerAttribute::Cheater,
+                PlayerAttribute::Bot,
+                PlayerAttribute::Suspicious,
+                PlayerAttribute::Toxic,
+                PlayerAttribute::Exploiter,
+            ];
+
+            for player_attribute in player_attributes_to_show {
+                let mut enabled = app_win
+                    .app_settings
+                    .party_notifications_for
+                    .contains(&player_attribute);
+                if ui
+                    .checkbox(&mut enabled, format!(" {:?}", player_attribute))
+                    .changed()
+                {
+                    app_win
+                        .app_settings
+                        .party_notifications_for
+                        .retain(|&x| x != player_attribute);
+
+                    if enabled {
+                        app_win
+                            .app_settings
+                            .party_notifications_for
+                            .push(player_attribute);
+                    }
+
+                    app_win.updated_settings();
+                }
+            }
+        });
     });
 }
