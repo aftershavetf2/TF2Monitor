@@ -1,11 +1,14 @@
 # TODO
 
+- Icon for .exe
 - Settings window / editor
-- Change cursor when hovering on clickable items
-- Distribute AppSettings over bus when it changes
+- Setup steps at first startup
+- Change cursor for hovering on clickable items
+- Build Windows binaries on GitHub Actions
+- Auto-update the exe
+  - Use https://crates.io/crates/self_update ?
+- Releases
 
 # Future
 
-- Build Windows binaries on GitHub Actions
-- Auto-update using https://crates.io/crates/self_update ?
 - Parse in real-time demo file in addition to/instead of console.log. https://github.com/demostf/parser
