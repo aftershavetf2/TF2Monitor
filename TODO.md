@@ -8,6 +8,7 @@
 - Auto-update the exe
   - Use https://crates.io/crates/self_update ?
 - Releases
+- Functionality to start TF2 from app
 
 # Future
 
