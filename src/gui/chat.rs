@@ -41,20 +41,12 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, row: usize) {
             player_name = &player.name;
             team = player.team;
 
-            if app_win.swap_team_colors {
-                team = match player.team {
-                    Team::Invaders => Team::Defendes,
-                    Team::Defendes => Team::Invaders,
-                    x => x,
-                }
-            }
-
             add_flags(ui, player);
         }
 
         let color = match team {
-            Team::Invaders => CHAT_BLU_COLOR,
-            Team::Defendes => CHAT_RED_COLOR,
+            Team::Blue => CHAT_BLU_COLOR,
+            Team::Red => CHAT_RED_COLOR,
             _ => Color32::GRAY,
         };
 

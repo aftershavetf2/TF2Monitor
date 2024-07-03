@@ -30,13 +30,6 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
         });
 
         ui.menu_button("View", |ui| {
-            if ui.button("Swap team colors").clicked() {
-                app_win.swap_team_colors = !app_win.swap_team_colors;
-                app_win.updated_settings();
-            }
-
-            ui.separator();
-
             if ui
                 .checkbox(&mut app_win.app_settings.show_crits, "Show crits")
                 .changed()

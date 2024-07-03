@@ -22,7 +22,6 @@ pub struct AppWin {
     pub lobby_report_bus_rx: BusReader<Lobby>,
 
     pub self_steamid: SteamID,
-    pub swap_team_colors: bool,
     pub selected_player: Option<SteamID>,
 
     // When drawing the scoreboard, we remember the center positions of each player's team indicator.
@@ -39,7 +38,6 @@ impl AppWin {
 
             lobby: Lobby::new(settings.self_steamid64),
             lobby_report_bus_rx: bus.lock().unwrap().lobby_report_bus.add_rx(),
-            swap_team_colors: false,
             self_steamid: settings.self_steamid64,
             selected_player: None,
 

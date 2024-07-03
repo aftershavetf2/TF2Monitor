@@ -169,8 +169,8 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
 
 fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, player: &Player) {
     let color = match player.team {
-        Team::Invaders => TEAM_BLU_COLOR,
-        Team::Defendes => TEAM_RED_COLOR,
+        Team::Blue => TEAM_BLU_COLOR,
+        Team::Red => TEAM_RED_COLOR,
         _ => Color32::GRAY,
     };
 

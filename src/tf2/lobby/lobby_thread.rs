@@ -1,6 +1,7 @@
 use super::Lobby;
-use super::{LobbyChat, Player, PlayerKill, Team};
-use crate::tf2::lobby::{AccountAge, Tf2PlayMinutes};
+use super::{LobbyChat, Player, PlayerKill};
+use crate::tf2::lobby::AccountAge;
+use crate::tf2::rcon::g15_dumpplayer_parser::{G15DumpPlayerOutput, G15PlayerData};
 use crate::tf2::steamapi::SteamApiMsg;
 use crate::tf2bd::Tf2bdMsg;
 use crate::{
@@ -10,6 +11,7 @@ use crate::{
 };
 use bus::BusReader;
 use chrono::prelude::*;
+use std::collections::HashSet;
 use std::{
     sync::{Arc, Mutex},
     thread::{self, sleep},
@@ -26,9 +28,8 @@ pub struct LobbyThread {
     logfile_bus_rx: BusReader<LogLine>,
     steamapi_bus_rx: BusReader<SteamApiMsg>,
     tf2bd_bus_rx: BusReader<Tf2bdMsg>,
+    g15_bus_rx: BusReader<G15DumpPlayerOutput>,
     lobby: Lobby,
-
-    last_status_header: DateTime<Local>,
 }
 
 /// Start the background thread for the lobby module
@@ -43,13 +44,15 @@ impl LobbyThread {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
+        let g15_bus_rx = bus.lock().unwrap().g15_report_bus.add_rx();
+
         Self {
             bus: Arc::clone(bus),
             logfile_bus_rx,
             steamapi_bus_rx,
             tf2bd_bus_rx,
+            g15_bus_rx,
             lobby: Lobby::new(settings.self_steamid64),
-            last_status_header: Local::now(),
         }
     }
 
@@ -66,9 +69,75 @@ impl LobbyThread {
     }
 
     fn process_bus(&mut self) {
+        self.purge_old_players();
+        self.process_g15_bus();
         self.process_logfile_bus();
         self.process_steamapi_bus();
         self.process_tf2bd_bus();
+    }
+
+    fn process_g15_bus(&mut self) {
+        log::debug!("Processing g15 bus");
+        while let Ok(g15_dump) = self.g15_bus_rx.try_recv() {
+            self.process_g15_dump(g15_dump);
+        }
+    }
+
+    fn process_g15_dump(&mut self, g15_dump: G15DumpPlayerOutput) {
+        let now = Local::now();
+
+        // Merge data from the G15 dump into the lobby
+        for player in g15_dump.players.iter() {
+            if let Some(lobby_player) = self.lobby.get_player_mut(None, Some(player.steamid)) {
+                // Player already exists in the lobby
+                Self::merge_player_g15_data(lobby_player, player);
+                lobby_player.last_seen = now;
+            } else {
+                // Player is new, add it to the lobby
+                log::info!(
+                    "Player {} has joined",
+                    player.name.clone().unwrap_or("(unknown namne)".to_string())
+                );
+                let mut lobby_player = Player::default();
+                Self::merge_player_g15_data(&mut lobby_player, player);
+                lobby_player.last_seen = now;
+
+                self.lobby.players.push(lobby_player);
+            };
+        }
+
+        // Remove players from the lobby that are not in the G15 dump
+        let g15_steamids: HashSet<SteamID> = g15_dump.players.iter().map(|p| p.steamid).collect();
+        let mut players_to_keep: Vec<Player> = vec![];
+        for player in self.lobby.players.iter() {
+            if g15_steamids.contains(&player.steamid) {
+                players_to_keep.push(player.clone());
+            } else {
+                log::info!("Player {} has left", player.name);
+                self.lobby.recently_left_players.push(player.clone());
+            }
+        }
+        self.lobby.players = players_to_keep;
+    }
+
+    fn merge_player_g15_data(lobby_player: &mut Player, player: &G15PlayerData) {
+        lobby_player.steamid = player.steamid;
+
+        if player.id.is_some() {
+            lobby_player.id = player.id.unwrap();
+        }
+        if player.name.is_some() {
+            lobby_player.name = player.name.clone().unwrap();
+        }
+        if player.team.is_some() {
+            lobby_player.team = player.team.unwrap();
+        }
+        if player.alive.is_some() {
+            lobby_player.alive = player.alive.unwrap();
+        }
+        if player.ping.is_some() {
+            lobby_player.pingms = player.ping.unwrap();
+        }
     }
 
     fn process_tf2bd_bus(&mut self) {
@@ -132,13 +201,6 @@ impl LobbyThread {
         log::debug!("Processing logfile bus");
         while let Ok(cmd) = self.logfile_bus_rx.try_recv() {
             match cmd {
-                LogLine::StatusHeader { when } => self.purge_old_players(when),
-                LogLine::StatusForPlayer {
-                    when,
-                    id,
-                    name,
-                    steam_id32,
-                } => self.player_seen(when, id, name, steam_id32),
                 LogLine::Kill {
                     when,
                     killer,
@@ -156,7 +218,6 @@ impl LobbyThread {
                     dead,
                     team,
                 } => self.chat(when, name, message, dead, team),
-                LogLine::PlayerTeam { steam_id32, team } => self.assign_team(steam_id32, team),
             }
         }
     }
@@ -191,73 +252,6 @@ impl LobbyThread {
 
         self.lobby.players.clear();
         self.lobby.chat.clear();
-    }
-
-    /// Add this player to the list of players if not already added
-    fn player_seen(&mut self, when: DateTime<Local>, id: u32, name: String, steam_id32: String) {
-        // log::info!("Player seen: {} ({})", name, steam_id32);
-        let steamid = SteamID::from_steam_id32(steam_id32.as_str());
-
-        if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
-            // Update last_seen for existing player
-            player.id = id;
-            player.name.clone_from(&name);
-            player.last_seen = when;
-        } else {
-            // Add new player if not found in the list
-            self.lobby.players.push(Player {
-                id,
-                steamid,
-                name: name.clone(),
-                team: Team::Unknown,
-                kills: 0,
-                deaths: 0,
-                crit_kills: 0,
-                crit_deaths: 0,
-                kills_with: Vec::new(),
-                last_seen: when,
-                steam_info: None,
-                friends: None,
-                tf2_play_minutes: Tf2PlayMinutes::Loading,
-                steam_bans: None,
-                account_age: AccountAge::Loading,
-                player_info: None,
-            });
-        }
-    }
-
-    fn assign_team(&mut self, steam_id32: String, team: String) {
-        let steamid = SteamID::from_steam_id32(steam_id32.as_str());
-
-        let team = match team.as_str() {
-            "INVADERS" => Team::Invaders,
-            "DEFENDERS" => Team::Defendes,
-            "SPEC" => Team::Spec,
-            _ => Team::Unknown,
-        };
-
-        if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
-            player.team = team;
-        } else {
-            // Add new player if not found in the list
-            // self.lobby.players.push(Player {
-            //     id: 0,
-            //     steamid,
-            //     name: steam_id32.clone(),
-            //     team,
-            //     kills: 0,
-            //     deaths: 0,
-            //     crit_kills: 0,
-            //     crit_deaths: 0,
-            //     kills_with: Vec::new(),
-            //     last_seen: Local::now(),
-            //     steam_info: None,
-            //     friends: None,
-            //     tf2_play_minutes: None,
-            //     steam_bans: None,
-            //     flags: Default::default(),
-            // });
-        }
     }
 
     fn kill(
@@ -322,46 +316,23 @@ impl LobbyThread {
         }
     }
 
-    /// Players who has a last_seen older than 15 seconds are removed from the lobby
-    /// and instead added to the recently_left collection.
-    /// Recently_left players remain there until 30 seconds has passed.
-    fn purge_old_players(&mut self, when: DateTime<Local>) {
-        let mut players_to_keep: Vec<Player> = vec![];
-        for player in self.lobby.players.iter_mut() {
-            if player.last_seen >= self.last_status_header {
-                // Player is still active, keep it
-                players_to_keep.push(player.clone());
-            } else {
-                // Player has left the game
-                // Add to recently_left_players
-                // and update last_seen so it remains in the list for a while
+    // Go through the recently_left_players
+    // and remove those who are still active
+    // and remove those who are older than a certain seconds
+    fn purge_old_players(&mut self) {
+        let when = Local::now();
 
-                log::info!(
-                    "Player left: {}. Changing last_seen from {} to {}",
-                    player.name,
-                    player.last_seen,
-                    when
-                );
-                player.last_seen = when;
-                self.lobby.recently_left_players.push(player.clone());
-            }
-        }
+        let lobby_steamids: HashSet<SteamID> =
+            self.lobby.players.iter().map(|p| p.steamid).collect();
 
-        self.lobby.players = players_to_keep;
-
-        // Go through the recently_left_players
-        // and remove those who are still active
-        // and remove those who are older than a certain seconds
         let mut recently_left_to_keep: Vec<Player> = vec![];
         for player in self.lobby.recently_left_players.iter() {
-            if self
-                .lobby
-                .players
-                .iter()
-                .any(|p| p.steamid == player.steamid)
-            {
+            if lobby_steamids.contains(&player.steamid) {
                 // The player also exists in the active player list
-                log::info!("Player {} has returned", player.name);
+                log::info!(
+                    "Player {} has returned..............................",
+                    player.name
+                );
                 continue;
             }
 
@@ -375,7 +346,5 @@ impl LobbyThread {
         }
 
         self.lobby.recently_left_players = recently_left_to_keep;
-
-        self.last_status_header = when;
     }
 }

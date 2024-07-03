@@ -71,10 +71,12 @@ pub enum Tf2PlayMinutes {
 #[derive(Default, Debug, Clone)]
 pub struct Player {
     /// The player's ID in the lobby, used when votekicking etc
-    pub id: u32,
+    pub id: i64,
     pub steamid: SteamID,
     pub name: String,
     pub team: Team,
+    pub alive: bool,
+    pub pingms: i64,
     pub kills: u32,
     pub deaths: u32,
     pub crit_kills: u32,
@@ -101,9 +103,9 @@ pub struct Player {
 pub enum Team {
     #[default]
     Unknown,
-    Invaders,
-    Defendes,
     Spec,
+    Red,
+    Blue,
 }
 
 #[derive(Debug, Clone)]

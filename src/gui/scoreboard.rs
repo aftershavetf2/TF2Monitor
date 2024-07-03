@@ -10,23 +10,13 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
     let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
     sorted_players.sort_by(cmp_for_scoreboard);
 
-    if app_win.swap_team_colors {
-        sorted_players.iter_mut().for_each(|p| {
-            p.team = match p.team {
-                Team::Invaders => Team::Defendes,
-                Team::Defendes => Team::Invaders,
-                x => x,
-            }
-        });
-    }
-
     let blu_players: Vec<&Player> = sorted_players
         .iter()
-        .filter(|p| p.team == Team::Invaders)
+        .filter(|p| p.team == Team::Blue)
         .collect();
     let red_players: Vec<&Player> = sorted_players
         .iter()
-        .filter(|p| p.team == Team::Defendes)
+        .filter(|p| p.team == Team::Red)
         .collect();
     let spectator_players: Vec<&Player> = sorted_players
         .iter()

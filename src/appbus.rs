@@ -3,6 +3,7 @@ use crate::{
     tf2::{
         lobby::{Lobby, Player},
         logfile::LogLine,
+        rcon::g15_dumpplayer_parser::G15DumpPlayerOutput,
         steamapi::SteamApiMsg,
     },
     tf2bd::{models::PlayerAttribute, Tf2bdMsg},
@@ -13,6 +14,7 @@ pub struct AppBus {
     pub logfile_bus: Bus<LogLine>,
     pub rcon_bus: Bus<String>,
     pub lobby_report_bus: Bus<Lobby>,
+    pub g15_report_bus: Bus<G15DumpPlayerOutput>,
     pub steamapi_bus: Bus<SteamApiMsg>,
     pub tf2bd_bus: Bus<Tf2bdMsg>,
 
@@ -38,6 +40,7 @@ impl AppBus {
             logfile_bus: Bus::new(10000),
             rcon_bus: Bus::new(100),
             lobby_report_bus: Bus::new(5),
+            g15_report_bus: Bus::new(100),
             steamapi_bus: Bus::new(10000),
             tf2bd_bus: Bus::new(10000),
             app_event_bus: Bus::new(1000),

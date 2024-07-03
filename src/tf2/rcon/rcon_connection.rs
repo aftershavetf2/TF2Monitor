@@ -207,6 +207,6 @@ impl RConConnection {
         let mut buf: Vec<u8> = vec![0; len];
         self.stream.read_exact(&mut buf)?;
 
-        Ok(String::from_utf8(buf)?)
+        Ok(String::from_utf8_lossy(&buf).to_string())
     }
 }

@@ -6,9 +6,7 @@ const TIMESTAMP_LEN: usize = 23;
 
 pub struct LogLineParser {
     killed_rx: Regex,
-    lobby_debug_rx: Regex,
     suicided_rx: Regex,
-    player_status_rx: Regex,
     chat_rx: Regex,
 }
 
@@ -20,26 +18,9 @@ impl Default for LogLineParser {
 
 impl LogLineParser {
     pub fn new() -> Self {
-        let player_statys_str = {
-            let id = r"\d{1,6}";
-            let name = r".+?";
-            let steamid32 = r"\[U:\d:\d{1,10}]";
-            let time = r"\d{1,3}:\d{2}(:\d{2})?";
-            let ping = r"\d{1,4}";
-            let loss = r"\d{1,3}";
-            let state = r"(spawning|active)";
-            format!(
-                r#"^#\s{{1,6}}({id}) "({name})"\s+({steamid32})\s{{1,9}}{time}\s+{ping}\s{{1,8}}{loss} {state}$"#
-            )
-        };
-
-        let lobby_debug_rx = r#"^\s{2}(Member|Pending)\[\d+]\s+(?P<sid>\[.+?]).+?TF_GC_TEAM_(?P<team>(DEFENDERS|INVADERS))\s{2}type\s=\sMATCH_PLAYER$"#;
-
         Self {
             killed_rx: Regex::new(r"^(.+?) killed (.+?) with (.+)(\.|\. \(crit\))$").unwrap(),
             suicided_rx: Regex::new(r"^(.+?) suicided.$").unwrap(),
-            player_status_rx: Regex::new(player_statys_str.as_str()).unwrap(),
-            lobby_debug_rx: Regex::new(lobby_debug_rx).unwrap(),
             chat_rx: Regex::new(r"^(.+?) :  (.+)$").unwrap(),
         }
     }
@@ -50,22 +31,7 @@ impl LogLineParser {
             let when = when.unwrap();
             let line = &org_line[TIMESTAMP_LEN..];
 
-            let logobj = self.parse_tf_lobby_debug_line(when, line);
-            if logobj.is_some() {
-                return logobj;
-            }
-
             let logobj = self.parse_killed_line(when, line);
-            if logobj.is_some() {
-                return logobj;
-            }
-
-            let logobj = self.parse_status_header_line(when, line);
-            if logobj.is_some() {
-                return logobj;
-            }
-
-            let logobj = self.parse_status_player_line(when, line);
             if logobj.is_some() {
                 return logobj;
             }
@@ -123,24 +89,6 @@ impl LogLineParser {
         }
     }
 
-    pub fn parse_status_player_line(&self, when: DateTime<Local>, line: &str) -> Option<LogLine> {
-        let caps = self.player_status_rx.captures(line);
-        match caps {
-            Some(caps) => {
-                let id: u32 = caps.get(1).unwrap().as_str().to_string().parse().unwrap();
-                let name = caps.get(2).unwrap().as_str().to_string();
-                let steam_id32 = caps.get(3).unwrap().as_str().to_string();
-                Some(LogLine::StatusForPlayer {
-                    when,
-                    id,
-                    name,
-                    steam_id32,
-                })
-            }
-            None => None,
-        }
-    }
-
     pub fn parse_lobby_status_line(&self, when: DateTime<Local>, line: &str) -> Option<LogLine> {
         if line == "Lobby created" {
             return Some(LogLine::LobbyCreated { when });
@@ -182,30 +130,6 @@ impl LogLineParser {
                     dead,
                     team,
                 })
-            }
-            None => None,
-        }
-    }
-
-    pub fn parse_status_header_line(&self, when: DateTime<Local>, line: &str) -> Option<LogLine> {
-        const HEADER: &str =
-            "# userid name                uniqueid            connected ping loss state";
-        if line == HEADER {
-            return Some(LogLine::StatusHeader { when });
-        }
-
-        None
-    }
-
-    pub fn parse_tf_lobby_debug_line(&self, _when: DateTime<Local>, line: &str) -> Option<LogLine> {
-        let caps = self.lobby_debug_rx.captures(line);
-
-        match caps {
-            Some(caps) => {
-                let steam_id32 = caps["sid"].to_string();
-                let team = caps["team"].to_string().to_string();
-
-                Some(LogLine::PlayerTeam { steam_id32, team })
             }
             None => None,
         }
@@ -322,42 +246,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_status_player_line() {
-        let parser = LogLineParser::default();
-
-        let when = Local.with_ymd_and_hms(2024, 5, 8, 13, 30, 42).unwrap();
-        let line = r#"05/08/2024 - 13:30:42: #   1371 "Player1"           [U:1:169802]     10:03       85    0 active"#;
-        let result = parser.parse_line(line).unwrap();
-        assert_eq!(
-            result,
-            LogLine::StatusForPlayer {
-                when,
-                id: 1371,
-                name: "Player1".to_string(),
-                steam_id32: "[U:1:169802]".to_string()
-            }
-        );
-    }
-
-    #[test]
-    fn test_parse_status_player_line2() {
-        let parser = LogLineParser::default();
-
-        let when = Local.with_ymd_and_hms(2024, 6, 22, 12, 12, 31).unwrap();
-        let line = r#"#   1580 "Red."              [U:1:53518]         09:51       74    0 active"#;
-        let result = parser.parse_status_player_line(when, line).unwrap();
-        assert_eq!(
-            result,
-            LogLine::StatusForPlayer {
-                when,
-                id: 1580,
-                name: "Red.".to_string(),
-                steam_id32: "[U:1:53518]".to_string()
-            }
-        );
-    }
-
-    #[test]
     fn test_parse_lobby_status_line() {
         let parser = LogLineParser::default();
 
@@ -429,45 +317,6 @@ mod tests {
                 message: "hello again dead".to_string(),
                 dead: true,
                 team: true,
-            }
-        );
-    }
-
-    #[test]
-    fn test_parse_status_header() {
-        let parser = LogLineParser::default();
-
-        let line = r#"05/08/2024 - 14:25:11: # userid name                uniqueid            connected ping loss state"#;
-        let result = parser.parse_line(line).unwrap();
-        assert_eq!(
-            result,
-            LogLine::StatusHeader {
-                when: Local.with_ymd_and_hms(2024, 5, 8, 14, 25, 11).unwrap(),
-            }
-        );
-    }
-
-    #[test]
-    fn test_parse_tf_lobby_player_header() {
-        let parser = LogLineParser::default();
-
-        let line = r#"05/08/2024 - 14:25:11:   Member[23] [U:1:169802]  team = TF_GC_TEAM_DEFENDERS  type = MATCH_PLAYER"#;
-        let result = parser.parse_line(line).unwrap();
-        assert_eq!(
-            result,
-            LogLine::PlayerTeam {
-                steam_id32: "[U:1:169802]".to_string(),
-                team: "DEFENDERS".to_string(),
-            }
-        );
-
-        let line = r#"05/08/2024 - 14:25:11:   Member[23] [U:1:169802]  team = TF_GC_TEAM_INVADERS  type = MATCH_PLAYER"#;
-        let result = parser.parse_line(line).unwrap();
-        assert_eq!(
-            result,
-            LogLine::PlayerTeam {
-                steam_id32: "[U:1:169802]".to_string(),
-                team: "INVADERS".to_string(),
             }
         );
     }

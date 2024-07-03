@@ -7,32 +7,6 @@ use chrono::prelude::*;
 /// It's unprocessed data mostly, so it's names instead of SteamIDs.
 #[derive(Debug, PartialEq, Clone)]
 pub enum LogLine {
-    /// The output of the status command. The first line is the header, the following lines are player data.
-    // 05/08/2024 - 14:25:11: # userid name                uniqueid            connected ping loss state
-    StatusHeader {
-        /// Local time
-        when: DateTime<Local>,
-    },
-
-    /// 05/06/2024 - 17:15:24: #   2802 "Holy"              [U:1:169802]     34:11       56    0 active
-    StatusForPlayer {
-        /// Local time
-        when: DateTime<Local>,
-
-        // The player's id in the server.
-        id: u32,
-
-        // The player's name.
-        name: String,
-
-        /// The player's SteamID32 as a string.
-        steam_id32: String,
-    },
-
-    /// The output of tf_lobby_debug command
-    //   Member[1] [U:1:169802]  team = TF_GC_TEAM_DEFENDERS  type = MATCH_PLAYER
-    PlayerTeam { steam_id32: String, team: String },
-
     /// A player killed another player with a weapon, possibly a crit.
     /// Example:
     /// 05/06/2024 - 17:02:55: Player1 killed Player2 with iron_bomber. (crit)
