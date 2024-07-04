@@ -127,11 +127,16 @@ impl G15DumpPlayerParser {
     }
 
     fn get_names(&self, lines: &Vec<&str>) -> HashMap<u32, String> {
-        Self::get_strings(lines, &self.names_regex)
+        Self::get_strings(lines, &self.names_regex, "m_szName")
     }
 
     fn get_pings(&self, lines: &Vec<&str>) -> HashMap<u32, i64> {
-        Self::get_i64s(lines, &self.pings_regex, "Failed to parse m_iPing value")
+        Self::get_i64s(
+            lines,
+            &self.pings_regex,
+            "Failed to parse m_iPing value",
+            "m_iPing",
+        )
     }
 
     fn get_accountids(&self, lines: &Vec<&str>) -> HashMap<u32, i64> {
@@ -139,75 +144,112 @@ impl G15DumpPlayerParser {
             lines,
             &self.accountids_regex,
             "Failed to parse m_iAccountID value",
+            "m_iAccountID",
         )
     }
 
     fn get_alives(&self, lines: &Vec<&str>) -> HashMap<u32, bool> {
-        Self::get_bools(lines, &self.alives_regex, "Failed to parse m_bAlive value")
+        Self::get_bools(
+            lines,
+            &self.alives_regex,
+            "Failed to parse m_bAlive value",
+            "m_bAlive",
+        )
     }
 
     fn get_valids(&self, lines: &Vec<&str>) -> HashMap<u32, bool> {
-        Self::get_bools(lines, &self.valids_regex, "Failed to parse m_bValid value")
+        Self::get_bools(
+            lines,
+            &self.valids_regex,
+            "Failed to parse m_bValid value",
+            "m_bValid",
+        )
     }
 
     fn get_teams(&self, lines: &Vec<&str>) -> HashMap<u32, i64> {
-        Self::get_i64s(lines, &self.teams_regex, "Failed to parse m_iTeam value")
+        Self::get_i64s(
+            lines,
+            &self.teams_regex,
+            "Failed to parse m_iTeam value",
+            "m_iTeam",
+        )
     }
 
     fn get_ids(&self, lines: &Vec<&str>) -> HashMap<u32, i64> {
-        Self::get_i64s(lines, &self.ids_regex, "Failed to parse m_iUserID value")
+        Self::get_i64s(
+            lines,
+            &self.ids_regex,
+            "Failed to parse m_iUserID value",
+            "m_iUserID",
+        )
     }
 
     //
     // Helpers
     //
 
-    fn get_strings(lines: &Vec<&str>, regex: &Regex) -> HashMap<u32, String> {
+    fn get_strings(lines: &Vec<&str>, regex: &Regex, prefix: &str) -> HashMap<u32, String> {
         let mut result = HashMap::new();
 
         for line in lines {
-            if let Some(caps) = regex.captures(line) {
-                let id = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
-                let name = caps.get(2).unwrap().as_str().to_string();
-                result.insert(id, name);
+            if line.starts_with(prefix) {
+                if let Some(caps) = regex.captures(line) {
+                    let id = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
+                    let name = caps.get(2).unwrap().as_str().to_string();
+                    result.insert(id, name);
+                }
             }
         }
 
         result
     }
 
-    fn get_i64s(lines: &Vec<&str>, regex: &Regex, expect_str: &str) -> HashMap<u32, i64> {
+    fn get_i64s(
+        lines: &Vec<&str>,
+        regex: &Regex,
+        expect_str: &str,
+        prefix: &str,
+    ) -> HashMap<u32, i64> {
         let mut result = HashMap::new();
 
         for line in lines {
-            if let Some(caps) = regex.captures(line) {
-                let id = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
-                let value = caps
-                    .get(2)
-                    .unwrap()
-                    .as_str()
-                    .parse::<i64>()
-                    .expect(expect_str);
-                result.insert(id, value);
+            if line.starts_with(prefix) {
+                if let Some(caps) = regex.captures(line) {
+                    let id = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
+                    let value = caps
+                        .get(2)
+                        .unwrap()
+                        .as_str()
+                        .parse::<i64>()
+                        .expect(expect_str);
+                    result.insert(id, value);
+                }
             }
         }
 
         result
     }
 
-    fn get_bools(lines: &Vec<&str>, regex: &Regex, expect_str: &str) -> HashMap<u32, bool> {
+    fn get_bools(
+        lines: &Vec<&str>,
+        regex: &Regex,
+        expect_str: &str,
+        prefix: &str,
+    ) -> HashMap<u32, bool> {
         let mut result = HashMap::new();
 
         for line in lines {
-            if let Some(caps) = regex.captures(line) {
-                let id = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
-                let value = caps
-                    .get(2)
-                    .unwrap()
-                    .as_str()
-                    .parse::<bool>()
-                    .expect(expect_str);
-                result.insert(id, value);
+            if line.starts_with(prefix) {
+                if let Some(caps) = regex.captures(line) {
+                    let id = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
+                    let value = caps
+                        .get(2)
+                        .unwrap()
+                        .as_str()
+                        .parse::<bool>()
+                        .expect(expect_str);
+                    result.insert(id, value);
+                }
             }
         }
 
@@ -253,6 +295,9 @@ mod tests {
         assert_eq!(23, output.players[15].ping.unwrap());
     }
 
+    // Without the filter in parse() this took 17 seconds.
+    // With the filter in parse() it takes 10 seconds.
+    // With a .start_with(prefix) it takes 5 seconds.
     // #[test]
     // fn test_bench_parse() {
     //     let parser = G15DumpPlayerParser::new();
