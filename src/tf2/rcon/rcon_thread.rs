@@ -52,7 +52,17 @@ impl RconThread {
 
         loop {
             if let Some(reply) = self.send_rcon_command("g15_dumpplayer") {
+                let start_time = std::time::Instant::now();
+
                 let parsed_data = g15_dumpplayer_parser.parse(&reply);
+
+                let stop_time = std::time::Instant::now();
+                log::info!(
+                    "Parsing of g15_dumpplayer's {} chars reply took {:?}",
+                    reply.len(),
+                    stop_time - start_time
+                );
+
                 // log::info!("Parsed g15_dumpplayer: {:?}", parsed_data);
                 self.bus
                     .lock()
@@ -71,7 +81,7 @@ impl RconThread {
         match self.send_command_internal(cmd) {
             Ok(reply) => {
                 // log::info!("RCON '{}' replied: start'{}'end", cmd, reply);
-                log::info!("RCON command '{}' replied with {} chars", cmd, reply.len());
+                // log::info!("RCON command '{}' replied with {} chars", cmd, reply.len());
 
                 Some(reply)
             }
