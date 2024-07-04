@@ -262,10 +262,10 @@ mod tests {
     // use chrono::prelude::*;
 
     use super::*;
-    const BYTES: &[u8; 43620] = include_bytes!("g15_dumpplayer_output.txt");
 
     fn get_dump_text() -> String {
-        let s = String::from_utf8_lossy(BYTES);
+        let bytes = include_bytes!("g15_dumpplayer_output.txt");
+        let s = String::from_utf8_lossy(bytes);
         s.to_string()
     }
 
