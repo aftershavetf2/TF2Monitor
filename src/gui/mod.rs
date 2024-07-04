@@ -22,9 +22,13 @@ use crate::{
 };
 use background_image::get_background_image_desc;
 use chat::add_chat;
+use core::time::Duration;
 use eframe::egui::{self};
 use player_details_panel::add_player_details_panel;
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    thread::sleep,
+};
 use top_menu::add_top_menu;
 use window_status_row::add_status_row;
 
@@ -94,6 +98,9 @@ impl eframe::App for AppWin {
             }
         });
 
+        // This is a hack to make sure the app is repainted no faster than every 15ms
+        const DELAY: Duration = Duration::from_millis(15);
+        sleep(DELAY);
         ctx.request_repaint();
     }
 }
