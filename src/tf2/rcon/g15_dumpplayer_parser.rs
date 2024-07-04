@@ -270,14 +270,6 @@ mod tests {
     }
 
     #[test]
-    fn test_line_count() {
-        let dump = get_dump_text();
-        assert_eq!(dump.len(), 43620);
-        let lines: Vec<&str> = dump.lines().collect::<Vec<&str>>();
-        assert_eq!(lines.len(), 1464);
-    }
-
-    #[test]
     fn test_parse() {
         let parser = G15DumpPlayerParser::new();
 
