@@ -14,7 +14,7 @@ use std::{thread, time};
 use thread::sleep;
 
 /// The delay between loops in run()
-const LOOP_DELAY: Duration = time::Duration::from_millis(500);
+const LOOP_DELAY: Duration = time::Duration::from_millis(1000);
 
 // The delay between checking if the file exists
 const FILE_NOT_EXIST_DELAY: Duration = time::Duration::from_millis(10 * 1000);
