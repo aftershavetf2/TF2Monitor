@@ -60,8 +60,18 @@ impl G15DumpPlayerParser {
     }
 
     pub fn parse(&self, dump: &str) -> G15DumpPlayerOutput {
-        let lines: Vec<&str> = dump.lines().collect::<Vec<&str>>();
-        let mut result = G15DumpPlayerOutput::default();
+        let lines: Vec<&str> = dump
+            .lines()
+            .filter(|x| {
+                x.starts_with("m_szName[")
+                    || x.starts_with("m_iPing[")
+                    || x.starts_with("m_iAccountID[")
+                    || x.starts_with("m_bAlive[")
+                    || x.starts_with("m_bValid[")
+                    || x.starts_with("m_iTeam[")
+                    || x.starts_with("m_iUserID[")
+            })
+            .collect::<Vec<&str>>();
 
         let names = self.get_names(&lines);
         let accountids = self.get_accountids(&lines);
@@ -70,6 +80,8 @@ impl G15DumpPlayerParser {
         let valids = self.get_valids(&lines);
         let teams = self.get_teams(&lines);
         let ids = self.get_ids(&lines);
+
+        let mut result = G15DumpPlayerOutput::default();
 
         for i in 0u32..(valids.len() as u32) {
             if !valids.contains_key(&i)
@@ -208,10 +220,10 @@ mod tests {
     // use chrono::prelude::*;
 
     use super::*;
+    const BYTES: &[u8; 43620] = include_bytes!("g15_dumpplayer_output.txt");
 
     fn get_dump_text() -> String {
-        let bytes = include_bytes!("g15_dumpplayer_output.txt");
-        let s = String::from_utf8_lossy(bytes);
+        let s = String::from_utf8_lossy(BYTES);
         s.to_string()
     }
 
@@ -240,6 +252,23 @@ mod tests {
         assert_eq!(SteamID::from_u64(76561197974228301), player.steamid);
         assert_eq!(23, output.players[15].ping.unwrap());
     }
+
+    // #[test]
+    // fn test_bench_parse() {
+    //     let parser = G15DumpPlayerParser::new();
+
+    //     let dump = get_dump_text();
+
+    //     let start_time = std::time::Instant::now();
+    //     for _ in 0..1000 {
+    //         let _output = parser.parse(&dump);
+    //     }
+    //     let stop_time = std::time::Instant::now();
+    //     let elapsed = stop_time - start_time;
+    //     println!("Elapsed: {:?}", elapsed);
+
+    //     assert!(false);
+    // }
 
     #[test]
     fn test_get_names() {
