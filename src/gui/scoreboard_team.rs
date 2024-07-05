@@ -154,15 +154,15 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                 }
 
                 // Player name prefixed with DEAD is not alive
-                let name = if player.alive {
-                    player.name.clone()
+                let name_color = if player.alive {
+                    Color32::WHITE
                 } else {
-                    format!("(DEAD) {}", player.name)
+                    Color32::GRAY
                 };
 
                 // Player name and hover tooltip
                 if ui
-                    .label(name)
+                    .colored_label(name_color, player.name.clone())
                     .on_hover_cursor(CursorIcon::Default)
                     .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
                     .clicked()
