@@ -83,7 +83,11 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
 
             // Player kills
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                // ui.label(format!("{:3}", player.kills))
+                //     .on_hover_text("Number of kills (crit kills)");
+
                 let mut job = LayoutJob::default();
+                job.break_on_newline = false;
 
                 job.append(
                     format!("{:3}", player.kills).as_str(),
@@ -96,8 +100,8 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
 
                 if app_win.app_settings.show_crits {
                     job.append(
-                        format!(" ({})", player.crit_kills).as_str(),
-                        0.0,
+                        format!("({})", player.crit_kills).as_str(),
+                        6.0,
                         TextFormat {
                             color: Color32::GRAY,
                             ..Default::default()
