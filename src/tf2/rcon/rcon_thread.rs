@@ -63,12 +63,14 @@ impl RconThread {
                     stop_time - start_time
                 );
 
-                // log::info!("Parsed g15_dumpplayer: {:?}", parsed_data);
-                self.bus
-                    .lock()
-                    .unwrap()
-                    .g15_report_bus
-                    .broadcast(parsed_data);
+                if !parsed_data.players.is_empty() {
+                    // log::info!("Parsed g15_dumpplayer: {:?}", parsed_data);
+                    self.bus
+                        .lock()
+                        .unwrap()
+                        .g15_report_bus
+                        .broadcast(parsed_data);
+                }
             }
 
             self.process_bus();
