@@ -19,7 +19,7 @@ Players marked are saved in playerlist.json. The format is based on TF2BD file f
 
 # Discord
 
-https://discord.gg/d2G2UstY
+https://discord.gg/BBhH92t4
 
 # Screenshot
 
