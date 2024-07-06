@@ -77,6 +77,7 @@ pub struct Player {
     pub team: Team,
     pub alive: bool,
     pub pingms: i64,
+    pub score: i64,
     pub kills: u32,
     pub deaths: u32,
     pub crit_kills: u32,

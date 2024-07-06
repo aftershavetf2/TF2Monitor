@@ -138,6 +138,9 @@ impl LobbyThread {
         if player.ping.is_some() {
             lobby_player.pingms = player.ping.unwrap();
         }
+        if player.score.is_some() {
+            lobby_player.score = player.score.unwrap();
+        }
     }
 
     fn process_tf2bd_bus(&mut self) {

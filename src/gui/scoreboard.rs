@@ -73,9 +73,13 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
 }
 
 fn cmp_for_scoreboard(a: &Player, b: &Player) -> std::cmp::Ordering {
-    // Sort by team, kills(desc), deaths(desc), and lastly player name
+    // Sort by team, score(desc), kills(desc), deaths(asc), and lastly player name
     if a.team != b.team {
         return a.team.cmp(&b.team);
+    }
+
+    if a.score != b.score {
+        return a.score.cmp(&b.score).reverse();
     }
 
     if a.kills != b.kills {

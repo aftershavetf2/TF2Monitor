@@ -9,7 +9,9 @@ use crate::{
     models::{steamid::SteamID, AppWin},
     tf2::lobby::{Player, Team},
 };
-use eframe::egui::{Align, Color32, CursorIcon, Grid, Layout, Sense, Ui, Vec2};
+use eframe::egui::{
+    text::LayoutJob, Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2,
+};
 
 pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: &Vec<&Player>) {
     ui.heading(format!("{} - {} players", title, players.len()));
@@ -39,11 +41,15 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             // ui.label(RichText::new("Player").strong());
             ui.label("Player");
         });
-        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+            // ui.label(RichText::new("Kills").strong());
+            ui.label("Score");
+        });
+        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
             // ui.label(RichText::new("Kills").strong());
             ui.label("Kills");
         });
-        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
             // ui.label(RichText::new("Deaths").strong());
             ui.label("Deaths");
         });
@@ -69,25 +75,63 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
 
             add_player_name(app_win, ui, player);
 
+            // Player score
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.label(format!("{:3}", player.score))
+                    .on_hover_text("Score");
+            });
+
             // Player kills
-            ui.horizontal(|ui| {
-                ui.label(format!("{:3}", player.kills))
-                    .on_hover_text("Number of kills");
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                let mut job = LayoutJob::default();
+
+                job.append(
+                    format!("{:3}", player.kills).as_str(),
+                    0.0,
+                    TextFormat {
+                        color: ui.style().visuals.text_color(),
+                        ..Default::default()
+                    },
+                );
+
                 if app_win.app_settings.show_crits {
-                    ui.colored_label(Color32::GRAY, format!("({})", player.crit_kills))
-                        .on_hover_text("Number of crit kills");
+                    job.append(
+                        format!(" ({})", player.crit_kills).as_str(),
+                        0.0,
+                        TextFormat {
+                            color: Color32::GRAY,
+                            ..Default::default()
+                        },
+                    );
                 }
+                ui.label(job).on_hover_text("Number of kills (crit kills)");
             });
 
             // Player deaths
-            ui.horizontal(|ui| {
-                ui.label(format!("{:3}", player.deaths))
-                    .on_hover_text("Number of deaths");
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                let mut job = LayoutJob::default();
+
+                job.append(
+                    format!("{:3}", player.deaths).as_str(),
+                    0.0,
+                    TextFormat {
+                        color: ui.style().visuals.text_color(),
+                        ..Default::default()
+                    },
+                );
 
                 if app_win.app_settings.show_crits {
-                    ui.colored_label(Color32::GRAY, format!("({})", player.crit_deaths))
-                        .on_hover_text("Number of deaths due to crits");
+                    job.append(
+                        format!(" ({})", player.crit_deaths).as_str(),
+                        0.0,
+                        TextFormat {
+                            color: Color32::GRAY,
+                            ..Default::default()
+                        },
+                    );
                 }
+                ui.label(job)
+                    .on_hover_text("Number of deaths (crit deaths)");
             });
 
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {

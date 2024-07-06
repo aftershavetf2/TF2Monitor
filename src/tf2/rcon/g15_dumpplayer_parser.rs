@@ -21,6 +21,7 @@ pub struct G15PlayerData {
     pub ping: Option<i64>,
     pub alive: Option<bool>,
     pub team: Option<Team>,
+    pub score: Option<i64>,
 }
 
 pub struct G15DumpPlayerParser {
@@ -31,6 +32,7 @@ pub struct G15DumpPlayerParser {
     valids_regex: Regex,
     teams_regex: Regex,
     ids_regex: Regex,
+    scores_regex: Regex,
 }
 
 impl G15DumpPlayerParser {
@@ -56,6 +58,9 @@ impl G15DumpPlayerParser {
 
             // m_iUserID[10] integer (2688)
             ids_regex: Regex::new(r"^m_iUserID\[(\d+)\] integer \((\d+)\)$").unwrap(),
+
+            // m_iScore[10] integer (2688)
+            scores_regex: Regex::new(r"^m_iScore\[(\d+)\] integer \((\d+)\)$").unwrap(),
         }
     }
 
@@ -70,6 +75,7 @@ impl G15DumpPlayerParser {
                     || x.starts_with("m_bValid[")
                     || x.starts_with("m_iTeam[")
                     || x.starts_with("m_iUserID[")
+                    || x.starts_with("m_iScore[")
             })
             .collect::<Vec<&str>>();
 
@@ -80,6 +86,7 @@ impl G15DumpPlayerParser {
         let valids = self.get_valids(&lines);
         let teams = self.get_teams(&lines);
         let ids = self.get_ids(&lines);
+        let scores = self.get_scores(&lines);
 
         let mut result = G15DumpPlayerOutput::default();
 
@@ -91,6 +98,7 @@ impl G15DumpPlayerParser {
                 || !pings.contains_key(&i)
                 || !alives.contains_key(&i)
                 || !teams.contains_key(&i)
+                || !scores.contains_key(&i)
             {
                 continue;
             }
@@ -119,6 +127,7 @@ impl G15DumpPlayerParser {
                 ping: pings.get(&i).copied(),
                 alive: alives.get(&i).copied(),
                 team,
+                score: scores.get(&i).copied(),
             };
             result.players.push(player);
         }
@@ -181,6 +190,15 @@ impl G15DumpPlayerParser {
             &self.ids_regex,
             "Failed to parse m_iUserID value",
             "m_iUserID",
+        )
+    }
+
+    fn get_scores(&self, lines: &Vec<&str>) -> HashMap<u32, i64> {
+        Self::get_i64s(
+            lines,
+            &self.scores_regex,
+            "Failed to parse m_iScore value",
+            "m_iScore",
         )
     }
 
