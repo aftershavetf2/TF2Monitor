@@ -37,7 +37,7 @@ pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), efram
     let icon_data = Arc::new(eframe::icon_data::from_png_bytes(icon_image_bytes).unwrap());
 
     let viewport = egui::ViewportBuilder::default()
-        .with_inner_size([1024.0, 768.0])
+        .with_inner_size([1280.0, 768.0])
         .with_min_inner_size([800.0, 600.0])
         .with_icon(icon_data);
 
