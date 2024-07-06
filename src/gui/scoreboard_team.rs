@@ -41,10 +41,10 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             // ui.label(RichText::new("Player").strong());
             ui.label("Player");
         });
-        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            // ui.label(RichText::new("Kills").strong());
-            ui.label("Score");
-        });
+        // ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+        //     // ui.label(RichText::new("Kills").strong());
+        //     ui.label("Score");
+        // });
         ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
             // ui.label(RichText::new("Kills").strong());
             ui.label("Kills");
@@ -76,10 +76,10 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             add_player_name(app_win, ui, player);
 
             // Player score
-            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                ui.label(format!("{:3}", player.score))
-                    .on_hover_text("Score");
-            });
+            // ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+            //     ui.label(format!("{:3}", player.score))
+            //         .on_hover_text("Score");
+            // });
 
             // Player kills
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
@@ -112,7 +112,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 let mut job = LayoutJob::default();
 
                 job.append(
-                    format!("{:3}", player.deaths).as_str(),
+                    format!("{}", player.deaths).as_str(),
                     0.0,
                     TextFormat {
                         color: ui.style().visuals.text_color(),

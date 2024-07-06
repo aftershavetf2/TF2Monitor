@@ -78,9 +78,9 @@ fn cmp_for_scoreboard(a: &Player, b: &Player) -> std::cmp::Ordering {
         return a.team.cmp(&b.team);
     }
 
-    if a.score != b.score {
-        return a.score.cmp(&b.score).reverse();
-    }
+    // if a.score != b.score {
+    //     return a.score.cmp(&b.score).reverse();
+    // }
 
     if a.kills != b.kills {
         return a.kills.cmp(&b.kills).reverse();
