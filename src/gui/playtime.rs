@@ -7,7 +7,7 @@ pub fn add_playtime(ui: &mut Ui, player: &Player) {
             ui.spinner();
         }
         Tf2PlayMinutes::PlayMinutes(minutes) => {
-            ui.label(format!("{}", minutes / 60));
+            ui.label(format!("{}h", minutes / 60));
         }
         Tf2PlayMinutes::Unknown => {
             ui.colored_label(Color32::GRAY, "-");
