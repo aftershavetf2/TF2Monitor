@@ -1,5 +1,5 @@
 use crate::{models::AppWin, tf2bd::models::PlayerAttribute};
-use eframe::egui::{menu, Ui, ViewportCommand};
+use eframe::egui::{menu, TextBuffer, Ui, ViewportCommand};
 
 /*
 Menu structure:
@@ -99,6 +99,25 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
 
                     app_win.updated_settings();
                 }
+            }
+        });
+
+        ui.menu_button("Tools", |ui| {
+            if ui
+                .checkbox(&mut app_win.spectating, "Spectate players")
+                .changed()
+            {
+                let cmd = if app_win.spectating {
+                    "kill; menuopen"
+                } else {
+                    "menuclosed"
+                };
+
+                app_win.bus.lock().unwrap().send_rcon_cmd(cmd);
+            }
+
+            if ui.button("Restart sound").clicked() {
+                app_win.bus.lock().unwrap().send_rcon_cmd("snd_restart");
             }
         });
     });

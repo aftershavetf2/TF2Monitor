@@ -23,6 +23,7 @@ pub struct AppWin {
 
     pub self_steamid: SteamID,
     pub selected_player: Option<SteamID>,
+    pub spectating: bool,
 
     // When drawing the scoreboard, we remember the center positions of each player's team indicator.
     // This is used to draw friendship indicators between players.
@@ -40,6 +41,7 @@ impl AppWin {
             lobby_report_bus_rx: bus.lock().unwrap().lobby_report_bus.add_rx(),
             self_steamid: settings.self_steamid64,
             selected_player: None,
+            spectating: false,
 
             friendship_positions: HashMap::new(),
         }
