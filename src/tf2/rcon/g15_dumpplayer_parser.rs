@@ -16,12 +16,12 @@ pub struct G15DumpPlayerOutput {
 #[derive(Debug, Clone, Default)]
 pub struct G15PlayerData {
     pub steamid: SteamID,
-    pub id: Option<i64>,
-    pub name: Option<String>,
-    pub ping: Option<i64>,
-    pub alive: Option<bool>,
+    pub id: i64,
+    pub name: String,
+    pub ping: i64,
+    pub alive: bool,
     pub team: Option<Team>,
-    pub score: Option<i64>,
+    pub score: i64,
 }
 
 pub struct G15DumpPlayerParser {
@@ -91,43 +91,59 @@ impl G15DumpPlayerParser {
         let mut result = G15DumpPlayerOutput::default();
 
         for i in 0u32..(valids.len() as u32) {
-            if !valids.contains_key(&i)
-                || !accountids.contains_key(&i)
-                || !ids.contains_key(&i)
-                || !names.contains_key(&i)
-                || !pings.contains_key(&i)
-                || !alives.contains_key(&i)
-                || !teams.contains_key(&i)
-                || !scores.contains_key(&i)
+            let valid = valids.get(&i);
+            let accountid = accountids.get(&i);
+            let id = ids.get(&i);
+            let name = names.get(&i);
+            let ping = pings.get(&i);
+            let alive = alives.get(&i);
+            let team = teams.get(&i);
+            let score = scores.get(&i);
+
+            if valid.is_none()
+                || accountid.is_none()
+                || id.is_none()
+                || name.is_none()
+                || ping.is_none()
+                || alive.is_none()
+                || team.is_none()
+                || score.is_none()
             {
                 continue;
             }
 
-            if !valids[&i] {
+            let valid = *valid.unwrap();
+            if !valid {
                 continue;
             }
 
-            if ids[&i] == 0 {
+            let accountid = *accountid.unwrap() as u64;
+
+            let id = *id.unwrap();
+            if id == 0 {
                 continue;
             }
 
-            let team = match teams.get(&i) {
-                Some(2) => Some(Team::Red),
-                Some(3) => Some(Team::Blue),
+            let name = name.unwrap().to_string();
+            let ping = *ping.unwrap();
+            let alive = *alive.unwrap();
+            let team = match *team.unwrap() {
+                2 => Some(Team::Red),
+                3 => Some(Team::Blue),
                 _ => None,
             };
+            let score = *score.unwrap();
 
-            let steamid =
-                steamid::SteamID::from_u64(accountids[&i] as u64 + steamid::MIN_STEAMID64);
+            let steamid = steamid::SteamID::from_u64(accountid + steamid::MIN_STEAMID64);
 
             let player = G15PlayerData {
-                id: ids.get(&i).copied(),
-                name: names.get(&i).cloned(),
+                id,
+                name,
                 steamid,
-                ping: pings.get(&i).copied(),
-                alive: alives.get(&i).copied(),
+                ping,
+                alive,
                 team,
-                score: scores.get(&i).copied(),
+                score,
             };
             result.players.push(player);
         }
@@ -135,7 +151,7 @@ impl G15DumpPlayerParser {
         result
     }
 
-    fn get_names(&self, lines: &Vec<&str>) -> HashMap<u32, String> {
+    fn get_names<'a>(&self, lines: &'a Vec<&str>) -> HashMap<u32, &'a str> {
         Self::get_strings(lines, &self.names_regex, "m_szName")
     }
 
@@ -206,14 +222,14 @@ impl G15DumpPlayerParser {
     // Helpers
     //
 
-    fn get_strings(lines: &Vec<&str>, regex: &Regex, prefix: &str) -> HashMap<u32, String> {
+    fn get_strings<'a>(lines: &'a Vec<&str>, regex: &Regex, prefix: &str) -> HashMap<u32, &'a str> {
         let mut result = HashMap::new();
 
         for line in lines {
             if line.starts_with(prefix) {
                 if let Some(caps) = regex.captures(line) {
                     let id = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
-                    let name = caps.get(2).unwrap().as_str().to_string();
+                    let name = caps.get(2).unwrap().as_str();
                     result.insert(id, name);
                 }
             }
@@ -300,9 +316,9 @@ mod tests {
 
         assert_eq!(19, output.players.len());
         let player = &output.players[15];
-        assert_eq!("aftershave".to_string(), player.name.clone().unwrap());
+        assert_eq!("aftershave".to_string(), player.name);
         assert_eq!(SteamID::from_u64(76561197974228301), player.steamid);
-        assert_eq!(23, output.players[15].ping.unwrap());
+        assert_eq!(23, output.players[15].ping);
     }
 
     // Without the filter in parse() this took 17 seconds.

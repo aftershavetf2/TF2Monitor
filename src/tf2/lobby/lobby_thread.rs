@@ -18,7 +18,7 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
 
 /// The number of seconds a player can be in the recently_left_players collection
 const RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS: i64 = 90;
@@ -77,7 +77,6 @@ impl LobbyThread {
     }
 
     fn process_g15_bus(&mut self) {
-        log::debug!("Processing g15 bus");
         while let Ok(g15_dump) = self.g15_bus_rx.try_recv() {
             self.process_g15_dump(g15_dump);
         }
@@ -94,10 +93,7 @@ impl LobbyThread {
                 lobby_player.last_seen = now;
             } else {
                 // Player is new, add it to the lobby
-                log::info!(
-                    "Player {} has joined",
-                    player.name.clone().unwrap_or("(unknown namne)".to_string())
-                );
+                log::info!("Player {} has joined", player.name.clone().to_string());
                 let mut lobby_player = Player::default();
                 Self::merge_player_g15_data(&mut lobby_player, player);
                 lobby_player.last_seen = now;
@@ -123,28 +119,17 @@ impl LobbyThread {
     fn merge_player_g15_data(lobby_player: &mut Player, player: &G15PlayerData) {
         lobby_player.steamid = player.steamid;
 
-        if player.id.is_some() {
-            lobby_player.id = player.id.unwrap();
-        }
-        if player.name.is_some() {
-            lobby_player.name = player.name.clone().unwrap();
-        }
+        lobby_player.id = player.id;
+        lobby_player.name = player.name.clone();
         if player.team.is_some() {
             lobby_player.team = player.team.unwrap();
         }
-        if player.alive.is_some() {
-            lobby_player.alive = player.alive.unwrap();
-        }
-        if player.ping.is_some() {
-            lobby_player.pingms = player.ping.unwrap();
-        }
-        if player.score.is_some() {
-            lobby_player.score = player.score.unwrap();
-        }
+        lobby_player.alive = player.alive;
+        lobby_player.pingms = player.ping;
+        lobby_player.score = player.score;
     }
 
     fn process_tf2bd_bus(&mut self) {
-        log::debug!("Processing tf2bd bus");
         while let Ok(msg) = self.tf2bd_bus_rx.try_recv() {
             match msg {
                 Tf2bdMsg::Tf2bdPlayerMarking(steamid, player_info) => {
@@ -157,7 +142,6 @@ impl LobbyThread {
     }
 
     fn process_steamapi_bus(&mut self) {
-        log::debug!("Processing steamapi bus");
         while let Ok(msg) = self.steamapi_bus_rx.try_recv() {
             match msg {
                 SteamApiMsg::FriendsList(steamid, friends) => {
@@ -201,7 +185,6 @@ impl LobbyThread {
     }
 
     fn process_logfile_bus(&mut self) {
-        log::debug!("Processing logfile bus");
         while let Ok(cmd) = self.logfile_bus_rx.try_recv() {
             match cmd {
                 LogLine::Kill {
