@@ -127,6 +127,14 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
                     .unwrap()
                     .send_rcon_cmd("hud_reloadscheme");
             }
+
+            if ui.button("Fix invisible players").clicked() {
+                app_win
+                    .bus
+                    .lock()
+                    .unwrap()
+                    .send_rcon_cmd("record fix; stop");
+            }
         });
     });
 }
