@@ -13,6 +13,7 @@ use eframe::egui::{
     text::LayoutJob, Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2,
 };
 
+/// This is draws a scoreboard for a single team
 pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: &Vec<&Player>) {
     ui.heading(format!("{} - {} players", title, players.len()));
 
@@ -154,6 +155,8 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         // Add empty rows to fill the grid
         if players.len() < 12 {
             for _ in 0..(12 - players.len()) {
+                ui.label("");
+                ui.label("");
                 ui.label("");
                 ui.label("");
                 ui.label("");
