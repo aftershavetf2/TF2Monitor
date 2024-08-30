@@ -105,6 +105,7 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
         ui.menu_button("Tools", |ui| {
             if ui
                 .checkbox(&mut app_win.spectating, "Spectate players")
+                .on_hover_text_at_pointer("Allows you to spectate your team members.\nIt sends 'kill; menuopen' and 'menuclosed' to rcon")
                 .changed()
             {
                 let cmd = if app_win.spectating {
@@ -116,11 +117,14 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
                 app_win.bus.lock().unwrap().send_rcon_cmd(cmd);
             }
 
-            if ui.button("Restart sound").clicked() {
+            if ui.button("Restart sound")
+            .on_hover_text_at_pointer("Restarts the sound engine to get rid of stuck sound loops.\nIt sends 'snd_restart' to rcon").clicked() {
                 app_win.bus.lock().unwrap().send_rcon_cmd("snd_restart");
             }
 
-            if ui.button("Reload HUD").clicked() {
+            if ui.button("Reload HUD")
+                .on_hover_text_at_pointer("Reloads the HUD, useful when it's broken.\nIt sends 'hud_reloadscheme' to rcon")
+            .clicked() {
                 app_win
                     .bus
                     .lock()
@@ -128,7 +132,8 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
                     .send_rcon_cmd("hud_reloadscheme");
             }
 
-            if ui.button("Fix invisible players").clicked() {
+            if ui.button("Fix invisible players")
+            .on_hover_text_at_pointer("Fixes invisible players by starting a demo recording and stops it").clicked() {
                 app_win
                     .bus
                     .lock()
