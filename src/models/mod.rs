@@ -60,7 +60,6 @@ impl AppWin {
     }
 
     pub fn process_bus(&mut self) {
-        log::debug!("Processing bus messages");
         while let Ok(lobby) = self.lobby_report_bus_rx.try_recv() {
             self.lobby = lobby;
         }
