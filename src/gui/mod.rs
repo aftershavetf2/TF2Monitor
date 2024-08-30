@@ -101,9 +101,6 @@ impl eframe::App for AppWin {
             }
         });
 
-        // This is a hack to make sure the app is repainted no faster than every 15ms
-        const DELAY: Duration = Duration::from_millis(15);
-        sleep(DELAY);
-        ctx.request_repaint();
+        ctx.request_repaint_after(Duration::from_millis(100));
     }
 }
