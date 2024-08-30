@@ -90,7 +90,7 @@ fn main2() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Multiple viewports",
         options,
-        Box::new(|_cc| Box::<MyApp>::default()),
+        Box::new(|_cc| Ok(Box::<MyApp>::default())),
     )
 }
 

@@ -57,7 +57,10 @@ pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), efram
             // This gives us image support:
             egui_extras::install_image_loaders(&cc.egui_ctx);
 
-            Box::new(app_data)
+            Ok(Box::new(app_data))
+
+            // - eframe::run_native("My App", options, Box::new(|cc| Box::new(MyApp::new(cc))));
+            // + eframe::run_native("My App", options, Box::new(|cc| Ok(Box::new(MyApp::new(cc)))));
         }),
     )
 }
