@@ -119,6 +119,14 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             if ui.button("Restart sound").clicked() {
                 app_win.bus.lock().unwrap().send_rcon_cmd("snd_restart");
             }
+
+            if ui.button("Reload HUD").clicked() {
+                app_win
+                    .bus
+                    .lock()
+                    .unwrap()
+                    .send_rcon_cmd("hud_reloadscheme");
+            }
         });
     });
 }
