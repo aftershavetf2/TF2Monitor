@@ -63,6 +63,10 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             ui.label("Hours").on_hover_text("TF2 hours played");
         });
         // ui.label("Flags");
+        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+            // ui.label(RichText::new("Deaths").strong());
+            ui.label("Ping");
+        });
         ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
             // ui.label(RichText::new("Links").strong());
             ui.label("Flags");
@@ -147,6 +151,11 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 add_playtime(ui, player);
             });
 
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.label(format!("{}", player.pingms))
+                    .on_hover_text_at_pointer("ms");
+            });
+
             add_flags(ui, player);
 
             ui.end_row();
@@ -155,6 +164,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         // Add empty rows to fill the grid
         if players.len() < 12 {
             for _ in 0..(12 - players.len()) {
+                ui.label("");
                 ui.label("");
                 ui.label("");
                 ui.label("");
