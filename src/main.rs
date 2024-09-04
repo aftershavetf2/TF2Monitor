@@ -10,12 +10,15 @@ mod utils;
 
 use appbus::AppBus;
 use eframe::{egui, Result};
+use log::{info, trace, warn};
 use models::app_settings::AppSettings;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 fn main() -> Result<(), eframe::Error> {
     simple_logger::SimpleLogger::new().init().unwrap();
+
+    log::info!("TF2Monitor is starting...");
 
     let settings = AppSettings::load_or_default();
     let bus = Arc::new(Mutex::new(AppBus::default()));
