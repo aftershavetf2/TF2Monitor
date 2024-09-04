@@ -3,7 +3,6 @@ use crate::models::steamid::SteamID;
 use super::lobby::Team;
 
 pub mod g15_dumpplayer_parser;
-pub mod g15_dumpplayer_parser2;
 pub mod rcon_connection;
 pub mod rcon_thread;
 
