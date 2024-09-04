@@ -3,7 +3,7 @@ use crate::{
     tf2::{
         lobby::{Lobby, Player},
         logfile::LogLine,
-        rcon::g15_dumpplayer_parser::G15DumpPlayerOutput,
+        rcon::G15DumpPlayerOutput,
         steamapi::SteamApiMsg,
     },
     tf2bd::{models::PlayerAttribute, Tf2bdMsg},

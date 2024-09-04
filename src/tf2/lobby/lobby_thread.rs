@@ -1,7 +1,7 @@
 use super::Lobby;
 use super::{LobbyChat, Player, PlayerKill};
 use crate::tf2::lobby::AccountAge;
-use crate::tf2::rcon::g15_dumpplayer_parser::{G15DumpPlayerOutput, G15PlayerData};
+use crate::tf2::rcon::{G15DumpPlayerOutput, G15PlayerData};
 use crate::tf2::steamapi::SteamApiMsg;
 use crate::tf2bd::Tf2bdMsg;
 use crate::{

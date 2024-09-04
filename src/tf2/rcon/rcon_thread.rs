@@ -1,7 +1,7 @@
 use super::rcon_connection::{RConArgs, RConConnection};
 use crate::appbus::AppBus;
 use crate::models::app_settings::AppSettings;
-use crate::tf2::rcon::g15_dumpplayer_parser::G15DumpPlayerParser;
+use crate::tf2::rcon::g15_dumpplayer_parser2::G15DumpPlayerParser;
 use crate::utils::BoxResult;
 use bus::BusReader;
 use std::{

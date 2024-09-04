@@ -3,26 +3,11 @@ use std::collections::HashMap;
 use regex::Regex;
 
 use crate::{
-    models::steamid::{self, SteamID},
+    models::steamid::{self},
     tf2::lobby::Team,
 };
 
-#[derive(Debug, Clone, Default)]
-
-pub struct G15DumpPlayerOutput {
-    pub players: Vec<G15PlayerData>,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct G15PlayerData {
-    pub steamid: SteamID,
-    pub id: i64,
-    pub name: String,
-    pub ping: i64,
-    pub alive: bool,
-    pub team: Option<Team>,
-    pub score: i64,
-}
+use super::{G15DumpPlayerOutput, G15PlayerData};
 
 pub struct G15DumpPlayerParser {
     names_regex: Regex,
@@ -294,6 +279,8 @@ impl G15DumpPlayerParser {
 #[cfg(test)]
 mod tests {
     // use chrono::prelude::*;
+
+    use steamid::SteamID;
 
     use super::*;
 
