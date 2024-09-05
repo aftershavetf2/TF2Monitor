@@ -48,10 +48,8 @@ impl AppWin {
     }
 
     pub fn updated_settings(&mut self) {
-        log::info!("Saving updated settings");
+        log::info!("Saving and broadcasting updated settings");
         self.app_settings.save();
-
-        log::info!("Broadcasting updated settings");
         self.bus
             .lock()
             .unwrap()
