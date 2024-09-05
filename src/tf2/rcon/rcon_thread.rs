@@ -14,7 +14,7 @@ use std::{
 const RCON_DELAY: Duration = time::Duration::from_millis(10);
 
 /// The delay between loops in run()
-const LOOP_DELAY: Duration = time::Duration::from_millis(5000);
+const LOOP_DELAY: Duration = time::Duration::from_millis(1000);
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -52,16 +52,16 @@ impl RconThread {
 
         loop {
             if let Some(reply) = self.send_rcon_command("g15_dumpplayer") {
-                let start_time = std::time::Instant::now();
+                // let start_time = std::time::Instant::now();
 
                 let parsed_data = g15_dumpplayer_parser.parse(&reply);
 
-                let stop_time = std::time::Instant::now();
-                log::info!(
-                    "Parsing of g15_dumpplayer's {} chars reply took {:?}",
-                    reply.len(),
-                    stop_time - start_time
-                );
+                // let stop_time = std::time::Instant::now();
+                // log::info!(
+                //     "Parsing of g15_dumpplayer's {} chars reply took {:?}",
+                //     reply.len(),
+                //     stop_time - start_time
+                // );
 
                 if !parsed_data.players.is_empty() {
                     // log::info!("Parsed g15_dumpplayer: {:?}", parsed_data);
