@@ -1,6 +1,3 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-#![allow(rustdoc::missing_crate_level_docs)] // it's an example
-
 mod appbus;
 mod gui;
 mod models;
@@ -10,7 +7,6 @@ mod utils;
 
 use appbus::AppBus;
 use eframe::{egui, Result};
-use log::{info, trace, warn};
 use models::app_settings::AppSettings;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
