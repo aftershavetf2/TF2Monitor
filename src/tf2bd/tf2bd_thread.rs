@@ -218,16 +218,26 @@ impl Tf2bdThread {
 
     fn send_notifications(&mut self) {
         for player in &self.last_lobbty.players {
-            let player_info = self
-                .ruleset_handler
-                .get_player_marking(&player.steamid)
-                .cloned();
-            if let Some(player_info) = player_info {
-                if !self.notifications_send.contains(&player.steamid) {
-                    let is_dodgy = player_info.attributes.contains(&PlayerAttribute::Cheater)
-                        || player_info.attributes.contains(&PlayerAttribute::Bot);
+            // Check if we have already informed the party about this player
+            // TODO: Maybe store the list of flags we have informed about and inform about new flags
+            if !self.notifications_send.contains(&player.steamid) {
+                let player_info = self
+                    .ruleset_handler
+                    .get_player_marking(&player.steamid)
+                    .cloned();
+                if let Some(player_info) = player_info {
+                    log::info!("Player attributes: {:?}", player_info.attributes);
+                    log::info!(
+                        "Settings attributes: {:?}",
+                        self.app_settings.party_notifications_for
+                    );
 
-                    if is_dodgy {
+                    let shall_inform_party = player_info
+                        .attributes
+                        .iter()
+                        .any(|attr| self.app_settings.party_notifications_for.contains(attr));
+
+                    if shall_inform_party {
                         log::info!(
                             "Informing party about flags {:?} on player {}",
                             player_info.attributes,
@@ -239,6 +249,12 @@ impl Tf2bdThread {
                             player.name, player_info.attributes
                         );
                         self.bus.lock().unwrap().send_rcon_cmd(cmd.as_str());
+                    } else {
+                        log::info!(
+                            "Not informing party about flags {:?} on player {}",
+                            player_info.attributes,
+                            player.name
+                        );
                     }
 
                     self.notifications_send.insert(player.steamid);
