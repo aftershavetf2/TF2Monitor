@@ -86,7 +86,7 @@ impl AppSettings {
         match Self::load() {
             Ok(preferences) => preferences,
             Err(error) => {
-                println!("Error loading settings file: {}.", error);
+                log::error!("Error loading settings file: {}.", error);
 
                 let settings = AppSettings::save_default_settings();
 
@@ -104,7 +104,7 @@ impl AppSettings {
         let settings = AppSettings::default();
 
         let json = serde_json::to_string_pretty(&settings).unwrap();
-        println!("Using default values: {}.", json);
+        log::info!("Using default values: {}.", json);
 
         settings.save();
 
@@ -141,7 +141,7 @@ impl AppSettings {
         let mut f = File::create(SETTINGS_FILENAME).unwrap();
         f.write_all(json.as_bytes()).unwrap();
 
-        println!("Settings saved to file {}", SETTINGS_FILENAME);
+        log::info!("Settings saved to file {}", SETTINGS_FILENAME);
     }
 
     /// Validates the settings and logs warnings if something is wrong.
