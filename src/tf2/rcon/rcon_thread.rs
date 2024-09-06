@@ -14,7 +14,7 @@ use std::{
 const RCON_DELAY: Duration = time::Duration::from_millis(10);
 
 /// The delay between loops in run()
-const LOOP_DELAY: Duration = time::Duration::from_millis(1000);
+const LOOP_DELAY: Duration = time::Duration::from_millis(2500);
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
