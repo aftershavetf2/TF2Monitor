@@ -63,8 +63,7 @@ impl RconThread {
                 //     stop_time - start_time
                 // );
 
-                // if !parsed_data.players.is_empty()
-                {
+                if !parsed_data.players.is_empty() {
                     // log::info!("Parsed g15_dumpplayer: {:?}", parsed_data);
                     self.bus
                         .lock()
