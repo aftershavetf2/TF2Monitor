@@ -69,6 +69,10 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         });
         ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
             // ui.label(RichText::new("Links").strong());
+            ui.label("Last Kill");
+        });
+        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+            // ui.label(RichText::new("Links").strong());
             ui.label("Flags");
         });
 
@@ -156,6 +160,13 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                     .on_hover_text_at_pointer("ms");
             });
 
+            if let Some(k) = player.kills_with.last() {
+                let s = format!("{}{}", k.weapon, if k.crit { " (crit)" } else { "" });
+                ui.label(s);
+            } else {
+                ui.label("");
+            }
+
             add_flags(ui, player);
 
             ui.end_row();
@@ -164,6 +175,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         // Add empty rows to fill the grid
         if players.len() < 12 {
             for _ in 0..(12 - players.len()) {
+                ui.label("");
                 ui.label("");
                 ui.label("");
                 ui.label("");
@@ -209,9 +221,12 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
 
                 // Player avatar and hover tooltip
                 if let Some(steam_info) = &player.steam_info {
+                    // if player.steamid.to_u64() != 76561198850780330 {
+                    //     log::info!("Player avatar: {}", steam_info.avatar);
                     ui.image(&steam_info.avatar)
                         .on_hover_cursor(CursorIcon::Help)
                         .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
+                    // }
                 }
 
                 // Player name prefixed with DEAD is not alive
