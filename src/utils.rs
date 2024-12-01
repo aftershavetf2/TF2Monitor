@@ -29,7 +29,7 @@ pub fn duration_as_string(when: DateTime<Local>) -> String {
     };
 
     let days = if date_interval.year == 0 && date_interval.month == 0 && date_interval.day > 0 {
-        format!("{}d ", date_interval.day)
+        format!("{}days ", date_interval.day)
     } else {
         "".to_string()
     };
