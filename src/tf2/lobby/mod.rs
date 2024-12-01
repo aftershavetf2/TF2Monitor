@@ -15,12 +15,27 @@ pub struct Lobby {
     pub lobby_id: String,
     pub self_steamid: SteamID,
     pub players: Vec<Player>,
-    pub chat: Vec<LobbyChat>,
+    pub feed: Vec<LobbyFeedItem>,
     pub friendships: Friendships,
 
     /// Players who no longer show up in the status command output
     /// or in tf_lobby_debug output. Players are kept in here for 1 minute.
     pub recently_left_players: Vec<Player>,
+}
+
+#[derive(Debug, Clone)]
+pub enum LobbyFeedItem {
+    Chat(LobbyChat),
+    Kill(LobbyKill),
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct LobbyKill {
+    pub when: DateTime<Local>,
+    pub killer: SteamID,
+    pub victim: SteamID,
+    pub weapon: String,
+    pub crit: bool,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -221,7 +236,7 @@ impl Lobby {
             lobby_id: Local::now().format("%Y-%m-%d").to_string(),
             self_steamid,
             players: Vec::new(),
-            chat: Vec::new(),
+            feed: Vec::new(),
             friendships: Friendships::default(),
             recently_left_players: Vec::new(),
         }

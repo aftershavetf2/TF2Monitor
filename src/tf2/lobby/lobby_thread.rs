@@ -1,4 +1,4 @@
-use super::Lobby;
+use super::{Lobby, LobbyFeedItem, LobbyKill};
 use super::{LobbyChat, Player, PlayerKill};
 use crate::tf2::lobby::AccountAge;
 use crate::tf2::rcon::{G15DumpPlayerOutput, G15PlayerData};
@@ -237,38 +237,67 @@ impl LobbyThread {
         self.lobby.lobby_id = Local::now().format("%Y-%m-%d").to_string();
 
         self.lobby.players.clear();
-        self.lobby.chat.clear();
+        self.lobby.feed.clear();
     }
 
     fn kill(
         &mut self,
-        _when: DateTime<Local>,
-        killer: String,
-        victim: String,
+        when: DateTime<Local>,
+        killer_name: String,
+        victim_name: String,
         weapon: String,
         crit: bool,
     ) {
-        // log::info!("Kill: {} killed {} with {}", killer, victim, weapon);
-        if let Some(player) = self.lobby.get_player_mut(Some(killer.as_str()), None) {
-            player.kills += 1;
+        // Change the counts of the kill and death to the players
+        if let Some(killer) = self.lobby.get_player_mut(Some(killer_name.as_str()), None) {
+            killer.kills += 1;
             if crit {
-                player.crit_kills += 1;
+                killer.crit_kills += 1;
             }
-            player.kills_with.push(PlayerKill {
+            killer.kills_with.push(PlayerKill {
                 weapon: weapon.clone(),
                 crit,
             });
         } else {
-            log::warn!("Killer not found: '{}'", victim);
+            log::warn!("Killer not found: '{}'", victim_name);
         }
 
-        if let Some(player) = self.lobby.get_player_mut(Some(victim.as_str()), None) {
-            player.deaths += 1;
+        if let Some(victim) = self.lobby.get_player_mut(Some(victim_name.as_str()), None) {
+            victim.deaths += 1;
             if crit {
-                player.crit_deaths += 1;
+                victim.crit_deaths += 1;
             }
         } else {
-            log::warn!("Victim not found: '{}'", victim);
+            log::warn!("Victim not found: '{}'", victim_name);
+        }
+
+        // Add the kill to the feed
+        let killer = self.lobby.get_player(Some(killer_name.as_str()), None);
+        let victim = self.lobby.get_player(Some(victim_name.as_str()), None);
+
+        match (killer, victim) {
+            (Some(killer), Some(victim)) => {
+                log::info!(
+                    "Adding feed item for {} killed {} with {}",
+                    killer.name,
+                    victim.name,
+                    weapon
+                );
+                self.lobby.feed.push(LobbyFeedItem::Kill(LobbyKill {
+                    when,
+                    killer: killer.steamid,
+                    victim: victim.steamid,
+                    weapon,
+                    crit,
+                }));
+            }
+            _ => {
+                log::info!(
+                    "Killer or victim not found: '{}', '{}'",
+                    killer_name,
+                    victim_name
+                );
+            }
         }
     }
 
@@ -289,14 +318,14 @@ impl LobbyThread {
         team: bool,
     ) {
         if let Some(player) = self.lobby.get_player(Some(name.as_str()), None) {
-            self.lobby.chat.push(LobbyChat {
+            self.lobby.feed.push(LobbyFeedItem::Chat(LobbyChat {
                 when,
                 steamid: player.steamid,
                 player_name: name,
                 message,
                 dead,
                 team,
-            })
+            }))
         } else {
             log::warn!("Player not found: '{}'", name);
         }

@@ -110,7 +110,7 @@ fn add_player_kills(player: &Player, ui: &mut Ui) {
         return;
     }
 
-    let kills: Vec<&PlayerKill> = player.kills_with.iter().rev().take(3).collect();
+    let kills: Vec<&PlayerKill> = player.kills_with.iter().rev().take(20).collect();
 
     let names = kills
         .iter()
