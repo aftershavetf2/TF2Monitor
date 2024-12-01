@@ -1,4 +1,2 @@
 clear
 cargo run
-
-pause
