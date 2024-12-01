@@ -15,7 +15,7 @@ use std::{
 const FILENAME: &str = "playerlist.json";
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(50);
 
 const VOTE_PERIOD_SECONDS: u64 = 10;
 
