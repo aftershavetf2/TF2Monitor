@@ -101,6 +101,7 @@ impl eframe::App for AppWin {
             }
         });
 
+        sleep(Duration::from_millis(30));
         ctx.request_repaint_after(Duration::from_millis(100));
     }
 }
