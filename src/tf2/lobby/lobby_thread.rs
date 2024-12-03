@@ -277,12 +277,6 @@ impl LobbyThread {
 
         match (killer, victim) {
             (Some(killer), Some(victim)) => {
-                log::info!(
-                    "Adding feed item for {} killed {} with {}",
-                    killer.name,
-                    victim.name,
-                    weapon
-                );
                 self.lobby.feed.push(LobbyFeedItem::Kill(LobbyKill {
                     when,
                     killer: killer.steamid,
