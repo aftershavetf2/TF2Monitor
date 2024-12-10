@@ -1,4 +1,4 @@
-use super::{Lobby, LobbyFeedItem, LobbyKill};
+use super::{Lobby, LobbyKill};
 use super::{LobbyChat, Player, PlayerKill};
 use crate::tf2::lobby::AccountAge;
 use crate::tf2::rcon::{G15DumpPlayerOutput, G15PlayerData};
@@ -237,7 +237,7 @@ impl LobbyThread {
         self.lobby.lobby_id = Local::now().format("%Y-%m-%d").to_string();
 
         self.lobby.players.clear();
-        self.lobby.feed.clear();
+        self.lobby.chat.clear();
     }
 
     fn kill(
@@ -277,13 +277,13 @@ impl LobbyThread {
 
         match (killer, victim) {
             (Some(killer), Some(victim)) => {
-                self.lobby.feed.push(LobbyFeedItem::Kill(LobbyKill {
+                self.lobby.kill_feed.push(LobbyKill {
                     when,
                     killer: killer.steamid,
                     victim: victim.steamid,
                     weapon,
                     crit,
-                }));
+                });
             }
             _ => {
                 log::info!(
@@ -312,14 +312,14 @@ impl LobbyThread {
         team: bool,
     ) {
         if let Some(player) = self.lobby.get_player(Some(name.as_str()), None) {
-            self.lobby.feed.push(LobbyFeedItem::Chat(LobbyChat {
+            self.lobby.chat.push(LobbyChat {
                 when,
                 steamid: player.steamid,
                 player_name: name,
                 message,
                 dead,
                 team,
-            }))
+            })
         } else {
             log::warn!("Player not found: '{}'", name);
         }

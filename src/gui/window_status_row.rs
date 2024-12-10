@@ -8,7 +8,7 @@ pub fn add_status_row(app_win: &AppWin, ui: &mut Ui, _image_desc: &ImageDescript
         ui.label(format!(
             "Lobby: {} players, {} chat",
             lobby.players.len(),
-            lobby.feed.len()
+            lobby.chat.len()
         ));
 
         // ui.label("Status: Online");

@@ -1,5 +1,5 @@
 use crate::{models::AppWin, tf2bd::models::PlayerAttribute};
-use eframe::egui::{menu, TextBuffer, Ui, ViewportCommand};
+use eframe::egui::{menu, Ui, ViewportCommand};
 
 /*
 Menu structure:

@@ -4,6 +4,7 @@ pub mod chat;
 pub mod colors;
 pub mod friendship_indicators;
 pub mod image_creds;
+pub mod kill_feed;
 pub mod markings;
 pub mod player_details_panel;
 pub mod player_flag_editor;
@@ -24,6 +25,7 @@ use background_image::get_background_image_desc;
 use chat::add_chat;
 use core::time::Duration;
 use eframe::egui::{self};
+use kill_feed::add_kill_feed;
 use player_details_panel::add_player_details_panel;
 use std::{
     sync::{Arc, Mutex},
@@ -91,9 +93,10 @@ impl eframe::App for AppWin {
 
             ui.separator();
 
-            ui.columns(2, |ui| {
+            ui.columns(3, |ui| {
                 add_chat(&mut ui[0], self);
-                add_player_details_panel(self, &mut ui[1]);
+                add_kill_feed(&mut ui[1], self);
+                add_player_details_panel(self, &mut ui[2]);
             });
 
             if self.app_settings.show_friendship_indicators {
