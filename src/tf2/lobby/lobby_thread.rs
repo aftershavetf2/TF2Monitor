@@ -238,6 +238,7 @@ impl LobbyThread {
 
         self.lobby.players.clear();
         self.lobby.chat.clear();
+        self.lobby.kill_feed.clear();
     }
 
     fn kill(
