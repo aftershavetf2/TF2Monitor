@@ -64,16 +64,7 @@ impl AppWin {
     }
 
     /// The selected player is who is shown in the player details panel.
-    /// Toggle selected player if same, otherwise select new player
     pub fn set_selected_player(&mut self, clicked_on_steamid: SteamID) {
-        if let Some(steamid) = self.selected_player {
-            if steamid == clicked_on_steamid {
-                self.selected_player = None;
-            } else {
-                self.selected_player = Some(clicked_on_steamid);
-            }
-        } else {
-            self.selected_player = Some(clicked_on_steamid);
-        }
+        self.selected_player = Some(clicked_on_steamid);
     }
 }
