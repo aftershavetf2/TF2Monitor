@@ -134,8 +134,8 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
     // ui.heading("More info:");
     ui.horizontal(|ui| {
         // ui.label("View on");
-        make_link(ui, player.steamid.steam_history_url(), "SteamH istory");
-        make_link(ui, player.steamid.steam_community_url(), "Steam Community");
+        make_link(ui, player.steamid.steam_community_url(), "Steam");
+        make_link(ui, player.steamid.steam_history_url(), "SteamHistory");
         make_link(ui, player.steamid.steam_rep_url(), "SteamRep");
         make_link(ui, player.steamid.steam_id_url(), "SteamID");
     });
