@@ -46,8 +46,10 @@ impl SteamID {
         format!("https://steamhistory.net/id/{}", self.0)
     }
 
+    // steam://url/SteamIDPage/76561197999984396
     pub fn steam_community_url(&self) -> String {
         format!("https://steamcommunity.com/profiles/{}", self.0)
+        // format!("steam://url/SteamIDPage/{}", self.0)
     }
 
     pub fn steam_rep_url(&self) -> String {
