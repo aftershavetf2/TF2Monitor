@@ -167,7 +167,6 @@ impl LogLineParser {
 
 #[cfg(test)]
 mod tests {
-
     use chrono::prelude::*;
 
     use super::*;
