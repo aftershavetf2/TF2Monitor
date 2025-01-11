@@ -19,7 +19,7 @@ impl Default for LogLineParser {
 impl LogLineParser {
     pub fn new() -> Self {
         Self {
-            killed_rx: Regex::new(r"^(.+?) killed (.+?) with (.+)(\.|\. \(crit\))$").unwrap(),
+            killed_rx: Regex::new(r"^(.+?) killed (.+) with (.+?)(\.|\. \(crit\))$").unwrap(),
             suicided_rx: Regex::new(r"^(.+?) suicided.$").unwrap(),
             chat_rx: Regex::new(r"^(.+?) :  (.+)$").unwrap(),
         }
@@ -167,6 +167,7 @@ impl LogLineParser {
 
 #[cfg(test)]
 mod tests {
+
     use chrono::prelude::*;
 
     use super::*;
@@ -224,6 +225,32 @@ mod tests {
                 killer: "𝖁𝖆𝖘𝖎𝖑𝖎𝖘�".to_string(),
                 victim: "rafailnn306".to_string(),
                 weapon: "syringegun_medic".to_string(),
+                crit: false,
+            }
+        );
+
+        let line = "05/06/2024 - 17:02:55: 1Pleaseburger killed used to facetime with your mom with obj_sentrygun3.";
+        let result = parser.parse_line(line).unwrap();
+        assert_eq!(
+            result,
+            LogLine::Kill {
+                when,
+                killer: "1Pleaseburger".to_string(),
+                victim: "used to facetime with your mom".to_string(),
+                weapon: "obj_sentrygun3".to_string(),
+                crit: false,
+            }
+        );
+
+        let line = "05/06/2024 - 17:02:55: used to facetime with your mom killed used to facetime with your mom with obj_sentrygun3.";
+        let result = parser.parse_line(line).unwrap();
+        assert_eq!(
+            result,
+            LogLine::Kill {
+                when,
+                killer: "used to facetime with your mom".to_string(),
+                victim: "used to facetime with your mom".to_string(),
+                weapon: "obj_sentrygun3".to_string(),
                 crit: false,
             }
         );
