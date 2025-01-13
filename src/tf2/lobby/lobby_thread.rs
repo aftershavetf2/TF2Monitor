@@ -373,20 +373,11 @@ impl LobbyThread {
     }
 
     fn translate_chat(&mut self) {
-        // Get the time 5 seconds ago so we can translate chat messages in bulk
-        // let time = Local::now() - chrono::Duration::seconds(5);
+        for chat in self.lobby.chat.iter_mut() {
+            if chat.translated_message.is_some() {
+                continue;
+            }
 
-        // Get the chat messages that need to be translated
-        let mut chats_to_translate = self
-            .lobby
-            .chat
-            .iter_mut()
-            // .filter(|chat| chat.when < chat.when + chrono::Duration::seconds(10))
-            .filter(|chat| chat.translated_message.is_none())
-            .collect::<Vec<&mut LobbyChat>>();
-
-        // Translate the chat messages
-        for chat in chats_to_translate.iter_mut() {
             let translated_message = self
                 .text_translator
                 .translate_sync(&chat.message, "en", "")
