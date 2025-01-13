@@ -109,8 +109,11 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
             },
         );
 
+        let is_translated = chat_row.translated_message.is_some()
+            && chat_row.translated_message != Some(chat_row.message.clone());
+
         // The chat message
-        if chat_row.translated_message.is_some() {
+        if is_translated {
             job.append(
                 &chat_row.translated_message.as_ref().unwrap(),
                 0.0,
@@ -132,15 +135,7 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
         }
 
         // Add the formatted text to the UI and make it clickable
-        if let Some(player) = player {
-            if ui
-                .label(job)
-                .on_hover_text(format!("Original message: {}", chat_row.message))
-                .clicked()
-            {
-                app_win.set_selected_player(chat_row.steamid);
-            }
-        } else if ui
+        if ui
             .label(job)
             .on_hover_text(format!("Original message: {}", chat_row.message))
             .clicked()
