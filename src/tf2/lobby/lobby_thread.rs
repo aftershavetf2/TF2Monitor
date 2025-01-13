@@ -327,7 +327,7 @@ impl LobbyThread {
                 when,
                 steamid: player.steamid,
                 player_name: name,
-                message,
+                message: message.trim().to_string(),
                 translated_message: None,
                 dead,
                 team,
