@@ -22,6 +22,8 @@ pub struct Lobby {
     /// Players who no longer show up in the status command output
     /// or in tf_lobby_debug output. Players are kept in here for 1 minute.
     pub recently_left_players: Vec<Player>,
+
+    chat_msg_id: i64,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -35,6 +37,8 @@ pub struct LobbyKill {
 
 #[derive(Default, Debug, Clone)]
 pub struct LobbyChat {
+    pub chat_msg_id: i64,
+
     pub when: DateTime<Local>,
     pub steamid: SteamID,
 
@@ -43,6 +47,7 @@ pub struct LobbyChat {
     pub player_name: String,
 
     pub message: String,
+    pub translated_message: Option<String>,
     pub dead: bool,
     pub team: bool,
 }
@@ -228,6 +233,7 @@ impl PlayerSteamInfo {
 impl Lobby {
     pub fn new(self_steamid: SteamID) -> Self {
         Self {
+            chat_msg_id: 0,
             lobby_id: Local::now().format("%Y-%m-%d").to_string(),
             self_steamid,
             players: Vec::new(),

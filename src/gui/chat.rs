@@ -110,25 +110,41 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
         );
 
         // The chat message
-        job.append(
-            &chat_row.message,
-            0.0,
-            TextFormat {
-                color: Color32::from_rgb(210, 210, 210),
-                ..Default::default()
-            },
-        );
+        if chat_row.translated_message.is_some() {
+            job.append(
+                &chat_row.translated_message.as_ref().unwrap(),
+                0.0,
+                TextFormat {
+                    color: Color32::from_rgb(210, 210, 210),
+                    background: Color32::from_rgb(20, 20, 20),
+                    ..Default::default()
+                },
+            );
+        } else {
+            job.append(
+                &chat_row.message,
+                0.0,
+                TextFormat {
+                    color: Color32::from_rgb(210, 210, 210),
+                    ..Default::default()
+                },
+            );
+        }
 
         // Add the formatted text to the UI and make it clickable
         if let Some(player) = player {
             if ui
                 .label(job)
-                .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
+                .on_hover_text(format!("Original message: {}", chat_row.message))
                 .clicked()
             {
                 app_win.set_selected_player(chat_row.steamid);
             }
-        } else if ui.label(job).clicked() {
+        } else if ui
+            .label(job)
+            .on_hover_text(format!("Original message: {}", chat_row.message))
+            .clicked()
+        {
             app_win.set_selected_player(chat_row.steamid);
         }
     });

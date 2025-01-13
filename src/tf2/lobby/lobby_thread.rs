@@ -16,6 +16,7 @@ use std::{
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
+use translators::{GoogleTranslator, Translator};
 
 /// The delay between loops in run()
 const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
@@ -30,6 +31,8 @@ pub struct LobbyThread {
     tf2bd_bus_rx: BusReader<Tf2bdMsg>,
     g15_bus_rx: BusReader<G15DumpPlayerOutput>,
     lobby: Lobby,
+
+    text_translator: GoogleTranslator,
 }
 
 /// Start the background thread for the lobby module
@@ -46,6 +49,8 @@ impl LobbyThread {
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
         let g15_bus_rx = bus.lock().unwrap().g15_report_bus.add_rx();
 
+        let google_translator = GoogleTranslator::default();
+
         Self {
             bus: Arc::clone(bus),
             logfile_bus_rx,
@@ -53,6 +58,8 @@ impl LobbyThread {
             tf2bd_bus_rx,
             g15_bus_rx,
             lobby: Lobby::new(settings.self_steamid64),
+
+            text_translator: google_translator,
         }
     }
 
@@ -62,6 +69,7 @@ impl LobbyThread {
         loop {
             self.process_bus();
             self.lobby.update_friendships();
+            self.translate_chat();
             self.update_scoreboard();
 
             sleep(LOOP_DELAY);
@@ -234,6 +242,7 @@ impl LobbyThread {
                 .join(", ")
         );
 
+        self.lobby.chat_msg_id = 0;
         self.lobby.lobby_id = Local::now().format("%Y-%m-%d").to_string();
 
         self.lobby.players.clear();
@@ -314,16 +323,21 @@ impl LobbyThread {
     ) {
         if let Some(player) = self.lobby.get_player(Some(name.as_str()), None) {
             self.lobby.chat.push(LobbyChat {
+                chat_msg_id: self.lobby.chat_msg_id,
                 when,
                 steamid: player.steamid,
                 player_name: name,
                 message,
+                translated_message: None,
                 dead,
                 team,
             })
         } else {
             log::warn!("Player not found: '{}'", name);
+            return;
         }
+
+        self.lobby.chat_msg_id += 1;
     }
 
     // Go through the recently_left_players
@@ -356,5 +370,32 @@ impl LobbyThread {
         }
 
         self.lobby.recently_left_players = recently_left_to_keep;
+    }
+
+    fn translate_chat(&mut self) {
+        // Get the time 5 seconds ago so we can translate chat messages in bulk
+        // let time = Local::now() - chrono::Duration::seconds(5);
+
+        // Get the chat messages that need to be translated
+        let mut chats_to_translate = self
+            .lobby
+            .chat
+            .iter_mut()
+            // .filter(|chat| chat.when < chat.when + chrono::Duration::seconds(10))
+            .filter(|chat| chat.translated_message.is_none())
+            .collect::<Vec<&mut LobbyChat>>();
+
+        // Translate the chat messages
+        for chat in chats_to_translate.iter_mut() {
+            let translated_message = self
+                .text_translator
+                .translate_sync(&chat.message, "en", "")
+                .unwrap_or_else(|e| {
+                    log::error!("Error translating chat message: {:?}", e);
+                    chat.message.clone()
+                });
+
+            chat.translated_message = Some(translated_message);
+        }
     }
 }
