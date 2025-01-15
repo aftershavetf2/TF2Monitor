@@ -1,5 +1,7 @@
 # TF2Monitor
 
+[![Get it on SERVICE](https://gist.github.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/discord.svg)](https://discord.gg/BBhH92t4)
+
 **NOTE! This project is a work in progress and something I do on a hobby basis when I have spare time and energy.**
 
 **NOTE! Not ready to receive code contributions yet.**
@@ -11,19 +13,19 @@ With this app you can:
 - Collect and present public Steam info about the players you play with. Example info:
 
   - Steam account creating time
-  - Player's public avatar picture - Buttons with links to popular sites such as SteamHistory.net and SteamCommunity.com for each player.
+  - Player's public avatar picture - Buttons with links to popular sites such as SteamHistory.net and SteamCommunity.com for each player
   - Number of TF2 hours
-  - VAC bans etc.
+  - VAC bans etc
+
+- Get the chat in TF2 translated into English
 
 Players marked are saved in playerlist.json. The format is based on TF2BD file format but only the SteamID -> flags section are used, and flags for Cool(one-way soft-friendship) and Bot are added.
-
-# Discord
-
-https://discord.gg/BBhH92t4
 
 # Screenshot
 
 ![Alt text](/screenshots/TF2Monitor.png?raw=true "TF2Monitor")
+
+## Scoreboard
 
 First column in the table is:
 
@@ -38,6 +40,10 @@ Hover on a player name to see some brief information about the player. Players m
 Under scoreboard there's a list of players that left recently. Players remain there for 1 minute. Click on a player name to see details.
 
 When "Show friendships" is checked, there are white connections between friends.
+
+## Chat
+
+Translated chat texts have black background and white text.
 
 # What about VAC?
 
