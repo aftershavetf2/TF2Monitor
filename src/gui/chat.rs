@@ -118,7 +118,7 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
                 &chat_row.translated_message.as_ref().unwrap(),
                 0.0,
                 TextFormat {
-                    color: Color32::from_rgb(210, 210, 210),
+                    color: Color32::from_rgb(255, 255, 255),
                     background: Color32::from_rgb(20, 20, 20),
                     ..Default::default()
                 },
