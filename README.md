@@ -1,6 +1,6 @@
 # TF2Monitor
 
-[![Get it on SERVICE](https://gist.github.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/discord.svg)](https://discord.gg/BBhH92t4)
+[![Discord](https://gist.github.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/discord.svg)](https://discord.gg/BBhH92t4)
 
 **NOTE! This project is a work in progress and something I do on a hobby basis when I have spare time and energy.**
 
