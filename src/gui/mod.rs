@@ -3,7 +3,6 @@ pub mod background_image;
 pub mod chat;
 pub mod colors;
 pub mod friendship_indicators;
-pub mod image_creds;
 pub mod kill_feed;
 pub mod markings;
 pub mod player_details_panel;

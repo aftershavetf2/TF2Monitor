@@ -1,5 +1,5 @@
 use crate::{models::steamid::SteamID, tf2::lobby::Tf2PlayMinutes};
-use reqwest::{blocking::get, Result};
+use reqwest::blocking::get;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

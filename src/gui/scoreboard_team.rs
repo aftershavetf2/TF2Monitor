@@ -95,8 +95,10 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 // ui.label(format!("{:3}", player.kills))
                 //     .on_hover_text("Number of kills (crit kills)");
 
-                let mut job = LayoutJob::default();
-                job.break_on_newline = false;
+                let mut job = LayoutJob {
+                    break_on_newline: false,
+                    ..Default::default()
+                };
 
                 job.append(
                     format!("{:3}", player.kills).as_str(),

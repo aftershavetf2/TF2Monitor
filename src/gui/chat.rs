@@ -1,7 +1,6 @@
 use super::{
     colors::{hexrgb, CHAT_BLU_COLOR, CHAT_RED_COLOR},
     markings::add_flags,
-    player_tooltip::add_player_tooltip,
 };
 use crate::{
     models::AppWin,

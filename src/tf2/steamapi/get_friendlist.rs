@@ -1,5 +1,5 @@
 use crate::models::steamid::SteamID;
-use reqwest::{blocking::get, Result};
+use reqwest::blocking::get;
 use serde::Deserialize;
 use std::collections::HashSet;
 
