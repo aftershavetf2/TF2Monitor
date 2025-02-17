@@ -27,8 +27,7 @@ pub fn get_tf2_play_minutes(steam_api_key: &String, steamid: SteamID) -> Tf2Play
     let response = get(url);
     match response {
         Ok(response) => {
-            let reply: Result<Envelope> = response.json();
-            match reply {
+            match response.json::<Envelope>() {
                 Ok(reply) => {
                     // log::info!("Reply: {:?}", reply);
                     match reply

@@ -32,11 +32,16 @@ pub fn get_player_summaries(
 
     let response = get(url);
     match response {
-        Ok(response) => {
-            let reply: GetPlayerSummariesApiResponse = response.json().unwrap();
-            let players = reply.response.players;
-            Some(players)
-        }
+        Ok(response) => match response.json::<GetPlayerSummariesApiResponse>() {
+            Ok(response) => {
+                let players = response.response.players;
+                Some(players)
+            }
+            Err(e) => {
+                log::error!("Error: {}", e);
+                None
+            }
+        },
         Err(e) => {
             log::error!("Error: {}", e);
             None

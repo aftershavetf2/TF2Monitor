@@ -31,8 +31,7 @@ pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<HashSe
     let response = get(url);
     match response {
         Ok(response) => {
-            let reply: Result<Response> = response.json();
-            match reply {
+            match response.json::<Response>() {
                 Ok(reply) => {
                     let friends = reply.friendslist.friends;
                     let players: HashSet<SteamID> = friends

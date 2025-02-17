@@ -64,8 +64,7 @@ pub fn get_bans(steam_api_key: &String, steamids: Vec<SteamID>) -> Option<Vec<St
     let response = get(url);
     match response {
         Ok(response) => {
-            let reply: Result<Envelope> = response.json();
-            match reply {
+            match response.json::<Envelope>() {
                 Ok(reply) => {
                     let bans: Vec<SteamPlayerBan> = reply
                         .players
