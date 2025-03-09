@@ -1,4 +1,6 @@
-use super::{SteamApi, SteamPlayerBan};
+use super::{
+    get_steam_comments::get_steam_profile_comments, SteamApi, SteamPlayerBan, SteamProfileComment,
+};
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
@@ -38,6 +40,7 @@ struct SteamApiCache {
     friends: HashMap<SteamID, HashSet<SteamID>>,
     playtimes: HashMap<SteamID, Tf2PlayMinutes>,
     steam_bans: HashMap<SteamID, SteamPlayerBan>,
+    comments: HashMap<SteamID, Vec<SteamProfileComment>>,
 }
 
 impl SteamApiCache {
@@ -47,6 +50,7 @@ impl SteamApiCache {
             friends: HashMap::new(),
             playtimes: HashMap::new(),
             steam_bans: HashMap::new(),
+            comments: HashMap::new(),
         }
     }
 
@@ -80,6 +84,14 @@ impl SteamApiCache {
 
     fn set_steam_ban(&mut self, steamid: SteamID, steam_ban: SteamPlayerBan) {
         self.steam_bans.insert(steamid, steam_ban);
+    }
+
+    fn get_comments(&self, steamid: SteamID) -> Option<&Vec<SteamProfileComment>> {
+        self.comments.get(&steamid)
+    }
+
+    fn set_comments(&mut self, steamid: SteamID, comments: Vec<SteamProfileComment>) {
+        self.comments.insert(steamid, comments);
     }
 }
 
@@ -128,6 +140,7 @@ impl SteamApiThread {
             self.fetch_steam_bans(&lobby);
             self.fetch_friends(&lobby);
             self.fetch_playtimes(&lobby);
+            self.fetch_comments(&lobby);
             self.approximate_account_ages(&lobby);
         }
 
@@ -322,5 +335,53 @@ impl SteamApiThread {
             player.steamid,
             AccountAge::Unknown,
         ));
+    }
+
+    fn fetch_comments(&mut self, lobby: &Lobby) {
+        let mut comments_to_fetch = Vec::new();
+
+        for player in lobby.players.iter() {
+            if player.profile_comments.is_none() {
+                // First check cache
+                if let Some(comments) = self.steam_api_cache.get_comments(player.steamid) {
+                    // log::info!("Fetched from cache ban of {}", player.name);
+                    self.send(SteamApiMsg::ProfileComments(
+                        player.steamid,
+                        comments.clone(),
+                    ));
+                } else {
+                    // Bulk fetch from Steam API below
+                    comments_to_fetch.push(player.steamid);
+                }
+            }
+        }
+
+        // log::info!(
+        //     "Will fetch fetching profile comments for {} players",
+        //     comments_to_fetch.len()
+        // );
+
+        for steamid in comments_to_fetch {
+            if let Some(player) = lobby.get_player(None, Some(steamid)) {
+                if player.steam_info.is_none() {
+                    continue;
+                }
+
+                log::info!("Fetching profile comments for {}", player.name);
+
+                let comments = get_steam_profile_comments(steamid.to_u64());
+                if let Some(comments) = comments {
+                    self.steam_api_cache.set_comments(steamid, comments.clone());
+                    self.send(SteamApiMsg::ProfileComments(steamid, comments));
+                } else {
+                    log::info!("Error fetching comments for {}", steamid.to_u64());
+
+                    // Set to empty comments to avoid fetching again
+                    let comments = Vec::new();
+                    self.steam_api_cache.set_comments(steamid, comments.clone());
+                    self.send(SteamApiMsg::ProfileComments(steamid, comments));
+                }
+            }
+        }
     }
 }

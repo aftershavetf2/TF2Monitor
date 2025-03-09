@@ -40,6 +40,8 @@ translators = { version = "0.1.5", features = ["google"] }
 
 # sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
 
+scraper = "0.23.1"
+
 #
 # Platform specific crates
 #

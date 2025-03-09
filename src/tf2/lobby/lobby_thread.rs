@@ -188,6 +188,11 @@ impl LobbyThread {
                         player.account_age = account_age;
                     }
                 }
+                SteamApiMsg::ProfileComments(steamid, comments) => {
+                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                        player.profile_comments = Some(comments);
+                    }
+                }
             }
         }
     }

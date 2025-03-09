@@ -1,7 +1,7 @@
 pub mod friendships;
 pub mod lobby_thread;
 
-use super::steamapi::SteamPlayerBan;
+use super::steamapi::{SteamPlayerBan, SteamProfileComment};
 use crate::{
     models::steamid::SteamID,
     tf2bd::models::{PlayerAttribute, PlayerInfo},
@@ -106,6 +106,7 @@ pub struct Player {
     pub friends: Option<HashSet<SteamID>>,
     pub tf2_play_minutes: Tf2PlayMinutes,
     pub steam_bans: Option<SteamPlayerBan>,
+    pub profile_comments: Option<Vec<SteamProfileComment>>,
 
     pub account_age: AccountAge,
 

@@ -11,6 +11,7 @@
 mod get_bans;
 mod get_friendlist;
 mod get_player_summaries;
+mod get_steam_comments;
 mod get_tf2_play_minutes;
 pub mod steamapi_thread;
 
@@ -27,6 +28,7 @@ pub enum SteamApiMsg {
     FriendsList(SteamID, HashSet<SteamID>),
     Tf2Playtime(SteamID, Tf2PlayMinutes),
     SteamBans(SteamID, SteamPlayerBan),
+    ProfileComments(SteamID, Vec<SteamProfileComment>),
     ApproxAccountAge(SteamID, AccountAge),
 }
 
@@ -56,6 +58,13 @@ pub struct SteamPlayerBan {
     pub days_since_last_ban: u32,
     pub number_of_game_bans: u32,
     // pub economy_ban: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct SteamProfileComment {
+    pub author: String,
+    pub author_url: String,
+    pub comment: String,
 }
 
 impl SteamApi {
