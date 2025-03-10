@@ -2,6 +2,7 @@ pub mod account_age;
 pub mod background_image;
 pub mod chat;
 pub mod colors;
+pub mod comments;
 pub mod friendship_indicators;
 pub mod kill_feed;
 pub mod markings;

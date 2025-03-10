@@ -1,9 +1,12 @@
-use super::{colors::hexrgb, player_flag_editor::add_player_flag_editor, playtime::add_playtime};
+use super::{
+    colors::hexrgb, comments::add_profile_comments, player_flag_editor::add_player_flag_editor,
+    playtime::add_playtime,
+};
 use crate::{
     models::AppWin,
     tf2::lobby::{Player, PlayerKill},
 };
-use eframe::egui::{Image, OpenUrl, ScrollArea, TextStyle, Ui, Vec2};
+use eframe::egui::{Image, OpenUrl, Ui, Vec2};
 
 pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
     ui.label("Player Details");
@@ -89,7 +92,7 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
 
     ui.label("");
 
-    add_player_kills(player, ui);
+    // add_player_kills(player, ui);
 
     add_profile_comments(player, ui);
 }
@@ -177,35 +180,5 @@ fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
                 app_win.bus.lock().unwrap().send_rcon_cmd(cmd.as_str());
             }
         });
-    });
-}
-
-fn add_profile_comments(player: &Player, ui: &mut Ui) {
-    // ui.heading("More info:");
-    ui.vertical(|ui| {
-        if let Some(comments) = &player.profile_comments {
-            let text_style = TextStyle::Body;
-            let row_height = ui.text_style_height(&text_style);
-            let num_rows = comments.len();
-
-            ui.push_id("comments", |ui| {
-                ScrollArea::vertical()
-                    .stick_to_bottom(true)
-                    .auto_shrink(false)
-                    .show_rows(ui, row_height, num_rows, |ui, row_range| {
-                        ui.scope(|ui| {
-                            ui.style_mut().visuals.panel_fill = hexrgb(0xffffff);
-
-                            for row in row_range {
-                                let row = &comments[row].clone();
-                                ui.label(format!("{}", row.comment));
-                                ui.separator();
-                            }
-                        });
-                    });
-            });
-        } else {
-            ui.label("Loading comments...");
-        }
     });
 }

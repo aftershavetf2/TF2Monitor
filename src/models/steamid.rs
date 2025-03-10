@@ -20,13 +20,20 @@ impl SteamID {
     }
 
     pub fn from_steam_id32(steamid32: &str) -> Self {
-        let steamid32 = steamid32
-            .trim_start_matches("[U:1:")
-            .trim_end_matches(']')
-            .parse::<u64>()
-            .unwrap();
+        if steamid32.starts_with("[U:1:") && steamid32.ends_with(']') {
+            let steamid32 = steamid32
+                .trim_start_matches("[U:1:")
+                .trim_end_matches(']')
+                .parse::<u64>()
+                .unwrap();
 
-        Self::from_u64(steamid32 + MIN_STEAMID64)
+            Self::from_u64(steamid32 + MIN_STEAMID64)
+        } else {
+            // This shorter form is used by the Steam API in some HTML.
+            // See get_steam_comments.rs for an example.
+            let steamid32 = steamid32.parse::<u64>().unwrap();
+            SteamID::from_u64(steamid32 + MIN_STEAMID64)
+        }
     }
 
     /// Converts a SteamID64 to a SteamID32

@@ -62,8 +62,8 @@ pub struct SteamPlayerBan {
 
 #[derive(Debug, Clone)]
 pub struct SteamProfileComment {
-    pub author: String,
-    pub author_url: String,
+    pub name: String,
+    pub steamid: SteamID,
     pub comment: String,
 }
 

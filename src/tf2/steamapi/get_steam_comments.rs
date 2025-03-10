@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use std::error::Error;
 
+use crate::models::steamid::{SteamID, MIN_STEAMID64};
+
 use super::SteamProfileComment;
 
 #[derive(Debug, Deserialize)]
@@ -56,12 +58,12 @@ fn parse_comments(html: &str) -> Vec<SteamProfileComment> {
             .collect::<String>()
             .trim()
             .to_string();
-        let author_url = comment
+        let author_steamid32 = comment
             .select(&scraper::Selector::parse("a.commentthread_author_link").unwrap())
             .next()
             .unwrap()
             .value()
-            .attr("href")
+            .attr("data-miniprofile")
             .unwrap()
             .trim()
             .to_string();
@@ -75,8 +77,8 @@ fn parse_comments(html: &str) -> Vec<SteamProfileComment> {
             .to_string();
 
         comments.push(SteamProfileComment {
-            author,
-            author_url,
+            name: author,
+            steamid: SteamID::from_steam_id32(&author_steamid32),
             comment,
         });
     }
