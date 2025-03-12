@@ -6,7 +6,7 @@ use crate::{
 use eframe::egui::{text::LayoutJob, Color32, ScrollArea, TextFormat, TextStyle, Ui};
 
 pub fn add_kill_feed(ui: &mut Ui, app_win: &mut AppWin) {
-    ui.label("Kill feed");
+    ui.heading("Kill feed");
 
     let text_style = TextStyle::Body;
     let row_height = ui.text_style_height(&text_style);
