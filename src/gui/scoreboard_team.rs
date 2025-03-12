@@ -67,10 +67,10 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             // ui.label(RichText::new("Deaths").strong());
             ui.label("Ping");
         });
-        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-            // ui.label(RichText::new("Links").strong());
-            ui.label("Last Kill");
-        });
+        // ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+        //     // ui.label(RichText::new("Links").strong());
+        //     ui.label("Last Kill");
+        // });
         ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
             // ui.label(RichText::new("Links").strong());
             ui.label("Flags");
@@ -162,12 +162,12 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                     .on_hover_text_at_pointer("ms");
             });
 
-            if let Some(k) = player.kills_with.last() {
-                let s = format!("{}{}", k.weapon, if k.crit { " (crit)" } else { "" });
-                ui.label(s);
-            } else {
-                ui.label("");
-            }
+            // if let Some(k) = player.kills_with.last() {
+            //     let s = format!("{}{}", k.weapon, if k.crit { " (crit)" } else { "" });
+            //     ui.label(s);
+            // } else {
+            //     ui.label("");
+            // }
 
             add_flags(ui, player);
 
@@ -185,7 +185,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 ui.label("");
                 ui.label("");
                 ui.label("");
-                ui.label("");
+                // ui.label("");
                 ui.end_row();
             }
         }

@@ -13,6 +13,8 @@ use super::colors::hexrgb;
 pub fn add_profile_comments(player: &Player, ui: &mut Ui) {
     // ui.heading("More info:");
     ui.vertical(|ui| {
+        ui.heading("Profile comments");
+
         if let Some(comments) = &player.profile_comments {
             let text_style = TextStyle::Body;
             let row_height = ui.text_style_height(&text_style);
@@ -52,8 +54,6 @@ pub fn add_profile_comments(player: &Player, ui: &mut Ui) {
 
 fn add_comment_row(ui: &mut Ui, row: &SteamProfileComment) {
     ui.horizontal_wrapped(|ui| {
-        let mut player_name = &row.name;
-
         let mut job = LayoutJob::default();
 
         job.append(
@@ -67,7 +67,7 @@ fn add_comment_row(ui: &mut Ui, row: &SteamProfileComment) {
 
         // Player name
         job.append(
-            player_name,
+            &row.name,
             0.0,
             TextFormat {
                 // color,

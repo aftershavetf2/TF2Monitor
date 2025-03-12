@@ -9,7 +9,7 @@ use crate::{
 use eframe::egui::{Image, OpenUrl, Ui, Vec2};
 
 pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
-    ui.label("Player Details");
+    ui.heading("Player Details");
 
     let steamid = app_win.selected_player;
     if steamid.is_none() {
@@ -92,7 +92,9 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
 
     ui.label("");
 
-    // add_player_kills(player, ui);
+    add_player_kills(player, ui);
+
+    ui.label("");
 
     add_profile_comments(player, ui);
 }
@@ -110,6 +112,8 @@ fn add_player_avatar(player: &Player, ui: &mut Ui) {
 }
 
 fn add_player_kills(player: &Player, ui: &mut Ui) {
+    ui.heading("Kills");
+
     if player.kills_with.is_empty() {
         ui.label("No kills yet");
         return;
@@ -123,7 +127,7 @@ fn add_player_kills(player: &Player, ui: &mut Ui) {
         .collect::<Vec<String>>()
         .join(", ");
 
-    ui.label(format!("Latest kills: {}", names));
+    ui.label(format!("{}", names));
 }
 
 fn add_player_community_links(player: &Player, ui: &mut Ui) {
@@ -143,6 +147,7 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
         make_link(ui, player.steamid.steam_history_url(), "SteamHistory");
         make_link(ui, player.steamid.steam_rep_url(), "SteamRep");
         make_link(ui, player.steamid.steam_id_url(), "SteamID");
+        make_link(ui, player.steamid.rep_tf_url(), "Rep.TF");
     });
 }
 

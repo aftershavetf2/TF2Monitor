@@ -86,6 +86,10 @@ impl eframe::App for AppWin {
             add_status_row(self, ui, &image_desc);
         });
 
+        egui::SidePanel::right("right_panel").show(ctx, |ui| {
+            add_player_details_panel(self, ui);
+        });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             // draw_background_image(ui);
 
@@ -93,10 +97,9 @@ impl eframe::App for AppWin {
 
             ui.separator();
 
-            ui.columns(3, |ui| {
+            ui.columns(2, |ui| {
                 add_chat(&mut ui[0], self);
                 add_kill_feed(&mut ui[1], self);
-                add_player_details_panel(self, &mut ui[2]);
             });
 
             if self.app_settings.show_friendship_indicators {

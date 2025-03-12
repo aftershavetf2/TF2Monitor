@@ -66,6 +66,10 @@ impl SteamID {
     pub fn steam_id_url(&self) -> String {
         format!("https://steamid.uk/profile/{}", self.0)
     }
+
+    pub fn rep_tf_url(&self) -> String {
+        format!("https://rep.tf/{}", self.0)
+    }
 }
 
 #[cfg(test)]
