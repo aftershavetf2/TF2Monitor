@@ -1,28 +1,27 @@
+use super::SteamProfileComment;
+use crate::models::steamid::SteamID;
 use serde::Deserialize;
 use std::error::Error;
-
-use crate::models::steamid::{SteamID, MIN_STEAMID64};
-
-use super::SteamProfileComment;
 
 #[derive(Debug, Deserialize)]
 pub struct Reply {
     pub success: bool,
     pub comments_html: String,
-    pub timelastpost: i64,
+    // pub timelastpost: i64,
 }
 
 pub fn get_steam_profile_comments(steam_id: u64) -> Option<Vec<SteamProfileComment>> {
     let data = get_data(steam_id);
     match data {
         Ok(reply) => {
+            if !reply.success {
+                return None;
+            }
+
             let comments = parse_comments(&reply.comments_html);
             Some(comments)
         }
-        Err(_) => {
-            println!("Error getting data");
-            None
-        }
+        Err(_) => None,
     }
 }
 

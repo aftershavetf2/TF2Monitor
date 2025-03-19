@@ -1,12 +1,5 @@
+use crate::tf2::{lobby::Player, steamapi::SteamProfileComment};
 use eframe::egui::{text::LayoutJob, Color32, OpenUrl, ScrollArea, TextFormat, TextStyle, Ui};
-
-use crate::{
-    models::AppWin,
-    tf2::{
-        lobby::{LobbyChat, Player, Team},
-        steamapi::SteamProfileComment,
-    },
-};
 
 use super::colors::hexrgb;
 
@@ -22,7 +15,7 @@ pub fn add_profile_comments(player: &Player, ui: &mut Ui) {
 
             ui.push_id("comments", |ui| {
                 ScrollArea::vertical()
-                    .stick_to_bottom(true)
+                    .stick_to_bottom(false)
                     .auto_shrink(false)
                     .show_rows(ui, row_height, num_rows, |ui, row_range| {
                         ui.scope(|ui| {

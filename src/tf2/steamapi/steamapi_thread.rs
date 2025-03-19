@@ -20,13 +20,16 @@ use std::{
 const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
 
 /// For each loop, fetch this many players' TF2 playtimes
-const NUM_PLAYTIMES_TO_FETCH: usize = 1;
+const NUM_PLAYTIMES_TO_FETCH: usize = 4;
 
 /// For each loop, fetch this many players' friends list
-const NUM_FRIENDS_TO_FETCH: usize = 1;
+const NUM_FRIENDS_TO_FETCH: usize = 24;
 
 /// For each loop, approximate  this many players' account ages
 const NUM_ACCOUNT_AGES_TO_APPROX: usize = 1;
+
+/// For each loop, approximate  this many players' account ages
+const NUM_PROFILE_COMMENTS_TO_FETCH: usize = 1;
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -356,12 +359,10 @@ impl SteamApiThread {
             }
         }
 
-        // log::info!(
-        //     "Will fetch fetching profile comments for {} players",
-        //     comments_to_fetch.len()
-        // );
-
-        for steamid in comments_to_fetch {
+        for steamid in comments_to_fetch
+            .into_iter()
+            .take(NUM_PROFILE_COMMENTS_TO_FETCH)
+        {
             if let Some(player) = lobby.get_player(None, Some(steamid)) {
                 if player.steam_info.is_none() {
                     continue;

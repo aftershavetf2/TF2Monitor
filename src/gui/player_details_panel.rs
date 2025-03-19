@@ -127,7 +127,7 @@ fn add_player_kills(player: &Player, ui: &mut Ui) {
         .collect::<Vec<String>>()
         .join(", ");
 
-    ui.label(format!("{}", names));
+    ui.label(names);
 }
 
 fn add_player_community_links(player: &Player, ui: &mut Ui) {
