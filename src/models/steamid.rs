@@ -41,6 +41,12 @@ impl SteamID {
         format!("[U:1:{}]", self.0 - MIN_STEAMID64)
     }
 
+    pub fn to_steam_id(self) -> String {
+        let y = self.0 % 2;
+        let z = (self.0 - 76561197960265728) / 2;
+        format!("STEAM_0:{}:{}", y, z)
+    }
+
     pub fn to_u64(self) -> u64 {
         self.0
     }
@@ -105,6 +111,14 @@ mod tests {
         assert_eq!(
             SteamID::from_steam_id32("[U:1:1218982957]").to_steam_id32(),
             "[U:1:1218982957]".to_string()
+        );
+    }
+
+    #[test]
+    fn test_to_steamd_id() {
+        assert_eq!(
+            SteamID::from_u64(76561198398458549).to_steam_id(),
+            "STEAM_0:1:219096410".to_string()
         );
     }
 }
