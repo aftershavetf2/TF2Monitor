@@ -103,7 +103,7 @@ fn add_player_avatar(player: &Player, ui: &mut Ui) {
     if let Some(steam_info) = &player.steam_info {
         let image = Image::from_uri(&steam_info.avatarfull)
             .fit_to_exact_size(Vec2::new(100.0, 100.0))
-            .rounding(3.0);
+            .corner_radius(3.0);
 
         ui.add(image);
     } else {
