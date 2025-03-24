@@ -11,7 +11,7 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
     if let Some(steam_info) = &player.steam_info {
         let image = Image::from_uri(&steam_info.avatarfull)
             .max_width(100.0)
-            .rounding(3.0);
+            .corner_radius(3.0);
 
         ui.add(image);
 
