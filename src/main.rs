@@ -2,6 +2,7 @@ mod appbus;
 mod db;
 mod gui;
 mod models;
+mod reputation;
 mod tf2;
 mod tf2bd;
 mod utils;
