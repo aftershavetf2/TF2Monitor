@@ -1,4 +1,5 @@
 use crate::models::steamid::SteamID;
+use rayon::prelude::*;
 
 #[derive(Debug, Clone)]
 pub enum SourceBanParser {
@@ -109,14 +110,21 @@ let responses = futures::future::join_all(urls.into_iter().map(|url| client.get(
  */
 pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
     let sources = get_sources();
-    let mut result = vec![];
-    for source in sources {
-        if let Some(bans) = get_source_ban(&source, steamid) {
-            for ban in bans {
-                result.push(ban);
-            }
-        }
-    }
+
+    let result = sources
+        .par_iter()
+        .map(|source| get_source_ban(&source, steamid))
+        .filter(|x| x.is_some())
+        .map(|x| x.unwrap())
+        .flatten()
+        .collect::<Vec<_>>();
+    // for source in sources {
+    //     if let Some(bans) = get_source_ban(&source, steamid) {
+    //         for ban in bans {
+    //             result.push(ban);
+    //         }
+    //     }
+    // }
 
     result
 }
