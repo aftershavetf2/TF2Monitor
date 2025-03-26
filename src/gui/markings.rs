@@ -58,9 +58,9 @@ pub fn add_flags(ui: &mut Ui, player: &Player) {
 
 fn add_reputation(ui: &mut Ui, player: &Player) {
     ui.scope(|ui| {
-        let mut text = "rep?";
-        let mut tooltip = "Still loading reputation...".to_string();
-        let mut fgcolor = Color32::BLACK;
+        let mut text = "?";
+        let mut tooltip = "Loading SourceBans...".to_string();
+        let mut fgcolor = hexrgb(0x666666);
         let mut bgcolor = hexrgb(0xaaaaaa);
 
         if let Some(reputation) = &player.reputation {
