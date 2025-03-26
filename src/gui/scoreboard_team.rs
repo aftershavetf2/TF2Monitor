@@ -73,7 +73,8 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         // });
         ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
             // ui.label(RichText::new("Links").strong());
-            ui.label("Reputation");
+            ui.label("Rep.")
+                .on_hover_text("Repution in the form of SourceBans");
         });
 
         ui.end_row();
