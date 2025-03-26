@@ -66,6 +66,31 @@ fn get_sources() -> Vec<SourceBanSource> {
             "https://www.skial.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
             SourceBanParser::Table,
         ),
+        SourceBanSource::new(
+            "scrap.tf",
+            "https://bans.scrap.tf/index.php?p=banlist&advSearch={}&advType=steamid",
+            SourceBanParser::Table,
+        ),
+        SourceBanSource::new(
+            "LazyPurple.com",
+            "https://lazypurple.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
+            SourceBanParser::Table,
+        ),
+        SourceBanSource::new(
+            "SG-Gaming.net",
+            "https://sg-gaming.net/bans/index.php?p=banlist&advSearch={}&advType=steamid",
+            SourceBanParser::Table,
+        ),
+        SourceBanSource::new(
+            "sappho.io",
+            "https://sappho.io/bans/index.php?p=banlist&advSearch={}&advType=steamid",
+            SourceBanParser::Table,
+        ),
+        SourceBanSource::new(
+            "FirePoweredGaming.com",
+            "https://firepoweredgaming.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
+            SourceBanParser::Table,
+        ),
         //
         // The following source bans are not working because they are behind CloudFlare.
         // SourceBanSource::new(
@@ -77,6 +102,11 @@ fn get_sources() -> Vec<SourceBanSource> {
     ]
 }
 
+/*
+let client = reqwest::Client::new();
+let urls = vec!["https://example.com/api1", "https://example.com/api2"];
+let responses = futures::future::join_all(urls.into_iter().map(|url| client.get(url).send())).await;
+ */
 pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
     let sources = get_sources();
     let mut result = vec![];
@@ -97,6 +127,10 @@ fn get_source_ban(source: &SourceBanSource, steamid: SteamID) -> Option<Vec<Sour
     log::info!("SourceBans: Getting bans from {}", url);
 
     let html = get_html(&url)?;
+    if html.contains("_cf_chl_opt") {
+        log::error!("SourceBans: CloudFlare detected, skipping {}", source.name);
+        return None;
+    }
 
     let document = scraper::Html::parse_document(html.as_str());
 
@@ -127,7 +161,7 @@ fn parse_source_ban_ul(
     source: &SourceBanSource,
     document: &scraper::Html,
 ) -> Option<Vec<SourceBan>> {
-    log::info!("Parsing {} using ul parser", source.name);
+    // log::info!("Parsing {} using ul parser", source.name);
 
     if !html.contains("ban_list_detal") {
         return None;
@@ -216,7 +250,7 @@ fn parse_source_ban_table(
     source: &SourceBanSource,
     document: &scraper::Html,
 ) -> Option<Vec<SourceBan>> {
-    log::info!("Parsing {} using table parser", source.name);
+    // log::info!("Parsing {} using table parser", source.name);
 
     let selector_div = scraper::Selector::parse("div#banlist").unwrap();
     let selector_table = scraper::Selector::parse("table.listtable").unwrap();

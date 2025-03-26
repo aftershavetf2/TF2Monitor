@@ -10,6 +10,7 @@ mod utils;
 use appbus::AppBus;
 use eframe::Result;
 use models::app_settings::AppSettings;
+use reputation::reputation_thread;
 use std::sync::{Arc, Mutex};
 
 fn main() -> Result<(), eframe::Error> {
@@ -22,6 +23,7 @@ fn main() -> Result<(), eframe::Error> {
 
     tf2::start(&settings, &bus);
     tf2bd::tf2bd_thread::start(&settings, &bus);
+    reputation_thread::start(&settings, &bus);
 
     gui::run(&settings, &bus)
 }

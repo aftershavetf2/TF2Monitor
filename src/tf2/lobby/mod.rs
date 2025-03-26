@@ -4,6 +4,7 @@ pub mod lobby_thread;
 use super::steamapi::{SteamPlayerBan, SteamProfileComment};
 use crate::{
     models::steamid::SteamID,
+    reputation::Reputation,
     tf2bd::models::{PlayerAttribute, PlayerInfo},
 };
 use chrono::{DateTime, Local};
@@ -107,6 +108,7 @@ pub struct Player {
     pub tf2_play_minutes: Tf2PlayMinutes,
     pub steam_bans: Option<SteamPlayerBan>,
     pub profile_comments: Option<Vec<SteamProfileComment>>,
+    pub reputation: Option<Reputation>,
 
     pub account_age: AccountAge,
 

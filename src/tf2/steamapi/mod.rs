@@ -17,7 +17,10 @@ pub mod steamapi_thread;
 
 use self::get_player_summaries::get_player_summaries;
 use super::lobby::{AccountAge, PlayerSteamInfo, Tf2PlayMinutes};
-use crate::models::{app_settings::AppSettings, steamid::SteamID};
+use crate::{
+    models::{app_settings::AppSettings, steamid::SteamID},
+    reputation::Reputation,
+};
 use chrono::{DateTime, Local, TimeZone};
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -30,6 +33,7 @@ pub enum SteamApiMsg {
     SteamBans(SteamID, SteamPlayerBan),
     ProfileComments(SteamID, Vec<SteamProfileComment>),
     ApproxAccountAge(SteamID, AccountAge),
+    Reputation(Reputation),
 }
 
 pub struct SteamApi {

@@ -193,6 +193,12 @@ impl LobbyThread {
                         player.profile_comments = Some(comments);
                     }
                 }
+                SteamApiMsg::Reputation(reputation) => {
+                    if let Some(player) = self.lobby.get_player_mut(None, Some(reputation.steamid))
+                    {
+                        player.reputation = Some(reputation);
+                    }
+                }
             }
         }
     }

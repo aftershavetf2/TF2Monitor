@@ -73,7 +73,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         // });
         ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
             // ui.label(RichText::new("Links").strong());
-            ui.label("Flags");
+            ui.label("Reputation");
         });
 
         ui.end_row();
