@@ -56,9 +56,9 @@ fn add_flag(
         ui.style_mut().visuals.widgets.hovered.bg_stroke.color = fgcolor;
         ui.style_mut().visuals.widgets.hovered.bg_fill = bgcolor;
 
-        let text = player_attribute_description(player_attribute);
+        let (_text, tooltip) = player_attribute_description(player_attribute);
 
-        if ui.checkbox(&mut enable, text).clicked() {
+        if ui.checkbox(&mut enable, tooltip).clicked() {
             app_win
                 .bus
                 .lock()

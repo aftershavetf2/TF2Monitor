@@ -272,13 +272,16 @@ impl Lobby {
     }
 }
 
-pub fn player_attribute_description(player_attribute: PlayerAttribute) -> &'static str {
+/// Returns text and tooltip for a player attribute
+pub fn player_attribute_description(
+    player_attribute: PlayerAttribute,
+) -> (&'static str, &'static str) {
     match player_attribute {
-        PlayerAttribute::Cool => "Cool",
-        PlayerAttribute::Cheater => "Cheater",
-        PlayerAttribute::Bot => "Bot",
-        PlayerAttribute::Suspicious => "Suspicious",
-        PlayerAttribute::Toxic => "Toxic",
-        PlayerAttribute::Exploiter => "Exploiter",
+        PlayerAttribute::Cool => ("Cool", "Cool"),
+        PlayerAttribute::Cheater => ("Cheat", "Cheater"),
+        PlayerAttribute::Bot => ("Bot", "Bot"),
+        PlayerAttribute::Suspicious => ("Sus", "Suspicious"),
+        PlayerAttribute::Toxic => ("Toxic", "Toxic"),
+        PlayerAttribute::Exploiter => ("Expl", "Exploiter"),
     }
 }

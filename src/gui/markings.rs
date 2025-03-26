@@ -86,8 +86,8 @@ fn add_flag(ui: &mut Ui, player_attribute: PlayerAttribute) {
         ui.style_mut().visuals.widgets.hovered.fg_stroke.color = fgcolor;
         ui.style_mut().visuals.widgets.hovered.weak_bg_fill = bgcolor;
 
-        let text = player_attribute_description(player_attribute);
+        let (text, tooltip) = player_attribute_description(player_attribute);
 
-        let _ = ui.button(text);
+        let _ = ui.button(text).on_hover_text(tooltip);
     });
 }
