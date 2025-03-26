@@ -6,28 +6,54 @@ use crate::{
 use eframe::egui::{Color32, Ui};
 
 pub fn add_flags(ui: &mut Ui, player: &Player) {
-    ui.horizontal_wrapped(|ui| {
-        ui.set_max_width(140.0);
+    let player_attributes_to_show = vec![
+        PlayerAttribute::Cool,
+        PlayerAttribute::Cheater,
+        PlayerAttribute::Bot,
+        PlayerAttribute::Suspicious,
+        PlayerAttribute::Toxic,
+        PlayerAttribute::Exploiter,
+    ];
 
-        if let Some(player_info) = &player.player_info {
-            let player_attributes_to_show = vec![
-                PlayerAttribute::Cool,
-                PlayerAttribute::Cheater,
-                PlayerAttribute::Bot,
-                PlayerAttribute::Suspicious,
-                PlayerAttribute::Toxic,
-                PlayerAttribute::Exploiter,
-            ];
+    // This extra work is needed to avoid adding an empty horizontalt_wrapped
+    // when there is nothing to show
 
-            for player_attribute in player_attributes_to_show {
-                if player_info.attributes.contains(&player_attribute) {
-                    add_flag(ui, player_attribute);
-                }
+    let has_flags_to_show = if let Some(player_info) = &player.player_info {
+        let mut has_flags_to_show = false;
+
+        for player_attribute in &player_attributes_to_show {
+            if player_info.attributes.contains(&player_attribute) {
+                has_flags_to_show = true;
             }
         }
 
-        add_reputation(ui, player);
-    });
+        has_flags_to_show
+    } else {
+        false
+    };
+
+    let has_reputation_to_show = player.reputation.is_none()
+        || if let Some(reputation) = &player.reputation {
+            reputation.has_bad_reputation
+        } else {
+            false
+        };
+
+    if has_flags_to_show || has_reputation_to_show {
+        ui.horizontal_wrapped(|ui| {
+            // ui.set_max_width(140.0);
+
+            if let Some(player_info) = &player.player_info {
+                for player_attribute in player_attributes_to_show {
+                    if player_info.attributes.contains(&player_attribute) {
+                        add_flag(ui, player_attribute);
+                    }
+                }
+            }
+
+            add_reputation(ui, player);
+        });
+    }
 }
 
 fn add_reputation(ui: &mut Ui, player: &Player) {
@@ -43,7 +69,7 @@ fn add_reputation(ui: &mut Ui, player: &Player) {
                 bgcolor = Color32::RED;
                 text = "-rep";
                 tooltip = format!(
-                    "Bans:\n{}",
+                    "SourceBans:\n{}",
                     reputation
                         .bans
                         .iter()
@@ -53,10 +79,12 @@ fn add_reputation(ui: &mut Ui, player: &Player) {
                         .as_str()
                 );
             } else {
-                fgcolor = Color32::BLACK;
-                bgcolor = Color32::GREEN;
-                text = "+rep";
-                tooltip = "No SourceBans".to_string();
+                // Don't show anything if the player has no bad reputation
+                return;
+                // fgcolor = Color32::BLACK;
+                // bgcolor = Color32::GREEN;
+                // text = "+rep";
+                // tooltip = "No SourceBans".to_string();
             }
         }
 
