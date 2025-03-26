@@ -36,7 +36,8 @@ pub struct SourceBan {
 
 // Test subject:
 // - Multiple bans: https://steamhistory.net/id/76561198398458549
-
+// - Multiple bans: https://steamhistory.net/id/76561199163606348
+//
 fn get_sources() -> Vec<SourceBanSource> {
     // TODO: Add more sources from https://steamhistory.net/sources
     vec![
