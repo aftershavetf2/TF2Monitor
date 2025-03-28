@@ -39,7 +39,7 @@ impl AppBus {
         Self {
             logfile_bus: Bus::new(10000),
             rcon_bus: Bus::new(100),
-            lobby_report_bus: Bus::new(15),
+            lobby_report_bus: Bus::new(25),
             g15_report_bus: Bus::new(100),
             steamapi_bus: Bus::new(10000),
             tf2bd_bus: Bus::new(10000),
