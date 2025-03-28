@@ -67,7 +67,7 @@ fn add_reputation(ui: &mut Ui, player: &Player) {
             if reputation.has_bad_reputation {
                 fgcolor = Color32::BLACK;
                 bgcolor = Color32::RED;
-                text = "-rep";
+                text = "SB";
                 tooltip = format!(
                     "SourceBans:\n{}",
                     reputation
