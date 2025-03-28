@@ -36,6 +36,7 @@ egui_extras = { version = "0.31.1", default-features = false, features = [
 image = { version = "0.25.6", default-features = false, features = ["jpeg"] }
 
 reqwest = { version = "0.12.15", features = ["blocking", "json"] }
+# url = "2.4"
 translators = { version = "0.1.5", features = ["google"] }
 
 # sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }

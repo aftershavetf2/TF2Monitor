@@ -15,7 +15,7 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
 
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let mut reputation_thread = ReputationThread::new(settings, bus);
@@ -83,15 +83,12 @@ impl ReputationThread {
         while let Ok(_lobby) = self.lobby_bus_rx.try_recv() {}
     }
 
-    fn find_player_to_process<'a>(&mut self, lobby: &'a Lobby) -> Option<&'a Player> {
-        lobby
-            .players
-            .iter()
-            .find(|&player| player.reputation.is_none())
-    }
-
     fn calculate_reputations(&mut self, lobby: &Lobby) {
-        if let Some(player) = self.find_player_to_process(lobby) {
+        for player in &lobby.players {
+            if player.reputation.is_some() {
+                continue;
+            }
+
             if let Some(reputation) = self.reputation_cache.get(player.steamid) {
                 self.send(SteamApiMsg::Reputation(reputation.clone()));
                 return;

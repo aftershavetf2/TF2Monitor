@@ -1,7 +1,10 @@
 use super::SteamProfileComment;
-use crate::models::steamid::SteamID;
+use crate::{http_cache::get_from_cache_or_fetch, models::steamid::SteamID};
 use serde::Deserialize;
 use std::error::Error;
+
+// Days to keep the cache
+const DAYS_TO_KEEP: i32 = 30;
 
 #[derive(Debug, Deserialize)]
 pub struct Reply {
@@ -26,20 +29,23 @@ pub fn get_steam_profile_comments(steam_id: u64) -> Option<Vec<SteamProfileComme
 }
 
 fn get_data(steam_id: u64) -> Result<Reply, Box<dyn Error>> {
-    // https://steamcommunity.com/profiles/76561197974228301/allcomments
-    // let url = format!(
-    //     "https://steamcommunity.com/profiles/{}/allcomments",
-    //     steam_id
-    // );
     let url = format!(
         "https://steamcommunity.com/comment/Profile/render/{}/-1/?start=0&totalcount=338&count=50&sessionid=&feature2=-1",
         steam_id
     );
 
-    let resp: Reply = reqwest::blocking::get(&url)?.json()?;
-    // println!("{}", resp.comments_html);
-
-    Ok(resp)
+    if let Some(data) = get_from_cache_or_fetch(
+        "Steam Profile Comments",
+        &steam_id.to_string(),
+        DAYS_TO_KEEP,
+        &url,
+    ) {
+        if let Ok(reply) = serde_json::from_str::<Reply>(&data) {
+            return Ok(reply);
+        }
+    }
+    // Failed to parse the response, return None
+    return Err("Failed to parse the response".into());
 }
 
 fn parse_comments(html: &str) -> Vec<SteamProfileComment> {

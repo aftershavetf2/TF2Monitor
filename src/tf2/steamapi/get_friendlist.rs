@@ -1,7 +1,10 @@
-use crate::models::steamid::SteamID;
+use crate::{http_cache::get_from_cache_or_fetch, models::steamid::SteamID};
 use reqwest::blocking::get;
 use serde::Deserialize;
 use std::collections::HashSet;
+
+// Days to keep the cache
+const DAYS_TO_KEEP: i32 = 30;
 
 #[derive(Debug, Deserialize)]
 struct FriendInfo {
@@ -28,25 +31,27 @@ pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<HashSe
         steam_api_key, steamid.to_u64()
     );
 
-    let response = get(url);
-    match response {
-        Ok(response) => {
-            match response.json::<Response>() {
-                Ok(reply) => {
-                    let friends = reply.friendslist.friends;
-                    let players: HashSet<SteamID> = friends
-                        .iter()
-                        .filter(|f| f.relationship == "friend")
-                        .filter_map(|f| SteamID::from_u64_string(&f.steamid))
-                        .collect();
+    if let Some(data) = get_from_cache_or_fetch(
+        "Steam Friendlist",
+        &steamid.to_u64().to_string(),
+        DAYS_TO_KEEP,
+        &url,
+    ) {
+        if let Ok(reply) = serde_json::from_str::<Response>(&data) {
+            let friends = reply.friendslist.friends;
+            let players: HashSet<SteamID> = friends
+                .iter()
+                .filter(|f| f.relationship == "friend")
+                .filter_map(|f| SteamID::from_u64_string(&f.steamid))
+                .collect();
 
-                    Some(players)
-                }
-                // The reply was not in the expected format, probably just "{}" because of an private profile
-                Err(_e) => Some(HashSet::new()),
-            }
+            Some(players)
+        } else {
+            // Failed to parse the response, return None
+            Some(HashSet::new())
         }
-        // There was a communication error
-        Err(_e) => None,
+    } else {
+        // No data back, return None
+        None
     }
 }

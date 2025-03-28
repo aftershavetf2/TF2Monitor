@@ -1,5 +1,8 @@
-use crate::models::steamid::SteamID;
-use rayon::prelude::*;
+use crate::{http_cache::get_from_cache_or_fetch, models::steamid::SteamID};
+use rayon::{prelude::*, result};
+
+// Let the http cache be 30 days old
+const DAYS_TO_KEEP: i32 = 30;
 
 #[derive(Debug, Clone)]
 pub enum SourceBanParser {
@@ -38,6 +41,7 @@ pub struct SourceBan {
 // Test subject:
 // - Multiple bans: https://steamhistory.net/id/76561198398458549
 // - Multiple bans: https://steamhistory.net/id/76561199163606348
+// - Multiple bans: https://steamhistory.net/id/76561198257656625
 //
 fn get_sources() -> Vec<SourceBanSource> {
     // TODO: Add more sources from https://steamhistory.net/sources
@@ -103,28 +107,18 @@ fn get_sources() -> Vec<SourceBanSource> {
     ]
 }
 
-/*
-let client = reqwest::Client::new();
-let urls = vec!["https://example.com/api1", "https://example.com/api2"];
-let responses = futures::future::join_all(urls.into_iter().map(|url| client.get(url).send())).await;
- */
 pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
+    log::info!("SourceBans: Fetching SourceBans for {}", steamid.to_u64());
     let sources = get_sources();
 
     let result = sources
-        .par_iter()
+        // .par_iter()
+        .iter()
         .map(|source| get_source_ban(&source, steamid))
         .filter(|x| x.is_some())
         .map(|x| x.unwrap())
         .flatten()
         .collect::<Vec<_>>();
-    // for source in sources {
-    //     if let Some(bans) = get_source_ban(&source, steamid) {
-    //         for ban in bans {
-    //             result.push(ban);
-    //         }
-    //     }
-    // }
 
     result
 }
@@ -132,9 +126,16 @@ pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
 fn get_source_ban(source: &SourceBanSource, steamid: SteamID) -> Option<Vec<SourceBan>> {
     let url = source.url.replace("{}", &steamid.to_steam_id());
 
-    log::info!("SourceBans: Getting bans from {}", url);
+    // log::info!("SourceBans: Getting bans from {}", url);
 
-    let html = get_html(&url)?;
+    let html = get_from_cache_or_fetch(
+        &source.name,
+        &steamid.to_u64().to_string(),
+        DAYS_TO_KEEP,
+        &url,
+    )?;
+
+    // let html = get_html(&url)?;
     if html.contains("_cf_chl_opt") {
         log::error!("SourceBans: CloudFlare detected, skipping {}", source.name);
         return None;
@@ -145,22 +146,6 @@ fn get_source_ban(source: &SourceBanSource, steamid: SteamID) -> Option<Vec<Sour
     match source.parser {
         SourceBanParser::Ul => parse_source_ban_ul(&html, source, &document),
         SourceBanParser::Table => parse_source_ban_table(source, &document),
-    }
-}
-
-fn get_html(url: &str) -> Option<String> {
-    match reqwest::blocking::get(url) {
-        Ok(resp) => match resp.text() {
-            Ok(text) => Some(text),
-            Err(err) => {
-                log::error!("SourceBans: Failed to get text from response: {err}");
-                None
-            }
-        },
-        Err(err) => {
-            log::error!("SourceBans: Failed to get text from response: {err}");
-            None
-        }
     }
 }
 
