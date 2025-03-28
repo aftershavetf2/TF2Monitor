@@ -15,7 +15,7 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
 
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let mut reputation_thread = ReputationThread::new(settings, bus);
@@ -84,7 +84,12 @@ impl ReputationThread {
     }
 
     fn calculate_reputations(&mut self, lobby: &Lobby) {
-        for player in &lobby.players {
+        let players = lobby
+            .players
+            .iter()
+            .filter(|player| player.reputation.is_none())
+            .take(3);
+        for player in players {
             if player.reputation.is_some() {
                 continue;
             }
