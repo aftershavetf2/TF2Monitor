@@ -84,6 +84,8 @@ impl ReputationThread {
     }
 
     fn calculate_reputations(&mut self, lobby: &Lobby) {
+        let mut one_fetched = false;
+
         let players = lobby
             .players
             .iter()
@@ -99,11 +101,15 @@ impl ReputationThread {
                 return;
             }
 
-            let reputation = get_reputation(player.steamid);
+            if !one_fetched {
+                one_fetched = true;
 
-            self.reputation_cache.set(reputation.clone());
+                let reputation = get_reputation(player.steamid);
 
-            self.send(SteamApiMsg::Reputation(reputation));
+                self.reputation_cache.set(reputation.clone());
+
+                self.send(SteamApiMsg::Reputation(reputation));
+            }
         }
     }
 }
