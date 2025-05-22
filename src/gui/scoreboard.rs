@@ -3,7 +3,7 @@ use crate::{
     models::AppWin,
     tf2::lobby::{Player, Team},
 };
-use eframe::egui::{Color32, Ui};
+use eframe::egui::{self, Color32, Ui};
 
 pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
     // Player list, also check if there are teams at all

@@ -1,7 +1,6 @@
 use crate::{
     http_cache::get_from_cache_or_fetch, models::steamid::SteamID, tf2::lobby::Tf2PlayMinutes,
 };
-use reqwest::blocking::get;
 use serde::Deserialize;
 
 // Days to keep the cache

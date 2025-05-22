@@ -1,10 +1,10 @@
 use crate::{http_cache::get_from_cache_or_fetch, models::steamid::SteamID};
-use rayon::{prelude::*, result};
+use serde::{Deserialize, Serialize};
 
 // Let the http cache be 30 days old
 const DAYS_TO_KEEP: i32 = 30;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum SourceBanParser {
     // Data is stored in a <ul> element
     Ul,
@@ -12,7 +12,7 @@ pub enum SourceBanParser {
     Table,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SourceBanSource {
     pub name: String,
     pub url: String,
@@ -29,7 +29,22 @@ impl SourceBanSource {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SourceBanFile {
+    pub source: SourceBanSource,
+    pub bans: Vec<SourceBan>,
+}
+
+impl SourceBanFile {
+    pub fn new(source: SourceBanSource) -> SourceBanFile {
+        SourceBanFile {
+            source,
+            bans: vec![],
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SourceBan {
     pub source: String,
     pub steamid: SteamID,

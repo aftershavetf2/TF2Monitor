@@ -15,48 +15,24 @@ pub fn add_flags(ui: &mut Ui, player: &Player) {
         PlayerAttribute::Exploiter,
     ];
 
-    // This extra work is needed to avoid adding an empty horizontalt_wrapped
-    // when there is nothing to show
-
-    let has_flags_to_show = if let Some(player_info) = &player.player_info {
-        let mut has_flags_to_show = false;
-
-        for player_attribute in &player_attributes_to_show {
-            if player_info.attributes.contains(&player_attribute) {
-                has_flags_to_show = true;
-            }
-        }
-
-        has_flags_to_show
-    } else {
-        false
-    };
-
-    let has_reputation_to_show = player.reputation.is_none()
-        || if let Some(reputation) = &player.reputation {
-            reputation.has_bad_reputation
-        } else {
-            false
-        };
-
-    if has_flags_to_show || has_reputation_to_show {
+    if let Some(player_info) = &player.player_info {
         ui.horizontal_wrapped(|ui| {
             // ui.set_max_width(140.0);
-
-            if let Some(player_info) = &player.player_info {
-                for player_attribute in player_attributes_to_show {
-                    if player_info.attributes.contains(&player_attribute) {
-                        add_flag(ui, player_attribute);
-                    }
+            for player_attribute in player_attributes_to_show {
+                if player_info.attributes.contains(&player_attribute) {
+                    add_flag(ui, player_attribute);
                 }
             }
-
-            add_reputation(ui, player);
         });
     }
 }
 
-fn add_reputation(ui: &mut Ui, player: &Player) {
+pub fn add_reputation(ui: &mut Ui, player: &Player) {
+    if player.reputation.is_none() {
+        ui.spinner();
+        return;
+    }
+
     ui.scope(|ui| {
         let mut text = "?";
         let mut tooltip = "Loading SourceBans...".to_string();
@@ -79,6 +55,7 @@ fn add_reputation(ui: &mut Ui, player: &Player) {
                         .as_str()
                 );
             } else {
+                ui.label("");
                 // Don't show anything if the player has no bad reputation
                 return;
                 // fgcolor = Color32::BLACK;

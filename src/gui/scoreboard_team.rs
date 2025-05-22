@@ -1,7 +1,7 @@
 use super::{
     account_age::add_account_age,
     colors::{TEAM_BLU_COLOR, TEAM_RED_COLOR},
-    markings::add_flags,
+    markings::{add_flags, add_reputation},
     player_tooltip::add_player_tooltip,
     playtime::add_playtime,
 };
@@ -10,7 +10,7 @@ use crate::{
     tf2::lobby::{Player, Team},
 };
 use eframe::egui::{
-    text::LayoutJob, Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2,
+    self, text::LayoutJob, Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2,
 };
 
 /// This is draws a scoreboard for a single team
@@ -34,163 +34,160 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         }
     });
 
-    Grid::new(title).striped(true).show(ui, |ui| {
-        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            ui.label("");
-        });
-        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-            // ui.label(RichText::new("Player").strong());
-            ui.label("Player");
-        });
-        // ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-        //     // ui.label(RichText::new("Kills").strong());
-        //     ui.label("Score");
-        // });
-        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            // ui.label(RichText::new("Kills").strong());
-            ui.label("Kills");
-        });
-        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            // ui.label(RichText::new("Deaths").strong());
-            ui.label("Deaths");
-        });
-        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            // ui.label(RichText::new("Deaths").strong());
-            ui.label("Age").on_hover_text("Account age");
-        });
-        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            // ui.label(RichText::new("Deaths").strong());
-            ui.label("Hours").on_hover_text("TF2 hours played");
-        });
-        // ui.label("Flags");
-        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            // ui.label(RichText::new("Deaths").strong());
-            ui.label("Ping");
-        });
-        // ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-        //     // ui.label(RichText::new("Links").strong());
-        //     ui.label("Last Kill");
-        // });
-        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-            // ui.label(RichText::new("Links").strong());
-            ui.label("Rep.")
-                .on_hover_text("Repution in the form of SourceBans");
-        });
-
-        ui.end_row();
-
-        for player in players {
-            // Team color box
-            add_team_symbol(app_win, ui, app_win.self_steamid, player);
-
-            add_player_name(app_win, ui, player);
-
-            // Player score
-            // ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-            //     ui.label(format!("{:3}", player.score))
-            //         .on_hover_text("Score");
+    Grid::new(title)
+        .striped(true)
+        .num_columns(10)
+        .show(ui, |ui| {
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.label("");
+            });
+            ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                ui.label("Player");
+            });
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.label("Kills");
+            });
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.label("Deaths");
+            });
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.label("Age").on_hover_text("Account age");
+            });
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.label("Hours").on_hover_text("TF2 hours played");
+            });
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.label("Ping");
+            });
+            // ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+            //     // ui.label(RichText::new("Links").strong());
+            //     ui.label("Last Kill");
             // });
-
-            // Player kills
-            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                // ui.label(format!("{:3}", player.kills))
-                //     .on_hover_text("Number of kills (crit kills)");
-
-                let mut job = LayoutJob {
-                    break_on_newline: false,
-                    ..Default::default()
-                };
-
-                job.append(
-                    format!("{:3}", player.kills).as_str(),
-                    0.0,
-                    TextFormat {
-                        color: ui.style().visuals.text_color(),
-                        ..Default::default()
-                    },
-                );
-
-                if app_win.app_settings.show_crits {
-                    job.append(
-                        format!("({})", player.crit_kills).as_str(),
-                        6.0,
-                        TextFormat {
-                            color: Color32::GRAY,
-                            ..Default::default()
-                        },
-                    );
-                }
-                ui.label(job).on_hover_text("Number of kills (crit kills)");
+            ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                ui.label("Rep.")
+                    .on_hover_text("Repution in the form of SourceBans");
             });
-
-            // Player deaths
-            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                let mut job = LayoutJob::default();
-
-                job.append(
-                    format!("{}", player.deaths).as_str(),
-                    0.0,
-                    TextFormat {
-                        color: ui.style().visuals.text_color(),
-                        ..Default::default()
-                    },
-                );
-
-                if app_win.app_settings.show_crits {
-                    job.append(
-                        format!(" ({})", player.crit_deaths).as_str(),
-                        0.0,
-                        TextFormat {
-                            color: Color32::GRAY,
-                            ..Default::default()
-                        },
-                    );
-                }
-                ui.label(job)
-                    .on_hover_text("Number of deaths (crit deaths)");
+            ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                ui.label("Flags")
+                    .on_hover_text("Player flags (e.g. cheater, newbie, etc.)");
             });
-
-            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                add_account_age(player, ui);
-            });
-
-            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                add_playtime(ui, player);
-            });
-
-            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                ui.label(format!("{}", player.pingms))
-                    .on_hover_text_at_pointer("ms");
-            });
-
-            // if let Some(k) = player.kills_with.last() {
-            //     let s = format!("{}{}", k.weapon, if k.crit { " (crit)" } else { "" });
-            //     ui.label(s);
-            // } else {
-            //     ui.label("");
-            // }
-
-            add_flags(ui, player);
 
             ui.end_row();
-        }
 
-        // Add empty rows to fill the grid
-        if players.len() < 12 {
-            for _ in 0..(12 - players.len()) {
-                ui.label("");
-                ui.label("");
-                ui.label("");
-                ui.label("");
-                ui.label("");
-                ui.label("");
-                ui.label("");
-                ui.label("");
-                // ui.label("");
+            for player in players {
+                // Team color box
+                add_team_symbol(app_win, ui, app_win.self_steamid, player);
+
+                add_player_name(app_win, ui, player);
+
+                // Player score
+                // ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                //     ui.label(format!("{:3}", player.score))
+                //         .on_hover_text("Score");
+                // });
+
+                // Player kills
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    // ui.label(format!("{:3}", player.kills))
+                    //     .on_hover_text("Number of kills (crit kills)");
+
+                    let mut job = LayoutJob {
+                        break_on_newline: false,
+                        ..Default::default()
+                    };
+
+                    job.append(
+                        format!("{:3}", player.kills).as_str(),
+                        0.0,
+                        TextFormat {
+                            color: ui.style().visuals.text_color(),
+                            ..Default::default()
+                        },
+                    );
+
+                    if app_win.app_settings.show_crits {
+                        job.append(
+                            format!("({})", player.crit_kills).as_str(),
+                            6.0,
+                            TextFormat {
+                                color: Color32::GRAY,
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    ui.label(job).on_hover_text("Number of kills (crit kills)");
+                });
+
+                // Player deaths
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    let mut job = LayoutJob::default();
+
+                    job.append(
+                        format!("{}", player.deaths).as_str(),
+                        0.0,
+                        TextFormat {
+                            color: ui.style().visuals.text_color(),
+                            ..Default::default()
+                        },
+                    );
+
+                    if app_win.app_settings.show_crits {
+                        job.append(
+                            format!(" ({})", player.crit_deaths).as_str(),
+                            0.0,
+                            TextFormat {
+                                color: Color32::GRAY,
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    ui.label(job)
+                        .on_hover_text("Number of deaths (crit deaths)");
+                });
+
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    add_account_age(player, ui);
+                });
+
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    add_playtime(ui, player);
+                });
+
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    ui.label(format!("{}", player.pingms))
+                        .on_hover_text_at_pointer("ms");
+                });
+
+                // if let Some(k) = player.kills_with.last() {
+                //     let s = format!("{}{}", k.weapon, if k.crit { " (crit)" } else { "" });
+                //     ui.label(s);
+                // } else {
+                //     ui.label("");
+                // }
+
+                add_reputation(ui, player);
+                add_flags(ui, player);
+
                 ui.end_row();
             }
-        }
-    });
+
+            // Add empty rows to fill the grid
+            if players.len() < 12 {
+                for _ in 0..(12 - players.len()) {
+                    for _ in 0..10 {
+                        ui.label("");
+                    }
+                    ui.end_row();
+                }
+            }
+
+            // let available_space = if ui.is_sizing_pass() {
+            //     egui::Vec2::ZERO
+            // } else {
+            //     ui.available_size_before_wrap()
+            // };
+            // ui.allocate_at_least(available_space, egui::Sense::hover());
+        });
 }
 
 fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
