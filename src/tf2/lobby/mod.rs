@@ -278,10 +278,10 @@ pub fn player_attribute_description(
 ) -> (&'static str, &'static str) {
     match player_attribute {
         PlayerAttribute::Cool => ("Cool", "Cool"),
-        PlayerAttribute::Cheater => ("Cheat", "Cheater"),
+        PlayerAttribute::Cheater => ("C", "Cheater"),
         PlayerAttribute::Bot => ("Bot", "Bot"),
-        PlayerAttribute::Suspicious => ("Sus", "Suspicious"),
-        PlayerAttribute::Toxic => ("Toxic", "Toxic"),
-        PlayerAttribute::Exploiter => ("Expl", "Exploiter"),
+        PlayerAttribute::Suspicious => ("S", "Suspicious"),
+        PlayerAttribute::Toxic => ("T", "Toxic"),
+        PlayerAttribute::Exploiter => ("E", "Exploiter"),
     }
 }
