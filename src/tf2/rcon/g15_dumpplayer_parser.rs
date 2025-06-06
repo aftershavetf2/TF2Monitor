@@ -171,15 +171,15 @@ struct DumpData {
 mod tests {
     // use chrono::prelude::*;
 
-    use steamid::SteamID;
+    // use steamid::SteamID;
 
-    use super::*;
+    // use super::*;
 
-    fn get_dump_text() -> String {
-        let bytes = include_bytes!("g15_dumpplayer_output.txt");
-        let s = String::from_utf8_lossy(bytes);
-        s.to_string()
-    }
+    // fn get_dump_text() -> String {
+    //     let bytes = include_bytes!("g15_dumpplayer_output.txt");
+    //     let s = String::from_utf8_lossy(bytes);
+    //     s.to_string()
+    // }
 
     // #[test]
     // fn test_parse() {
