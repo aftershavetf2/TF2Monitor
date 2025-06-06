@@ -129,10 +129,9 @@ pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
     let result = sources
         // .par_iter()
         .iter()
-        .map(|source| get_source_ban(&source, steamid))
+        .map(|source| get_source_ban(source, steamid))
         .filter(|x| x.is_some())
-        .map(|x| x.unwrap())
-        .flatten()
+        .flat_map(|x| x.unwrap())
         .collect::<Vec<_>>();
 
     result

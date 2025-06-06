@@ -10,7 +10,7 @@ use crate::{
     tf2::lobby::{Player, Team},
 };
 use eframe::egui::{
-    self, text::LayoutJob, Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2,
+    text::LayoutJob, Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2,
 };
 
 /// This is draws a scoreboard for a single team

@@ -1,5 +1,4 @@
 use crate::{http_cache::get_from_cache_or_fetch, models::steamid::SteamID};
-use reqwest::blocking::get;
 use serde::Deserialize;
 use std::collections::HashSet;
 

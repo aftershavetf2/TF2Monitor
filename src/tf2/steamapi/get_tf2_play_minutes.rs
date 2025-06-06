@@ -52,32 +52,5 @@ pub fn get_tf2_play_minutes(steam_api_key: &String, steamid: SteamID) -> Tf2Play
         }
     }
 
-    return Tf2PlayMinutes::Unknown;
-
-    // let response = get(url);
-    // match response {
-    //     Ok(response) => {
-    //         match response.json::<Envelope>() {
-    //             Ok(reply) => {
-    //                 // log::info!("Reply: {:?}", reply);
-    //                 match reply
-    //                     .response
-    //                     .games
-    //                     .iter()
-    //                     .find(|g| g.appid == 440)
-    //                     .map(|game| game.playtime_forever)
-    //                 {
-    //                     Some(playtime) => Tf2PlayMinutes::PlayMinutes(playtime),
-    //                     None => Tf2PlayMinutes::Unknown,
-    //                 }
-    //             }
-    //             // The reply was not in the expected format, probably just "{}" because of an private profile
-    //             Err(_) => Tf2PlayMinutes::Unknown,
-    //         }
-    //     }
-    //     Err(e) => {
-    //         log::error!("Error: {}", e);
-    //         Tf2PlayMinutes::Unknown
-    //     }
-    // }
+    Tf2PlayMinutes::Unknown
 }

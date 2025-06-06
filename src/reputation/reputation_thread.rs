@@ -2,10 +2,7 @@ use super::{get_reputation, Reputation};
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
-    tf2::{
-        lobby::{Lobby, Player},
-        steamapi::SteamApiMsg,
-    },
+    tf2::{lobby::Lobby, steamapi::SteamApiMsg},
 };
 use bus::BusReader;
 use std::{

@@ -43,7 +43,7 @@ pub fn get_from_cache_or_fetch(
         }
     }
 
-    return Some(html);
+    Some(html)
 }
 
 fn get_filename_from_url(url: &str) -> String {
@@ -54,8 +54,7 @@ fn get_filename_from_url(url: &str) -> String {
     let url = url.replace("&", "_");
     let url = url.replace("%", "_");
     let url = url.replace(":", "_");
-    let url = url.replace("=", "_");
-    url
+    url.replace("=", "_")
 }
 
 fn ensure_directories_exist(path: &PathBuf) {
@@ -74,12 +73,12 @@ fn delete_file_if_too_old(days_to_live: i32, path: &PathBuf) {
 
     // Delete the file if it is older than days_to_live
     let now = std::time::SystemTime::now();
-    let modified_time = get_modified_time(&path);
+    let modified_time = get_modified_time(path);
 
     if let Some(modified_time) = modified_time {
         if let Ok(duration) = now.duration_since(modified_time) {
             if duration.as_secs() > (days_to_live * 24 * 60 * 60) as u64 {
-                std::fs::remove_file(&path).unwrap_or_default();
+                std::fs::remove_file(path).unwrap_or_default();
             }
         }
     }

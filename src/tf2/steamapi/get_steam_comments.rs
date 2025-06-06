@@ -45,7 +45,7 @@ fn get_data(steam_id: u64) -> Result<Reply, Box<dyn Error>> {
         }
     }
     // Failed to parse the response, return None
-    return Err("Failed to parse the response".into());
+    Err("Failed to parse the response".into())
 }
 
 fn parse_comments(html: &str) -> Vec<SteamProfileComment> {

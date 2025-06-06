@@ -101,7 +101,7 @@ impl LobbyThread {
                 lobby_player.last_seen = now;
             } else {
                 // Player is new, add it to the lobby
-                log::info!("Player {} has joined", player.name.clone().to_string());
+                log::info!("Player {} has joined", player.name.clone());
                 let mut lobby_player = Player::default();
                 Self::merge_player_g15_data(&mut lobby_player, player);
                 lobby_player.last_seen = now;
