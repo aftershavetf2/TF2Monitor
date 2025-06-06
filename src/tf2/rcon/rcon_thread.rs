@@ -1,8 +1,7 @@
 use super::rcon_connection::{RConArgs, RConConnection};
-use crate::appbus::AppBus;
 use crate::models::app_settings::AppSettings;
-use crate::tf2::rcon::g15_dumpplayer_parser::G15DumpPlayerParser;
 use crate::utils::BoxResult;
+use crate::{appbus::AppBus, tf2::rcon::g15_dumpplayer_parser::G15DumpPlayerParser};
 use bus::BusReader;
 use std::{
     sync::{Arc, Mutex},
@@ -14,7 +13,7 @@ use std::{
 const RCON_DELAY: Duration = time::Duration::from_millis(10);
 
 /// The delay between loops in run()
-const LOOP_DELAY: Duration = time::Duration::from_millis(5000);
+const LOOP_DELAY: Duration = time::Duration::from_millis(500);
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -48,7 +47,7 @@ impl RconThread {
     pub fn run(&mut self) {
         log::info!("Rcon background thread started");
 
-        let g15_dumpplayer_parser = G15DumpPlayerParser::new();
+        let mut g15_dumpplayer_parser = G15DumpPlayerParser::new();
 
         loop {
             if let Some(reply) = self.send_rcon_command("g15_dumpplayer") {
