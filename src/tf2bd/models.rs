@@ -3,10 +3,9 @@
 // https://raw.githubusercontent.com/PazerOP/tf2_bot_detector/master/schemas/v3/settings.schema.json
 //
 
+use fs_err as fs;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::Path;
+use std::{io::Read, path::Path};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TF2BDPlayerList {
@@ -119,7 +118,7 @@ struct RulesStats {
 
     pub cheaters: usize,
     pub bots: usize,
-    pub susicious: usize,
+    pub suspicious: usize,
     pub racists: usize,
     pub exploiters: usize,
 }
@@ -137,7 +136,7 @@ impl TF2BDPlayerList {
     pub fn load(filename: &str) -> TF2BDPlayerList {
         if Path::new(filename).exists() {
             log::info!("Loading TF2BD rules file: {}", filename);
-            let mut f = File::open(filename).unwrap();
+            let mut f = fs::File::open(filename).unwrap();
             let mut json = String::new();
             f.read_to_string(&mut json).unwrap();
             let rules = TF2BDPlayerList::from_json_str(&json);
@@ -156,8 +155,8 @@ impl TF2BDPlayerList {
     pub fn save(&self, filename: &str) {
         log::info!("Saving TF2BD rules file: {}", filename);
         let json = serde_json::to_string_pretty(self).unwrap();
-        let mut f = File::create(filename).unwrap();
-        f.write_all(json.as_bytes()).unwrap();
+        let mut f = fs::File::create(filename).unwrap();
+        std::io::Write::write_all(&mut f, json.as_bytes()).unwrap();
         log::info!("Saving done");
     }
 
@@ -171,7 +170,7 @@ impl TF2BDPlayerList {
             players: self.players.len(),
             cheaters: 0,
             bots: 0,
-            susicious: 0,
+            suspicious: 0,
             racists: 0,
             exploiters: 0,
         };
@@ -190,7 +189,7 @@ impl TF2BDPlayerList {
                 result.bots += 1;
             }
             if player.attributes.contains(&PlayerAttribute::Suspicious) {
-                result.susicious += 1;
+                result.suspicious += 1;
             }
             if player.attributes.contains(&PlayerAttribute::Exploiter) {
                 result.exploiters += 1;
