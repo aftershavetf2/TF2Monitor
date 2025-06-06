@@ -17,13 +17,13 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
 
 /// For each loop, fetch this many players' TF2 playtimes
-const NUM_PLAYTIMES_TO_FETCH: usize = 4;
+const NUM_PLAYTIMES_TO_FETCH: usize = 2;
 
 /// For each loop, fetch this many players' friends list
-const NUM_FRIENDS_TO_FETCH: usize = 24;
+const NUM_FRIENDS_TO_FETCH: usize = 4;
 
 /// For each loop, approximate  this many players' account ages
 const NUM_ACCOUNT_AGES_TO_APPROX: usize = 1;
