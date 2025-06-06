@@ -38,12 +38,12 @@ pub fn get_player_summaries(
                 Some(players)
             }
             Err(e) => {
-                log::error!("Error: {}", e);
+                log::error!("Error parsing player summaries: {}", e);
                 None
             }
         },
         Err(e) => {
-            log::error!("Error: {}", e);
+            log::error!("Error fetching player summaries: {}", e);
             None
         }
     }
