@@ -17,10 +17,10 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(2000);
 
 /// For each loop, fetch this many players' TF2 playtimes
-const NUM_PLAYTIMES_TO_FETCH: usize = 2;
+const NUM_PLAYTIMES_TO_FETCH: usize = 4;
 
 /// For each loop, fetch this many players' friends list
 const NUM_FRIENDS_TO_FETCH: usize = 4;
@@ -29,7 +29,7 @@ const NUM_FRIENDS_TO_FETCH: usize = 4;
 const NUM_ACCOUNT_AGES_TO_APPROX: usize = 1;
 
 /// For each loop, approximate  this many players' account ages
-const NUM_PROFILE_COMMENTS_TO_FETCH: usize = 1;
+const NUM_PROFILE_COMMENTS_TO_FETCH: usize = 2;
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -294,7 +294,7 @@ impl SteamApiThread {
     }
 
     fn approximate_account_age(&mut self, player: &Player) {
-        const NEIGHBORHOOD_SIZE: u64 = 49;
+        const NEIGHBORHOOD_SIZE: u64 = 20;
 
         log::info!(
             "Approximating account age for {} {}",
