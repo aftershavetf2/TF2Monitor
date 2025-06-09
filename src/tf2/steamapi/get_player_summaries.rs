@@ -30,7 +30,7 @@ pub fn get_player_summaries(
         steam_api_key, steamids
     );
 
-    let response = get(url);
+    let response = get(&url);
     match response {
         Ok(response) => match response.json::<GetPlayerSummariesApiResponse>() {
             Ok(response) => {
@@ -38,7 +38,7 @@ pub fn get_player_summaries(
                 Some(players)
             }
             Err(e) => {
-                log::error!("Error parsing player summaries: {}", e);
+                log::error!("Error parsing player summaries: {}. URL: {}", e, url);
                 None
             }
         },
