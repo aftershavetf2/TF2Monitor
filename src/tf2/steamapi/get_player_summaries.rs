@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use crate::models::steamid::SteamID;
 use reqwest::blocking::get;
 use serde::Deserialize;
@@ -17,11 +19,7 @@ struct GetPlayerSummariesApiResponse {
 pub fn get_player_summaries(
     steam_api_key: &String,
     steamids: Vec<SteamID>,
-) -> Option<Vec<SteamApiPlayer>> {
-    if steamids.is_empty() {
-        return None;
-    }
-
+) -> Result<Vec<SteamApiPlayer>, Box<dyn Error>> {
     let steamids: Vec<String> = steamids.iter().map(|s| s.to_u64().to_string()).collect();
     let steamids = steamids.join(",");
 
@@ -30,21 +28,8 @@ pub fn get_player_summaries(
         steam_api_key, steamids
     );
 
-    let response = get(&url);
-    match response {
-        Ok(response) => match response.json::<GetPlayerSummariesApiResponse>() {
-            Ok(response) => {
-                let players = response.response.players;
-                Some(players)
-            }
-            Err(e) => {
-                log::error!("Error parsing player summaries: {}. URL: {}", e, url);
-                None
-            }
-        },
-        Err(e) => {
-            log::error!("Error fetching player summaries: {}", e);
-            None
-        }
-    }
+    let response = get(&url)?;
+    let players = response.json::<GetPlayerSummariesApiResponse>()?;
+
+    Ok(players.response.players)
 }
