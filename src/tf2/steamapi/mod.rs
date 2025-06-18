@@ -23,7 +23,7 @@ use crate::{
 };
 use chrono::{DateTime, Local, TimeZone};
 use serde::Deserialize;
-use std::collections::HashSet;
+use std::{collections::HashSet, error::Error};
 
 #[derive(Debug, Clone)]
 pub enum SteamApiMsg {
@@ -79,7 +79,10 @@ impl SteamApi {
     }
 
     /// Fetches player summaries from the Steam API for a list of steamdids
-    pub fn get_player_summaries(&mut self, steamids: Vec<SteamID>) -> Option<Vec<SteamApiPlayer>> {
+    pub fn get_player_summaries(
+        &mut self,
+        steamids: Vec<SteamID>,
+    ) -> Result<Vec<SteamApiPlayer>, Box<dyn Error>> {
         get_player_summaries(&self.steam_api_key, steamids)
     }
 
