@@ -17,7 +17,10 @@ use std::{
 };
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(2000);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
+
+/// The delay between retries in approximate_account_age()
+const RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(5000);
 
 /// For each loop, fetch this many players' TF2 playtimes
 const NUM_PLAYTIMES_TO_FETCH: usize = 4;
@@ -166,7 +169,7 @@ impl SteamApiThread {
             }
         }
 
-        if let Some(infos) = self.steam_api.get_player_summaries(summaries_to_fetch) {
+        if let Ok(infos) = self.steam_api.get_player_summaries(summaries_to_fetch) {
             for info in infos {
                 if let Some(steamid) = SteamID::from_u64_string(&info.steamid) {
                     let public_profile = matches!(info.communityvisibilitystate, 3);
@@ -312,24 +315,31 @@ impl SteamApiThread {
             ids.push(SteamID::from_u64(id));
         }
 
-        let accounts = self.steam_api.get_player_summaries(ids);
-        if let Some(accounts) = accounts {
-            for account in accounts {
-                if let Some(account_age) = account.get_account_age() {
-                    // Found a neighbor with public profile
-                    log::info!(
-                        "Found neighbor with public profile for {}: {}",
-                        player.name,
-                        account.steamid
-                    );
-                    self.send(SteamApiMsg::ApproxAccountAge(
-                        player.steamid,
-                        AccountAge::Approx(account_age),
-                    ));
+        for _ in 0..5 {
+            let accounts = self.steam_api.get_player_summaries(ids.clone());
+            match accounts {
+                Ok(accounts) => {
+                    for account in accounts {
+                        if let Some(account_age) = account.get_account_age() {
+                            // Found a neighbor with public profile
+                            log::info!(
+                                "Found neighbor with public profile for {}: {}",
+                                player.name,
+                                account.steamid
+                            );
+                            self.send(SteamApiMsg::ApproxAccountAge(
+                                player.steamid,
+                                AccountAge::Approx(account_age),
+                            ));
 
-                    return;
+                            return;
+                        }
+                    }
                 }
+                Err(e) => log::error!("Error fetching player summaries: {}", e),
             }
+
+            sleep(RETRY_DELAY);
         }
 
         log::info!("No neighbors with public profile found for {}", player.name);
