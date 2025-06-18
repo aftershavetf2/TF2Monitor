@@ -6,7 +6,7 @@ use super::colors::hexrgb;
 pub fn add_profile_comments(player: &Player, ui: &mut Ui) {
     // ui.heading("More info:");
     ui.vertical(|ui| {
-        ui.heading("Profile comments");
+        ui.heading("Profile Comments");
 
         if let Some(comments) = &player.profile_comments {
             let text_style = TextStyle::Body;
