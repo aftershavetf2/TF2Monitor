@@ -1,4 +1,4 @@
-name: Rust
+name: Rust (Windows)
 
 on:
   push:
@@ -11,18 +11,14 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Här byter vi operativsystem
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libx11-dev libxcursor-dev libxrandr-dev libxi-dev libasound2-dev libvulkan-dev libwayland-dev libxkbcommon-dev
 
       - name: Build
         run: cargo build
 
       - name: Run tests
-        run: xvfb-run cargo test
+        run: cargo test
