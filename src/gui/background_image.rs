@@ -22,7 +22,7 @@ pub fn draw_background_image(ui: &mut eframe::egui::Ui) {
         .tint(Color32::from_rgb(60, 60, 60));
 
     // let rect_vec2 = ui.max_rect().size();
-    let rect_vec2 = ui.ctx().screen_rect().size();
+    let rect_vec2 = ui.ctx().content_rect().size();
     // println!("rect_vec2: {:?}", rect_vec2);
     let rect = eframe::egui::Rect::from_min_size(Default::default(), rect_vec2);
     image.paint_at(ui, rect);

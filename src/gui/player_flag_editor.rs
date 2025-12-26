@@ -5,7 +5,7 @@ use crate::{
     tf2::lobby::{player_attribute_description, Player},
     tf2bd::models::PlayerAttribute,
 };
-use eframe::egui::{Checkbox, Ui, Widget};
+use eframe::egui::{Checkbox, Ui};
 
 pub fn add_player_flag_editor(app_win: &AppWin, ui: &mut Ui, player: &Player) {
     ui.horizontal_wrapped(|ui| {
@@ -44,7 +44,7 @@ fn add_flag(
         let (fgcolor, bgcolor) = color_for_flag(player_attribute);
 
         ui.style_mut().visuals.panel_fill = bgcolor;
-        
+
         ui.style_mut().visuals.widgets.active.bg_fill = bgcolor;
 
         // ui.style_mut().visuals.override_text_color = Some(fgcolor);

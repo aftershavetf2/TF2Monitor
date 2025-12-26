@@ -1,5 +1,5 @@
 use crate::{models::AppWin, tf2bd::models::PlayerAttribute};
-use eframe::egui::{menu, Ui, ViewportCommand};
+use eframe::egui::{containers::menu::MenuBar, Ui, ViewportCommand};
 
 /*
 Menu structure:
@@ -22,7 +22,7 @@ Rules(todo)
 */
 
 pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
-    menu::bar(ui, |ui| {
+    MenuBar::new().ui(ui, |ui| {
         ui.menu_button("File", |ui| {
             if ui.button("Quit").clicked() {
                 ui.ctx().send_viewport_cmd(ViewportCommand::Close);
