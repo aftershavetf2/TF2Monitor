@@ -40,7 +40,7 @@ pub const NUM_REPUTATIONS_TO_FETCH: usize = 3;
 pub const HTTP_CACHE_BASE_DIR: &str = ".http-cache";
 
 /// HTTP cache TTL (Time To Live) in days - how long cached data should be used before fetching new data
-pub const HTTP_CACHE_TTL_TF2_PLAYTIME_DAYS: i32 = 7;
-pub const HTTP_CACHE_TTL_FRIENDLIST_DAYS: i32 = 7;
+pub const HTTP_CACHE_TTL_TF2_PLAYTIME_DAYS: i32 = 30;
+pub const HTTP_CACHE_TTL_FRIENDLIST_DAYS: i32 = 30;
 pub const HTTP_CACHE_TTL_STEAM_COMMENTS_DAYS: i32 = 30;
 pub const HTTP_CACHE_TTL_SOURCEBANS_DAYS: i32 = 30;
