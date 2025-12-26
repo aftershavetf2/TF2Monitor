@@ -1,10 +1,11 @@
 use super::SteamProfileComment;
-use crate::{http_cache::get_from_cache_or_fetch, models::steamid::SteamID};
+use crate::{
+    config::HTTP_CACHE_TTL_STEAM_COMMENTS_DAYS,
+    http_cache::get_from_cache_or_fetch,
+    models::steamid::SteamID,
+};
 use serde::Deserialize;
 use std::error::Error;
-
-// Days to keep the cache
-const DAYS_TO_KEEP: i32 = 30;
 
 #[derive(Debug, Deserialize)]
 pub struct Reply {
@@ -37,7 +38,7 @@ fn get_data(steam_id: u64) -> Result<Reply, Box<dyn Error>> {
     if let Some(data) = get_from_cache_or_fetch(
         "Steam Profile Comments",
         &steam_id.to_string(),
-        DAYS_TO_KEEP,
+        HTTP_CACHE_TTL_STEAM_COMMENTS_DAYS,
         &url,
     ) {
         if let Ok(reply) = serde_json::from_str::<Reply>(&data) {

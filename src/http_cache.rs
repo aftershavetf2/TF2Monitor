@@ -1,3 +1,4 @@
+use crate::config::HTTP_CACHE_BASE_DIR;
 use fs_err::create_dir_all;
 use std::{
     fs::{metadata, write},
@@ -5,15 +6,13 @@ use std::{
     time::SystemTime,
 };
 
-const BASE_DIR: &str = ".http-cache";
-
 pub fn get_from_cache_or_fetch(
     domain: &str,
     key: &str,
     days_to_live: i32,
     url: &str,
 ) -> Option<String> {
-    let mut path: PathBuf = [BASE_DIR, domain, key].iter().collect();
+    let mut path: PathBuf = [HTTP_CACHE_BASE_DIR, domain, key].iter().collect();
     ensure_directories_exist(&path);
 
     let filename = get_filename_from_url(url);

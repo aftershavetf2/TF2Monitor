@@ -1,8 +1,8 @@
-use crate::{http_cache::get_from_cache_or_fetch, models::steamid::SteamID};
+use crate::{
+    config::HTTP_CACHE_TTL_SOURCEBANS_DAYS, http_cache::get_from_cache_or_fetch,
+    models::steamid::SteamID,
+};
 use serde::{Deserialize, Serialize};
-
-// Let the http cache be 30 days old
-const DAYS_TO_KEEP: i32 = 30;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum SourceBanParser {
@@ -145,7 +145,7 @@ fn get_source_ban(source: &SourceBanSource, steamid: SteamID) -> Option<Vec<Sour
     let html = get_from_cache_or_fetch(
         &source.name,
         &steamid.to_u64().to_string(),
-        DAYS_TO_KEEP,
+        HTTP_CACHE_TTL_SOURCEBANS_DAYS,
         &url,
     )?;
 

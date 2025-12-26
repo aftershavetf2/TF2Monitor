@@ -1,9 +1,10 @@
-use crate::{http_cache::get_from_cache_or_fetch, models::steamid::SteamID};
+use crate::{
+    config::HTTP_CACHE_TTL_FRIENDLIST_DAYS,
+    http_cache::get_from_cache_or_fetch,
+    models::steamid::SteamID,
+};
 use serde::Deserialize;
 use std::collections::HashSet;
-
-// Days to keep the cache
-const DAYS_TO_KEEP: i32 = 7;
 
 #[derive(Debug, Deserialize)]
 struct FriendInfo {
@@ -33,7 +34,7 @@ pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<HashSe
     if let Some(data) = get_from_cache_or_fetch(
         "Steam Friendlist",
         &steamid.to_u64().to_string(),
-        DAYS_TO_KEEP,
+        HTTP_CACHE_TTL_FRIENDLIST_DAYS,
         &url,
     ) {
         if let Ok(reply) = serde_json::from_str::<Response>(&data) {
