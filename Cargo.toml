@@ -45,6 +45,8 @@ scraper = "0.25.0"
 
 rayon = "1.11.0"
 
+serde_rusqlite = { version = "0.40.1" }
+
 # [dependencies.winit]
 # # version = "*"
 # version = "=0.30.9"
