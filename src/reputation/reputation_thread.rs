@@ -5,7 +5,7 @@ use crate::{
     tf2::{lobby::Lobby, steamapi::SteamApiMsg},
 };
 use bus::BusReader;
-use crate::config::REPUTATION_LOOP_DELAY;
+use crate::config::{NUM_REPUTATIONS_TO_FETCH, REPUTATION_LOOP_DELAY};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -85,7 +85,7 @@ impl ReputationThread {
             .players
             .iter()
             .filter(|player| player.reputation.is_none())
-            .take(3);
+            .take(NUM_REPUTATIONS_TO_FETCH);
         for player in players {
             if player.reputation.is_some() {
                 continue;

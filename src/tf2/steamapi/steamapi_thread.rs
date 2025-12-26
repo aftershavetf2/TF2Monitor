@@ -10,24 +10,15 @@ use crate::{
     },
 };
 use bus::BusReader;
-use crate::config::{STEAMAPI_LOOP_DELAY, STEAMAPI_RETRY_DELAY};
+use crate::config::{
+    NUM_ACCOUNT_AGES_TO_APPROX, NUM_FRIENDS_TO_FETCH, NUM_PLAYTIMES_TO_FETCH,
+    NUM_PROFILE_COMMENTS_TO_FETCH, STEAMAPI_LOOP_DELAY, STEAMAPI_RETRY_DELAY,
+};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
-
-/// For each loop, fetch this many players' TF2 playtimes
-const NUM_PLAYTIMES_TO_FETCH: usize = 4;
-
-/// For each loop, fetch this many players' friends list
-const NUM_FRIENDS_TO_FETCH: usize = 4;
-
-/// For each loop, approximate  this many players' account ages
-const NUM_ACCOUNT_AGES_TO_APPROX: usize = 1;
-
-/// For each loop, approximate  this many players' account ages
-const NUM_PROFILE_COMMENTS_TO_FETCH: usize = 2;
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
