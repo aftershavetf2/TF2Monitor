@@ -9,7 +9,12 @@ pub fn add_kill_feed(ui: &mut Ui, app_win: &mut AppWin) {
     ui.heading("Kill Feed");
 
     let text_style = TextStyle::Body;
-    let row_height = ui.text_style_height(&text_style);
+    let text_height = ui.text_style_height(&text_style);
+    // Account for potential additional content that may make rows taller
+    // Use button height as a safe minimum to prevent row height changes
+    let button_height = ui.spacing().interact_size.y;
+    // Use the larger of the two to ensure consistent row heights
+    let row_height = text_height.max(button_height);
     let num_rows = app_win.lobby.kill_feed.len();
 
     ScrollArea::vertical()

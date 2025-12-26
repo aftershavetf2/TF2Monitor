@@ -12,7 +12,12 @@ pub fn add_chat(ui: &mut Ui, app_win: &mut AppWin) {
     ui.heading("Chat");
 
     let text_style = TextStyle::Body;
-    let row_height = ui.text_style_height(&text_style);
+    let text_height = ui.text_style_height(&text_style);
+    // Account for flag buttons (like "CHEATER", "BOT") that may be added to rows
+    // Button height is typically larger than text height
+    let button_height = ui.spacing().interact_size.y;
+    // Use the larger of the two to ensure rows don't change height when flags are added
+    let row_height = text_height.max(button_height);
     let num_rows = app_win.lobby.chat.len();
 
     ui.push_id("chat", |ui| {
