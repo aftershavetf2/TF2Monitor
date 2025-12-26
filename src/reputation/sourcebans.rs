@@ -81,11 +81,11 @@ fn get_sources() -> Vec<SourceBanSource> {
             "https://bans.dpg.tf/index.php?p=banlist&advSearch={}&advType=steamid",
             SourceBanParser::Table,
         ),
-        SourceBanSource::new(
-            "skial.com",
-            "https://www.skial.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
-            SourceBanParser::Table,
-        ),
+        // SourceBanSource::new(
+        //     "skial.com",
+        //     "https://www.skial.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
+        //     SourceBanParser::Table,
+        // ),
         SourceBanSource::new(
             "scrap.tf",
             "https://bans.scrap.tf/index.php?p=banlist&advSearch={}&advType=steamid",

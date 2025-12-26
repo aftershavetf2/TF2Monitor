@@ -41,16 +41,24 @@ fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
             None => (&format!("{}", &kill_row.victim.to_u64()), Team::Unknown),
         };
 
-        let killer_color = match killer_team {
+        let mut killer_color = match killer_team {
             Team::Blue => CHAT_BLU_COLOR,
             Team::Red => CHAT_RED_COLOR,
             _ => Color32::GRAY,
         };
-        let victim_color = match victim_team {
+        let mut victim_color = match victim_team {
             Team::Blue => CHAT_BLU_COLOR,
             Team::Red => CHAT_RED_COLOR,
             _ => Color32::GRAY,
         };
+
+        // If the killer or the victim is Me, use white color
+        if app_win.is_me(Some(kill_row.killer)) {
+            killer_color = Color32::WHITE;
+        }
+        if app_win.is_me(Some(kill_row.victim)) {
+            victim_color = Color32::WHITE;
+        }
 
         let mut job = LayoutJob::default();
 
@@ -79,7 +87,7 @@ fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
             " killed ",
             0.0,
             TextFormat {
-                color: Color32::LIGHT_GRAY,
+                color: Color32::GRAY,
                 ..Default::default()
             },
         );
@@ -95,7 +103,16 @@ fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
         );
 
         job.append(
-            format!(" with {}", kill_row.weapon).as_str(),
+            " with ",
+            0.0,
+            TextFormat {
+                color: Color32::GRAY,
+                ..Default::default()
+            },
+        );
+
+        job.append(
+            &kill_row.weapon,
             0.0,
             TextFormat {
                 color: Color32::LIGHT_GRAY,

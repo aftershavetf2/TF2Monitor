@@ -19,7 +19,7 @@ use std::{
 use translators::{GoogleTranslator, Translator};
 
 /// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
+const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(1000);
 
 /// The number of seconds a player can be in the recently_left_players collection
 const RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS: i64 = 90;

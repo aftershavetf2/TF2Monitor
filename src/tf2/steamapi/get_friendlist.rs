@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::collections::HashSet;
 
 // Days to keep the cache
-const DAYS_TO_KEEP: i32 = 30;
+const DAYS_TO_KEEP: i32 = 7;
 
 #[derive(Debug, Deserialize)]
 struct FriendInfo {

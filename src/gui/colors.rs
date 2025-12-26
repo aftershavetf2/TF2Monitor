@@ -40,11 +40,13 @@ pub const TEXT_COLOR: Color32 = hexrgb(0xEBE2CA);
 pub fn set_style(ctx: &egui::Context) {
     let mut style = egui::Visuals::dark().clone();
 
+    style.dark_mode = true;
+
     style.panel_fill = PANEL_FILL;
     style.override_text_color = Some(TEXT_COLOR);
-    // style.widgets.inactive.bg_fill = Color32::BLACK;
-    style.widgets.inactive.weak_bg_fill = hexrgb(0x756B5E);
-    style.widgets.inactive.bg_fill = hexrgb(0x756B5E);
+    // // style.widgets.inactive.bg_fill = Color32::BLACK;
+    // style.widgets.inactive.weak_bg_fill = hexrgb(0x756B5E);
+    // style.widgets.inactive.bg_fill = hexrgb(0x756B5E);
 
     ctx.set_visuals(style);
 }

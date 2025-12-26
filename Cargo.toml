@@ -7,10 +7,10 @@ edition = "2021"
 regex = "1.11.1"
 regex_static = "0.1.1"
 bus = "2.4.1"
-once_cell = "1.21.1"
-chrono = "0.4.40"
-date_component = "0.4.2"
-fs-err = "3.1.0"
+once_cell = "1.21.3"
+chrono = "0.4.41"
+date_component = "0.4.3"
+fs-err = "3.1.1"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 
@@ -23,19 +23,19 @@ simple_logger = { version = "5.0", default-features = false, features = [
     "colors",
 ] }
 
-eframe = { version = "0.31.1", default-features = false, features = [
+eframe = { version = "0.32.0", default-features = false, features = [
     "glow",
     "default_fonts",
 ] }
 
-egui_extras = { version = "0.31.1", default-features = false, features = [
+egui_extras = { version = "0.32.0", default-features = false, features = [
     "http",
     "image",
 ] }
 
 image = { version = "0.25.6", default-features = false, features = ["jpeg"] }
 
-reqwest = { version = "0.12.15", features = ["blocking", "json"] }
+reqwest = { version = "0.12.22", features = ["blocking", "json"] }
 # url = "2.4"
 translators = { version = "0.1.5", features = ["google"] }
 

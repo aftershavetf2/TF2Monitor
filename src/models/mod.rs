@@ -67,4 +67,11 @@ impl AppWin {
     pub fn set_selected_player(&mut self, clicked_on_steamid: SteamID) {
         self.selected_player = Some(clicked_on_steamid);
     }
+
+    pub fn is_me(&self, steamid: Option<SteamID>) -> bool {
+        match steamid {
+            Some(steamid) => steamid == self.self_steamid,
+            None => false,
+        }
+    }
 }

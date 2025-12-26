@@ -279,7 +279,7 @@ pub fn player_attribute_description(
     match player_attribute {
         PlayerAttribute::Cool => ("Cool", "Cool"),
         PlayerAttribute::Cheater => ("C", "Cheater"),
-        PlayerAttribute::Bot => ("Bot", "Bot"),
+        PlayerAttribute::Bot => ("B", "Bot"),
         PlayerAttribute::Suspicious => ("S", "Suspicious"),
         PlayerAttribute::Toxic => ("T", "Toxic"),
         PlayerAttribute::Exploiter => ("E", "Exploiter"),

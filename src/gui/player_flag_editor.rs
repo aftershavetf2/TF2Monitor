@@ -5,7 +5,7 @@ use crate::{
     tf2::lobby::{player_attribute_description, Player},
     tf2bd::models::PlayerAttribute,
 };
-use eframe::egui::Ui;
+use eframe::egui::{Checkbox, Ui, Widget};
 
 pub fn add_player_flag_editor(app_win: &AppWin, ui: &mut Ui, player: &Player) {
     ui.horizontal_wrapped(|ui| {
@@ -43,11 +43,15 @@ fn add_flag(
 
         let (fgcolor, bgcolor) = color_for_flag(player_attribute);
 
+        ui.style_mut().visuals.panel_fill = bgcolor;
+        
+        ui.style_mut().visuals.widgets.active.bg_fill = bgcolor;
+
         // ui.style_mut().visuals.override_text_color = Some(fgcolor);
 
         // ui.style_mut().
-        ui.style_mut().visuals.widgets.active.fg_stroke.color = fgcolor;
-        ui.style_mut().visuals.widgets.active.bg_stroke.color = fgcolor;
+        // ui.style_mut().visuals.widgets.active.fg_stroke.color = fgcolor;
+        // ui.style_mut().visuals.widgets.active.bg_stroke.color = fgcolor;
         ui.style_mut().visuals.widgets.active.bg_fill = bgcolor;
         ui.style_mut().visuals.widgets.inactive.fg_stroke.color = fgcolor;
         ui.style_mut().visuals.widgets.inactive.bg_stroke.color = fgcolor;
@@ -56,9 +60,19 @@ fn add_flag(
         ui.style_mut().visuals.widgets.hovered.bg_stroke.color = fgcolor;
         ui.style_mut().visuals.widgets.hovered.bg_fill = bgcolor;
 
-        let (_text, tooltip) = player_attribute_description(player_attribute);
+        // ui.style_mut()
+        //     .visuals
+        //     .widgets
+        //     .noninteractive
+        //     .fg_stroke
+        //     .color = fgcolor;
 
-        if ui.checkbox(&mut enable, tooltip).clicked() {
+        let (_text, tooltip) = player_attribute_description(player_attribute);
+        let checkbox = Checkbox::new(&mut enable, tooltip);
+
+        let response = ui.add(checkbox);
+
+        if response.clicked() {
             app_win
                 .bus
                 .lock()
