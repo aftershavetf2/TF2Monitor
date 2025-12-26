@@ -19,11 +19,11 @@ pub mod window_status_row;
 use self::friendship_indicators::add_friendship_indicators;
 use crate::{
     appbus::AppBus,
+    config::{GUI_REPAINT_DELAY, GUI_SLEEP_DELAY},
     models::{app_settings::AppSettings, AppWin},
 };
 use background_image::get_background_image_desc;
 use chat::add_chat;
-use core::time::Duration;
 use eframe::egui::{self};
 use kill_feed::add_kill_feed;
 use player_details_panel::add_player_details_panel;
@@ -107,7 +107,7 @@ impl eframe::App for AppWin {
             }
         });
 
-        sleep(Duration::from_millis(80));
-        ctx.request_repaint_after(Duration::from_millis(100));
+        sleep(GUI_SLEEP_DELAY);
+        ctx.request_repaint_after(GUI_REPAINT_DELAY);
     }
 }

@@ -12,14 +12,12 @@ use crate::{
 use bus::BusReader;
 use chrono::prelude::*;
 use std::collections::HashSet;
+use crate::config::LOBBY_LOOP_DELAY;
 use std::{
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
 use translators::{GoogleTranslator, Translator};
-
-/// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(1000);
 
 /// The number of seconds a player can be in the recently_left_players collection
 const RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS: i64 = 90;
@@ -72,7 +70,7 @@ impl LobbyThread {
             self.translate_chat();
             self.update_scoreboard();
 
-            sleep(LOOP_DELAY);
+            sleep(LOBBY_LOOP_DELAY);
         }
     }
 

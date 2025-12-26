@@ -5,6 +5,7 @@ use crate::{
     tf2::lobby::{Lobby, Player, Team},
 };
 use bus::BusReader;
+use crate::config::TF2BD_LOOP_DELAY;
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
@@ -13,9 +14,6 @@ use std::{
 };
 
 const FILENAME: &str = "playerlist.json";
-
-/// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(50);
 
 const VOTE_PERIOD_SECONDS: u64 = 10;
 
@@ -75,7 +73,7 @@ impl Tf2bdThread {
 
             self.do_callvotes();
 
-            sleep(LOOP_DELAY);
+            sleep(TF2BD_LOOP_DELAY);
         }
     }
 

@@ -7,17 +7,11 @@ use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
 use std::path::Path;
+use crate::config::{LOGFILE_FILE_NOT_EXIST_DELAY, LOGFILE_LOOP_DELAY};
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::time::Duration;
-use std::{thread, time};
+use std::thread;
 use thread::sleep;
-
-/// The delay between loops in run()
-const LOOP_DELAY: Duration = time::Duration::from_millis(1000);
-
-// The delay between checking if the file exists
-const FILE_NOT_EXIST_DELAY: Duration = time::Duration::from_millis(10 * 1000);
 
 /// Start the logfile watcher thread to run in the background
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -62,7 +56,7 @@ impl LogfileWatcher {
         self.goto_last_pos();
 
         loop {
-            sleep(LOOP_DELAY);
+            sleep(LOGFILE_LOOP_DELAY);
 
             self.process_new_data(&parser);
         }
@@ -88,7 +82,7 @@ impl LogfileWatcher {
                 "TF2 console.log file does not exist (yet?), or wrong path? Waiting a bit... Filename: {}",
                 self.filename
             );
-            sleep(FILE_NOT_EXIST_DELAY);
+            sleep(LOGFILE_FILE_NOT_EXIST_DELAY);
             return;
         }
 

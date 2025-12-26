@@ -1,4 +1,5 @@
 use super::rcon_connection::{RConArgs, RConConnection};
+use crate::config::{RCON_DELAY, RCON_LOOP_DELAY};
 use crate::models::app_settings::AppSettings;
 use crate::utils::BoxResult;
 use crate::{appbus::AppBus, tf2::rcon::g15_dumpplayer_parser::G15DumpPlayerParser};
@@ -6,14 +7,7 @@ use bus::BusReader;
 use std::{
     sync::{Arc, Mutex},
     thread::{self, sleep},
-    time::{self, Duration},
 };
-
-/// The delay between RCON commands
-const RCON_DELAY: Duration = time::Duration::from_millis(10);
-
-/// The delay between loops in run()
-const LOOP_DELAY: Duration = time::Duration::from_millis(5000);
 
 /// Start the background thread for the rcon module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
@@ -74,7 +68,7 @@ impl RconThread {
 
             self.process_bus();
 
-            sleep(LOOP_DELAY);
+            sleep(RCON_LOOP_DELAY);
         }
     }
 

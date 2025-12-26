@@ -10,17 +10,12 @@ use crate::{
     },
 };
 use bus::BusReader;
+use crate::config::{STEAMAPI_LOOP_DELAY, STEAMAPI_RETRY_DELAY};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
-
-/// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
-
-/// The delay between retries in approximate_account_age()
-const RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(5000);
 
 /// For each loop, fetch this many players' TF2 playtimes
 const NUM_PLAYTIMES_TO_FETCH: usize = 4;
@@ -126,7 +121,7 @@ impl SteamApiThread {
         loop {
             self.process_bus();
 
-            sleep(LOOP_DELAY);
+            sleep(STEAMAPI_LOOP_DELAY);
         }
     }
 
@@ -339,7 +334,7 @@ impl SteamApiThread {
                 Err(e) => log::error!("Error fetching player summaries: {}", e),
             }
 
-            sleep(RETRY_DELAY);
+            sleep(STEAMAPI_RETRY_DELAY);
         }
 
         log::info!("No neighbors with public profile found for {}", player.name);

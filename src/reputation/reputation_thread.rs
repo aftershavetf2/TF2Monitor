@@ -5,14 +5,12 @@ use crate::{
     tf2::{lobby::Lobby, steamapi::SteamApiMsg},
 };
 use bus::BusReader;
+use crate::config::REPUTATION_LOOP_DELAY;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
-
-/// The delay between loops in run()
-const LOOP_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
 
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let mut reputation_thread = ReputationThread::new(settings, bus);
@@ -63,7 +61,7 @@ impl ReputationThread {
         loop {
             self.process_bus();
 
-            sleep(LOOP_DELAY);
+            sleep(REPUTATION_LOOP_DELAY);
         }
     }
 

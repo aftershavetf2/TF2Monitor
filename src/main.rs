@@ -1,4 +1,5 @@
 mod appbus;
+mod config;
 mod db;
 mod gui;
 mod http_cache;
