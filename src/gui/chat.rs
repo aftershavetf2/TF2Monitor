@@ -8,6 +8,8 @@ use crate::{
 };
 use eframe::egui::{text::LayoutJob, Color32, ScrollArea, TextFormat, TextStyle, Ui};
 
+const CHAT_ROW_HEIGHT_EXTRA: f32 = 3.5;
+
 pub fn add_chat(ui: &mut Ui, app_win: &mut AppWin) {
     ui.heading("Chat");
 
@@ -17,7 +19,8 @@ pub fn add_chat(ui: &mut Ui, app_win: &mut AppWin) {
     // Button height is typically larger than text height
     let button_height = ui.spacing().interact_size.y;
     // Use the larger of the two to ensure rows don't change height when flags are added
-    let row_height = text_height.max(button_height);
+    // Add extra height for better spacing
+    let row_height = text_height.max(button_height) + CHAT_ROW_HEIGHT_EXTRA;
     let num_rows = app_win.lobby.chat.len();
 
     ui.push_id("chat", |ui| {
