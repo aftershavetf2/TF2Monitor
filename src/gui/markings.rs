@@ -1,4 +1,5 @@
 use super::colors::{color_for_flag, hexrgb};
+use super::ui_utils::show_empty_value;
 use crate::{
     tf2::lobby::{player_attribute_description, Player},
     tf2bd::models::PlayerAttribute,
@@ -15,15 +16,22 @@ pub fn add_flags(ui: &mut Ui, player: &Player) {
         PlayerAttribute::Exploiter,
     ];
 
+    let mut added_flags = false;
+
     if let Some(player_info) = &player.player_info {
         ui.horizontal_wrapped(|ui| {
             // ui.set_max_width(140.0);
             for player_attribute in player_attributes_to_show {
                 if player_info.attributes.contains(&player_attribute) {
                     add_flag(ui, player_attribute);
+                    added_flags = true;
                 }
             }
         });
+    }
+
+    if !added_flags {
+        show_empty_value(ui);
     }
 }
 
@@ -54,27 +62,25 @@ pub fn add_reputation(ui: &mut Ui, player: &Player) {
                         .join("\n")
                         .as_str()
                 );
-            } else {
-                ui.label("");
-                // Don't show anything if the player has no bad reputation
+
+                ui.style_mut().visuals.override_text_color = Some(fgcolor);
+
+                ui.style_mut().visuals.widgets.active.fg_stroke.color = fgcolor;
+                ui.style_mut().visuals.widgets.active.weak_bg_fill = bgcolor;
+                ui.style_mut().visuals.widgets.inactive.fg_stroke.color = fgcolor;
+                ui.style_mut().visuals.widgets.inactive.weak_bg_fill = bgcolor;
+                ui.style_mut().visuals.widgets.hovered.fg_stroke.color = fgcolor;
+                ui.style_mut().visuals.widgets.hovered.weak_bg_fill = bgcolor;
+
+                let _ = ui.button(text).on_hover_text(tooltip);
+
                 return;
-                // fgcolor = Color32::BLACK;
-                // bgcolor = Color32::GREEN;
-                // text = "+rep";
-                // tooltip = "No SourceBans".to_string();
             }
         }
 
-        ui.style_mut().visuals.override_text_color = Some(fgcolor);
-
-        ui.style_mut().visuals.widgets.active.fg_stroke.color = fgcolor;
-        ui.style_mut().visuals.widgets.active.weak_bg_fill = bgcolor;
-        ui.style_mut().visuals.widgets.inactive.fg_stroke.color = fgcolor;
-        ui.style_mut().visuals.widgets.inactive.weak_bg_fill = bgcolor;
-        ui.style_mut().visuals.widgets.hovered.fg_stroke.color = fgcolor;
-        ui.style_mut().visuals.widgets.hovered.weak_bg_fill = bgcolor;
-
-        let _ = ui.button(text).on_hover_text(tooltip);
+        // Don't show anything if the player has no bad reputation
+        // ui.label("(no rep)");
+        show_empty_value(ui);
     });
 }
 

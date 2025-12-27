@@ -4,6 +4,7 @@ use super::{
     markings::{add_flags, add_reputation},
     player_tooltip::add_player_tooltip,
     playtime::add_playtime,
+    ui_utils::show_empty_value,
 };
 use crate::{
     models::{steamid::SteamID, AppWin},
@@ -12,6 +13,11 @@ use crate::{
 use eframe::egui::{
     text::LayoutJob, Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2,
 };
+
+const WEAPON_COLUMN_MIN_WIDTH: f32 = 100.0;
+const KILLS_COLUMN_MIN_WIDTH: f32 = 50.0;
+const DEATHS_COLUMN_MIN_WIDTH: f32 = 50.0;
+const HOURS_COLUMN_MIN_WIDTH: f32 = 60.0;
 
 /// This is draws a scoreboard for a single team
 pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: &Vec<&Player>) {
@@ -38,6 +44,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         .striped(true)
         .num_columns(10)
         .show(ui, |ui| {
+            // Header row
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
                 ui.label("");
             });
@@ -45,52 +52,49 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 ui.label("Player");
             });
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.set_min_width(KILLS_COLUMN_MIN_WIDTH);
                 ui.label("Kills");
             });
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.set_min_width(DEATHS_COLUMN_MIN_WIDTH);
                 ui.label("Deaths");
             });
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
                 ui.label("Age").on_hover_text("Account age");
             });
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.set_min_width(HOURS_COLUMN_MIN_WIDTH);
                 ui.label("Hours").on_hover_text("TF2 hours played");
             });
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
                 ui.label("Ping");
             });
-            // ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-            //     // ui.label(RichText::new("Links").strong());
-            //     ui.label("Last Kill");
-            // });
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                 ui.label("Rep.")
-                    .on_hover_text("Repution in the form of SourceBans");
+                    .on_hover_text("Reputation in the form of SourceBans");
             });
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                 ui.label("Flags")
                     .on_hover_text("Player flags (e.g. cheater, newbie, etc.)");
             });
 
+            ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                ui.set_min_width(WEAPON_COLUMN_MIN_WIDTH);
+                ui.label("Weapon").on_hover_text("Last weapon used");
+            });
+
             ui.end_row();
 
+            // Player rows
             for player in players {
                 // Team color box
                 add_team_symbol(app_win, ui, app_win.self_steamid, player);
 
                 add_player_name(app_win, ui, player);
 
-                // Player score
-                // ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                //     ui.label(format!("{:3}", player.score))
-                //         .on_hover_text("Score");
-                // });
-
                 // Player kills
                 ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                    // ui.label(format!("{:3}", player.kills))
-                    //     .on_hover_text("Number of kills (crit kills)");
-
+                    ui.set_min_width(KILLS_COLUMN_MIN_WIDTH);
                     let mut job = LayoutJob {
                         break_on_newline: false,
                         ..Default::default()
@@ -120,6 +124,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
 
                 // Player deaths
                 ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    ui.set_min_width(DEATHS_COLUMN_MIN_WIDTH);
                     let mut job = LayoutJob::default();
 
                     job.append(
@@ -150,6 +155,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 });
 
                 ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    ui.set_min_width(HOURS_COLUMN_MIN_WIDTH);
                     add_playtime(ui, player);
                 });
 
@@ -158,15 +164,19 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                         .on_hover_text_at_pointer("ms");
                 });
 
-                // if let Some(k) = player.kills_with.last() {
-                //     let s = format!("{}{}", k.weapon, if k.crit { " (crit)" } else { "" });
-                //     ui.label(s);
-                // } else {
-                //     ui.label("");
-                // }
-
                 add_reputation(ui, player);
+
                 add_flags(ui, player);
+
+                ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                    ui.set_min_width(WEAPON_COLUMN_MIN_WIDTH);
+                    if let Some(last_weapon) = player.kills_with.last() {
+                        ui.label(last_weapon.weapon.clone())
+                            .on_hover_text_at_pointer("Last weapon used");
+                    } else {
+                        show_empty_value(ui);
+                    }
+                });
 
                 ui.end_row();
             }
@@ -180,13 +190,6 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                     ui.end_row();
                 }
             }
-
-            // let available_space = if ui.is_sizing_pass() {
-            //     egui::Vec2::ZERO
-            // } else {
-            //     ui.available_size_before_wrap()
-            // };
-            // ui.allocate_at_least(available_space, egui::Sense::hover());
         });
 }
 

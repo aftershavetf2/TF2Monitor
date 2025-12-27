@@ -14,6 +14,7 @@ pub mod recently_left;
 pub mod scoreboard;
 pub mod scoreboard_team;
 pub mod top_menu;
+pub mod ui_utils;
 pub mod window_status_row;
 
 use self::friendship_indicators::add_friendship_indicators;
