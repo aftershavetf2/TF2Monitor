@@ -24,7 +24,7 @@ pub const LOGFILE_FILE_NOT_EXIST_DELAY: Duration = Duration::from_millis(10 * 10
 pub const TF2BD_LOOP_DELAY: Duration = Duration::from_millis(50);
 
 /// GUI delays
-pub const GUI_SLEEP_DELAY: Duration = Duration::from_millis(80);
+pub const GUI_SLEEP_DELAY: Duration = Duration::from_millis(30);
 pub const GUI_REPAINT_DELAY: Duration = Duration::from_millis(100);
 
 /// Steam API batch sizes - how many players to process per loop iteration
