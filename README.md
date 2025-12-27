@@ -15,9 +15,19 @@ With this app you can:
   - Steam account creating time
   - Player's public avatar picture - Buttons with links to popular sites such as SteamHistory.net and SteamCommunity.com for each player
   - Number of TF2 hours
-  - VAC bans etc
+  - VAC bans
+  - Steam friends list
+  - SourceBans reputation information
 
 - Get the chat in TF2 translated into English
+
+- View kill feed with critical hit indicators
+
+- Mark players with flags (Cheater, Bot, Suspicious, etc.) and save them to `playerlist.json`
+
+- Automatically votekick cheaters and bots (configurable in settings)
+
+- Window position and size are automatically saved and restored between sessions
 
 Players marked are saved in playerlist.json. The format is based on TF2BD file format but only the SteamID -> flags section are used, and flags for Cool(one-way soft-friendship) and Bot are added.
 
@@ -43,13 +53,33 @@ When "Show friendships" is checked, there are white connections between friends.
 
 ## Chat
 
-Translated chat texts have black background and white text.
+The chat panel displays all chat messages from the game with team colors (blue/red). Dead players are prefixed with "_DEAD_" and team chat messages are prefixed with "(TEAM)". Translated chat texts have black background and white text. Click on a player's name in chat to see their details in the right panel.
+
+## Kill Feed
+
+The kill feed shows recent kills in the game. Critical hits are indicated with "(crit)" after the weapon name. Click on a player's name to see their details.
+
+## Player Details Panel
+
+Click on any player's name in the scoreboard, chat, or kill feed to open the player details panel on the right side. This panel shows:
+
+- Player avatar and name
+- Steam account age
+- TF2 hours played
+- VAC ban status
+- SourceBans reputation
+- Steam friends
+- Player flags/markings (with editor)
+- Links to Steam profile, SteamHistory, etc.
+- Steam profile comments
 
 # What about VAC?
 
 This application does not alter any game file or intervene with the TF2 process and memory in any way. This is completely VAC safe.
 
 All it does is to start TF2 with some flags to tell it to log more info to the `console.log` file, and enable and configure RCON(remote connect) so this app can send commands to TF2. Then the application periodically scans the `console.log` file and sends commands to TF2 over RCON telling it to log info about the players in the server, to votekick cheaters and bots.
+
+The app can automatically votekick players marked as cheaters or bots if enabled in the settings. You can also manually votekick players through the UI.
 
 # Your privacy
 
@@ -85,7 +115,9 @@ If you change rcon-password or port you need to alter the bat file.
 "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf_win64.exe" -steam -game tf  -usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +sv_rcon_whitelist_address 127.0.0.1 +sv_quota_stringcmdspersecond 1000000 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console
 ```
 
-# TF2 Bot Detector files
+# Player Markings and Reputation
+
+## TF2 Bot Detector files
 
 This app can read and write the usual TF2 Bot Detector files but will only use the subset of rules that point out a SteamID and a flag(Cheater, Suspicious, Racist, Exploiter).
 
@@ -94,6 +126,10 @@ Where the `settings.json` file are your markings will be saved in `playerlist.js
 Right now only one `playerlist.json` file is supported.
 
 In the future there could be support for multiple `playerlist.XXX.json` along with autoupdate features.
+
+## SourceBans Integration
+
+The app integrates with SourceBans to fetch ban information for players. Players with bans from SourceBans will have their reputation marked accordingly. This information is displayed in the player details panel and can help identify players with a history of bans.
 
 # Linux support?
 
