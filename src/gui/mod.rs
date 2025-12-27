@@ -38,10 +38,18 @@ pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), efram
     let icon_image_bytes = include_bytes!("../../images/icon.png");
     let icon_data = Arc::new(eframe::icon_data::from_png_bytes(icon_image_bytes).unwrap());
 
-    let viewport = egui::ViewportBuilder::default()
+    // Build viewport with saved position and size if available
+    let mut viewport = egui::ViewportBuilder::default()
         .with_inner_size([1280.0, 768.0])
         .with_min_inner_size([800.0, 600.0])
         .with_icon(icon_data);
+
+    if let Some((x, y)) = settings.window_position {
+        viewport = viewport.with_position(egui::Pos2::new(x, y));
+    }
+    if let Some((w, h)) = settings.window_size {
+        viewport = viewport.with_inner_size([w, h]);
+    }
 
     let options = eframe::NativeOptions {
         vsync: true,
@@ -107,7 +115,39 @@ impl eframe::App for AppWin {
             }
         });
 
+        // Save window position and size to AppSettings
+        // Use the viewport's outer rect to get the actual window position
+        let viewport_rect = ctx.input(|i| i.viewport().outer_rect);
+        if let Some(viewport) = viewport_rect {
+            let pos = viewport.min;
+            let size = viewport.size();
+
+            // Check if position or size has changed
+            let pos_changed = self
+                .app_settings
+                .window_position
+                .map_or(true, |(old_x, old_y)| {
+                    (old_x - pos.x).abs() > 1.0 || (old_y - pos.y).abs() > 1.0
+                });
+            let size_changed = self
+                .app_settings
+                .window_size
+                .map_or(true, |(old_w, old_h)| {
+                    (old_w - size.x).abs() > 1.0 || (old_h - size.y).abs() > 1.0
+                });
+
+            if pos_changed || size_changed {
+                self.app_settings.window_position = Some((pos.x, pos.y));
+                self.app_settings.window_size = Some((size.x, size.y));
+                self.app_settings.save();
+            }
+        }
+
         sleep(GUI_SLEEP_DELAY);
         ctx.request_repaint_after(GUI_REPAINT_DELAY);
+    }
+
+    fn save(&mut self, _storage: &mut dyn eframe::Storage) {
+        // eframe automatically saves persisted data from ctx.data_mut()
     }
 }

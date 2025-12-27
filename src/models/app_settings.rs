@@ -50,6 +50,13 @@ pub struct AppSettings {
 
     #[serde(default = "default_party_notifications_for")]
     pub party_notifications_for: Vec<PlayerAttribute>,
+
+    // Window position and size
+    #[serde(default)]
+    pub window_position: Option<(f32, f32)>,
+
+    #[serde(default)]
+    pub window_size: Option<(f32, f32)>,
 }
 
 impl Default for AppSettings {
@@ -75,6 +82,9 @@ impl Default for AppSettings {
             kick_bots: true,
 
             party_notifications_for: default_party_notifications_for(),
+
+            window_position: None,
+            window_size: None,
         }
     }
 }
