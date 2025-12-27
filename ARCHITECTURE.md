@@ -18,7 +18,11 @@ The following larger parts are in TF2Monitor:
 
 - **TF2BD**: Listens to Lobby data and enriches it with the usual TF2BD markings such as Cheater, Toxic etc. Stores those markings in a `playerlist.json` file in the project root.
 
-- **UI**: Listens to new Lobby data and presents it. Sends user commands such as votekick, player markings to other parts of the application.
+- **Reputation**: Listens to Lobby data and enriches it with reputation information from SourceBans. Fetches ban information for players and determines if they have a bad reputation.
+
+- **UI**: Listens to new Lobby data and presents it. Sends user commands such as votekick, player markings to other parts of the application. Built with `egui` and `eframe`.
+
+- **AppSettings**: Manages application configuration and persistence. Stores settings in `settings.json` including window position/size, RCON settings, Steam API key, and various UI preferences. Window position and size are automatically saved and restored between sessions.
 
 ## General data flow when playing
 
@@ -94,3 +98,51 @@ sequenceDiagram
         TF2BD->>Lobby: Player markings(Cheater etc)
     end
 ```
+
+## Enrich Lobby data with Reputation data
+
+This flow enriches player data with SourceBans reputation information.
+
+```mermaid
+sequenceDiagram
+    participant Lobby
+    participant Reputation
+    participant SourceBans
+
+    loop Periodically
+        Lobby->>Reputation: Lobby data
+        Reputation->>SourceBans: Request ban information
+        SourceBans->>Reputation: Ban data
+        Reputation->>Lobby: Player reputation data
+    end
+```
+
+## UI Components
+
+The UI is built using `egui` and `eframe` and consists of several modules:
+
+- **scoreboard**: Main scoreboard display showing both teams
+- **scoreboard_team**: Individual team scoreboard with player statistics (kills, deaths, hours, weapon, etc.)
+- **chat**: Chat message display with team colors, dead/team prefixes, and translation support
+- **kill_feed**: Kill feed display showing recent kills with critical hit indicators
+- **player_details_panel**: Right-side panel showing detailed information about selected player
+- **markings**: Player flag/marking display (Cheater, Bot, etc.)
+- **playtime**: Player playtime display
+- **account_age**: Account age display
+- **friendship_indicators**: Visual indicators for Steam friends
+- **top_menu**: Top menu bar with application controls
+- **window_status_row**: Status row at the bottom of the window
+- **player_tooltip**: Tooltip information for players
+- **player_flag_editor**: Editor for player flags/markings
+- **comments**: Steam profile comments display
+- **recently_left**: Display of recently left players
+- **background_image**: Background image handling
+- **colors**: Color scheme and styling
+- **ui_utils**: Common UI utility functions (e.g., `show_empty_value`)
+
+### UI Features
+
+- **Window Persistence**: Window position and size are automatically saved to `AppSettings` and restored on startup
+- **Column Widths**: Scoreboard columns have minimum widths for consistent layout (Weapon: 100px, Kills: 50px, Deaths: 50px, Hours: 60px)
+- **Chat Row Height**: Chat rows have adjustable height (default +3.5px extra spacing)
+- **Critical Hit Display**: Kill feed shows "(crit)" after weapon name for critical hits
