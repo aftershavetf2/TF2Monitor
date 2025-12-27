@@ -125,6 +125,18 @@ fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
             },
         );
 
+        // Add "(crit)" if it was a critical hit
+        if kill_row.crit {
+            job.append(
+                " (crit)",
+                0.0,
+                TextFormat {
+                    color: Color32::GRAY,
+                    ..Default::default()
+                },
+            );
+        }
+
         ui.label(job)
     });
 }
