@@ -62,7 +62,7 @@ sequenceDiagram
 
 ## Enrich Lobby data with data from SteamAPI
 
-This is the dataflow when the user joins a new TF2 server, or when a new player is joins the game. The player who a new to the Lobby will not have some data such as account age, TF2 hours, Steam friends. The SteamAPI loop will fetch missing data and send to Lobby.
+This is the dataflow when the user joins a new TF2 server, or when a new player is joining the game. The player who a new to the Lobby will not have some data such as account age, TF2 hours, Steam friends. The SteamAPI loop will fetch missing data and send to Lobby.
 
 ```mermaid
 sequenceDiagram
@@ -139,10 +139,3 @@ The UI is built using `egui` and `eframe` and consists of several modules:
 - **background_image**: Background image handling
 - **colors**: Color scheme and styling
 - **ui_utils**: Common UI utility functions (e.g., `show_empty_value`)
-
-### UI Features
-
-- **Window Persistence**: Window position and size are automatically saved to `AppSettings` and restored on startup
-- **Column Widths**: Scoreboard columns have minimum widths for consistent layout (Weapon: 100px, Kills: 50px, Deaths: 50px, Hours: 60px)
-- **Chat Row Height**: Chat rows have adjustable height (default +3.5px extra spacing)
-- **Critical Hit Display**: Kill feed shows "(crit)" after weapon name for critical hits
