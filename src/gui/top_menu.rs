@@ -46,6 +46,30 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             {
                 app_win.updated_settings();
             }
+
+            ui.separator();
+
+            ui.label("Sort scoreboard by:");
+            if ui
+                .selectable_value(
+                    &mut app_win.app_settings.sort_by,
+                    crate::models::app_settings::SortBy::Score,
+                    "Score",
+                )
+                .changed()
+            {
+                app_win.updated_settings();
+            }
+            if ui
+                .selectable_value(
+                    &mut app_win.app_settings.sort_by,
+                    crate::models::app_settings::SortBy::Kills,
+                    "Kills",
+                )
+                .changed()
+            {
+                app_win.updated_settings();
+            }
         });
 
         ui.menu_button("Actions", |ui| {

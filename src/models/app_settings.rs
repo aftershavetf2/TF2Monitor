@@ -7,6 +7,12 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortBy {
+    Score,
+    Kills,
+}
+
 const SETTINGS_FILENAME: &str = "settings.json";
 
 fn get_true() -> bool {
@@ -15,6 +21,10 @@ fn get_true() -> bool {
 
 fn default_party_notifications_for() -> Vec<PlayerAttribute> {
     vec![PlayerAttribute::Cheater, PlayerAttribute::Bot]
+}
+
+fn default_sort_by() -> SortBy {
+    SortBy::Score
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -40,6 +50,9 @@ pub struct AppSettings {
 
     #[serde(default = "get_true")]
     pub show_crits: bool,
+
+    #[serde(default = "default_sort_by")]
+    pub sort_by: SortBy,
 
     // Auto actions
     #[serde(default = "bool::default")]
@@ -77,6 +90,7 @@ impl Default for AppSettings {
 
             show_friendship_indicators: true,
             show_crits: true,
+            sort_by: SortBy::Score,
 
             kick_cheaters: false,
             kick_bots: true,
