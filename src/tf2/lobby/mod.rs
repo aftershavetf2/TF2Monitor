@@ -95,6 +95,7 @@ pub struct Player {
     pub alive: bool,
     pub pingms: i64,
     pub score: i64,
+    pub health: Option<u32>,
     pub kills: u32,
     pub deaths: u32,
     pub crit_kills: u32,

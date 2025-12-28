@@ -53,7 +53,7 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
             player_name = &player.name;
             team = player.team;
 
-            add_flags(ui, player);
+            add_flags(ui, player, false);
         }
 
         let color = match team {

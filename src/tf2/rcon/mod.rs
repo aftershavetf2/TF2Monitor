@@ -20,4 +20,5 @@ pub struct G15PlayerData {
     pub alive: bool,
     pub team: Option<Team>,
     pub score: i64,
+    pub health: Option<u32>,
 }

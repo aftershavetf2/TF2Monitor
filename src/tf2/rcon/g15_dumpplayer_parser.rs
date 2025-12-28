@@ -67,6 +67,7 @@ impl G15DumpPlayerParser {
                     _ => None,
                 },
                 score: player.score.unwrap_or(0) as i64,
+                health: player.health,
             });
         }
 

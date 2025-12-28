@@ -6,7 +6,7 @@ use crate::{
 };
 use eframe::egui::{Color32, Ui};
 
-pub fn add_flags(ui: &mut Ui, player: &Player) {
+pub fn add_flags(ui: &mut Ui, player: &Player, add_empty_value: bool) {
     let player_attributes_to_show = vec![
         PlayerAttribute::Cool,
         PlayerAttribute::Cheater,
@@ -30,7 +30,7 @@ pub fn add_flags(ui: &mut Ui, player: &Player) {
         });
     }
 
-    if !added_flags {
+    if !added_flags && add_empty_value {
         show_empty_value(ui);
     }
 }
@@ -41,18 +41,13 @@ pub fn add_reputation(ui: &mut Ui, player: &Player) {
         return;
     }
 
-    ui.scope(|ui| {
-        let mut text = "?";
-        let mut tooltip = "Loading SourceBans...".to_string();
-        let mut fgcolor = hexrgb(0x666666);
-        let mut bgcolor = hexrgb(0xaaaaaa);
-
-        if let Some(reputation) = &player.reputation {
-            if reputation.has_bad_reputation {
-                fgcolor = Color32::BLACK;
-                bgcolor = Color32::RED;
-                text = "SB";
-                tooltip = format!(
+    if let Some(reputation) = &player.reputation {
+        if reputation.has_bad_reputation {
+            ui.scope(|ui| {
+                let fgcolor = Color32::BLACK;
+                let bgcolor = Color32::RED;
+                let text = "SB";
+                let tooltip = format!(
                     "SourceBans:\n{}",
                     reputation
                         .bans
@@ -73,15 +68,14 @@ pub fn add_reputation(ui: &mut Ui, player: &Player) {
                 ui.style_mut().visuals.widgets.hovered.weak_bg_fill = bgcolor;
 
                 let _ = ui.button(text).on_hover_text(tooltip);
-
-                return;
-            }
+            });
+            return;
         }
+    }
 
-        // Don't show anything if the player has no bad reputation
-        // ui.label("(no rep)");
-        show_empty_value(ui);
-    });
+    // Don't show anything if the player has no bad reputation
+    // ui.label("(no rep)");
+    show_empty_value(ui);
 }
 
 fn add_flag(ui: &mut Ui, player_attribute: PlayerAttribute) {

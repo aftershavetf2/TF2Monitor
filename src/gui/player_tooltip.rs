@@ -37,5 +37,5 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
         ui.label("No Steam bans");
     }
 
-    add_flags(ui, player);
+    add_flags(ui, player, true);
 }

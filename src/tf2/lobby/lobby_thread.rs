@@ -140,6 +140,7 @@ impl LobbyThread {
         lobby_player.alive = player.alive;
         lobby_player.pingms = player.ping;
         lobby_player.score = player.score;
+        lobby_player.health = player.health;
     }
 
     fn process_tf2bd_bus(&mut self) {

@@ -15,6 +15,7 @@ use eframe::egui::{
 };
 
 const WEAPON_COLUMN_MIN_WIDTH: f32 = 100.0;
+const SCORE_COLUMN_MIN_WIDTH: f32 = 50.0;
 const KILLS_COLUMN_MIN_WIDTH: f32 = 50.0;
 const DEATHS_COLUMN_MIN_WIDTH: f32 = 50.0;
 const HOURS_COLUMN_MIN_WIDTH: f32 = 60.0;
@@ -42,7 +43,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
 
     Grid::new(title)
         .striped(true)
-        .num_columns(10)
+        .num_columns(12)
         .show(ui, |ui| {
             // Header row
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
@@ -50,6 +51,10 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             });
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                 ui.label("Player");
+            });
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.set_min_width(SCORE_COLUMN_MIN_WIDTH);
+                ui.label("Score").on_hover_text("Player score");
             });
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
                 ui.set_min_width(KILLS_COLUMN_MIN_WIDTH);
@@ -68,6 +73,9 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             });
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
                 ui.label("Ping");
+            });
+            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                ui.label("Health").on_hover_text("Current health");
             });
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                 ui.label("Rep.")
@@ -91,6 +99,13 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 add_team_symbol(app_win, ui, app_win.self_steamid, player);
 
                 add_player_name(app_win, ui, player);
+
+                // Player score
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    ui.set_min_width(SCORE_COLUMN_MIN_WIDTH);
+                    ui.label(format!("{}", player.score))
+                        .on_hover_text_at_pointer("Player score");
+                });
 
                 // Player kills
                 ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
@@ -164,9 +179,19 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                         .on_hover_text_at_pointer("ms");
                 });
 
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    if player.alive && player.health.is_some() {
+                        let health = player.health.unwrap();
+                        ui.label(format!("{}", health))
+                            .on_hover_text_at_pointer("Current health");
+                    } else {
+                        show_empty_value(ui);
+                    }
+                });
+
                 add_reputation(ui, player);
 
-                add_flags(ui, player);
+                add_flags(ui, player, true);
 
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                     ui.set_min_width(WEAPON_COLUMN_MIN_WIDTH);
@@ -184,7 +209,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             // Add empty rows to fill the grid
             if players.len() < 12 {
                 for _ in 0..(12 - players.len()) {
-                    for _ in 0..10 {
+                    for _ in 0..12 {
                         ui.label("");
                     }
                     ui.end_row();
