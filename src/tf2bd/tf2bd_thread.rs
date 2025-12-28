@@ -1,11 +1,11 @@
 use super::{models::PlayerAttribute, ruleset_handler::RulesetHandler, Tf2bdMsg};
+use crate::config::TF2BD_LOOP_DELAY;
 use crate::{
     appbus::{AppBus, AppEventMsg},
     models::{app_settings::AppSettings, steamid::SteamID},
     tf2::lobby::{Lobby, Player, Team},
 };
 use bus::BusReader;
-use crate::config::TF2BD_LOOP_DELAY;
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
@@ -25,14 +25,14 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 
 struct Tf2bdThread {
     bus: Arc<Mutex<AppBus>>,
-    lobby_bus_rx: BusReader<Lobby>,
+    shared_lobby: crate::tf2::lobby::shared_lobby::SharedLobby,
     app_event_bus_rx: BusReader<AppEventMsg>,
 
     app_settings: AppSettings,
 
     ruleset_handler: RulesetHandler,
 
-    last_lobbty: Lobby,
+    last_lobby_id: String,
     last_vote_time: Instant,
 
     notifications_send: HashSet<SteamID>,
@@ -40,21 +40,21 @@ struct Tf2bdThread {
 
 impl Tf2bdThread {
     pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
-        let lobby_bus_rx = bus.lock().unwrap().lobby_report_bus.add_rx();
+        let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
         let app_event_bus_rx = bus.lock().unwrap().app_event_bus.add_rx();
 
         let ruleset_handler = RulesetHandler::new(FILENAME, false);
 
         Self {
             bus: Arc::clone(bus),
-            lobby_bus_rx,
+            shared_lobby,
             app_event_bus_rx,
 
             app_settings: settings.clone(),
 
             ruleset_handler,
 
-            last_lobbty: Lobby::new(settings.self_steamid64),
+            last_lobby_id: String::new(),
 
             last_vote_time: Instant::now(),
 
@@ -82,18 +82,16 @@ impl Tf2bdThread {
     }
 
     fn process_bus(&mut self) {
-        self.process_lobby_bus();
+        self.get_latest_lobby();
         self.process_app_event_bus();
     }
 
-    fn process_lobby_bus(&mut self) {
-        while let Ok(lobby) = self.lobby_bus_rx.try_recv() {
-            if self.last_lobbty.lobby_id != lobby.lobby_id {
-                log::info!("New lobby detected: {}", lobby.lobby_id);
-                self.notifications_send.clear();
-            }
-
-            self.last_lobbty = lobby;
+    fn get_latest_lobby(&mut self) {
+        let lobby = self.shared_lobby.get();
+        if self.last_lobby_id != lobby.lobby_id {
+            log::info!("New lobby detected: {}", lobby.lobby_id);
+            self.notifications_send.clear();
+            self.last_lobby_id = lobby.lobby_id.clone();
         }
     }
 
@@ -126,7 +124,8 @@ impl Tf2bdThread {
     }
 
     fn apply_rules_to_lobby(&mut self) {
-        for player in &self.last_lobbty.players {
+        let lobby = self.shared_lobby.get();
+        for player in &lobby.players {
             let data = self
                 .ruleset_handler
                 .get_player_marking(&player.steamid)
@@ -162,21 +161,21 @@ impl Tf2bdThread {
         self.last_vote_time = Instant::now();
     }
 
-    fn find_player_to_kick(&self) -> Option<&Player> {
-        let me = self.last_lobbty.get_me();
-        me?;
-
-        let me = me.unwrap();
+    fn find_player_to_kick(&self) -> Option<Player> {
+        let lobby = self.shared_lobby.get();
+        let me = lobby.get_me()?;
         let team = me.team;
 
         if self.app_settings.kick_bots {
-            if let Some(bot_to_kick) = self.find_player_in_team(team, PlayerAttribute::Bot) {
+            if let Some(bot_to_kick) = self.find_player_in_team(&lobby, team, PlayerAttribute::Bot)
+            {
                 return Some(bot_to_kick);
             }
         }
 
         if self.app_settings.kick_cheaters {
-            if let Some(cheater_to_kick) = self.find_player_in_team(team, PlayerAttribute::Cheater)
+            if let Some(cheater_to_kick) =
+                self.find_player_in_team(&lobby, team, PlayerAttribute::Cheater)
             {
                 return Some(cheater_to_kick);
             }
@@ -187,17 +186,17 @@ impl Tf2bdThread {
 
     fn find_player_in_team(
         &self,
+        lobby: &Lobby,
         team: Team,
         player_attribute: PlayerAttribute,
-    ) -> Option<&Player> {
-        let candidates: Vec<&Player> = self
-            .last_lobbty
+    ) -> Option<Player> {
+        let candidates: Vec<&Player> = lobby
             .players
             .iter()
             .filter(|player| Self::ok_to_kick(player, team, player_attribute))
             .collect();
 
-        candidates.first().copied()
+        candidates.first().map(|p| (*p).clone())
     }
 
     fn ok_to_kick(player: &Player, team: Team, player_attribute: PlayerAttribute) -> bool {
@@ -215,7 +214,8 @@ impl Tf2bdThread {
     }
 
     fn send_notifications(&mut self) {
-        for player in &self.last_lobbty.players {
+        let lobby = self.shared_lobby.get();
+        for player in &lobby.players {
             // Check if we have already informed the party about this player
             // TODO: Maybe store the list of flags we have informed about and inform about new flags
             if !self.notifications_send.contains(&player.steamid) {

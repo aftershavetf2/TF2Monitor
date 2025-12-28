@@ -4,9 +4,8 @@ pub mod steamid;
 use self::{app_settings::AppSettings, steamid::SteamID};
 use crate::{
     appbus::{AppBus, AppEventMsg},
-    tf2::lobby::Lobby,
+    tf2::lobby::{Lobby, shared_lobby::SharedLobby},
 };
-use bus::BusReader;
 use eframe::egui::Pos2;
 use std::{
     collections::HashMap,
@@ -19,7 +18,7 @@ pub struct AppWin {
     pub app_settings: AppSettings,
 
     pub lobby: Lobby,
-    pub lobby_report_bus_rx: BusReader<Lobby>,
+    pub shared_lobby: SharedLobby,
 
     pub self_steamid: SteamID,
     pub selected_player: Option<SteamID>,
@@ -38,7 +37,7 @@ impl AppWin {
             app_settings: settings.clone(),
 
             lobby: Lobby::new(settings.self_steamid64),
-            lobby_report_bus_rx: bus.lock().unwrap().lobby_report_bus.add_rx(),
+            shared_lobby: bus.lock().unwrap().shared_lobby.clone(),
             self_steamid: settings.self_steamid64,
             selected_player: None,
             spectating: false,
@@ -57,10 +56,9 @@ impl AppWin {
             .broadcast(AppEventMsg::UpdatedSettings(self.app_settings.clone()));
     }
 
-    pub fn process_bus(&mut self) {
-        while let Ok(lobby) = self.lobby_report_bus_rx.try_recv() {
-            self.lobby = lobby;
-        }
+    pub fn get_latest_lobby(&mut self) {
+        // Get a copy of the current lobby state
+        self.lobby = self.shared_lobby.get();
     }
 
     /// The selected player is who is shown in the player details panel.

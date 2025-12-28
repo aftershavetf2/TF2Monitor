@@ -1,5 +1,6 @@
-use super::{Lobby, LobbyKill};
+use super::LobbyKill;
 use super::{LobbyChat, Player, PlayerKill};
+use super::shared_lobby::SharedLobby;
 use crate::tf2::lobby::AccountAge;
 use crate::tf2::rcon::{G15DumpPlayerOutput, G15PlayerData};
 use crate::tf2::steamapi::SteamApiMsg;
@@ -28,7 +29,7 @@ pub struct LobbyThread {
     steamapi_bus_rx: BusReader<SteamApiMsg>,
     tf2bd_bus_rx: BusReader<Tf2bdMsg>,
     g15_bus_rx: BusReader<G15DumpPlayerOutput>,
-    lobby: Lobby,
+    shared_lobby: SharedLobby,
 
     text_translator: GoogleTranslator,
 }
@@ -46,6 +47,7 @@ impl LobbyThread {
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
         let g15_bus_rx = bus.lock().unwrap().g15_report_bus.add_rx();
+        let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
 
         let google_translator = GoogleTranslator::default();
 
@@ -55,7 +57,7 @@ impl LobbyThread {
             steamapi_bus_rx,
             tf2bd_bus_rx,
             g15_bus_rx,
-            lobby: Lobby::new(settings.self_steamid64),
+            shared_lobby,
 
             text_translator: google_translator,
         }
@@ -66,9 +68,11 @@ impl LobbyThread {
 
         loop {
             self.process_bus();
-            self.lobby.update_friendships();
+            {
+                let mut lobby = self.shared_lobby.get_mut();
+                lobby.update_friendships();
+            }
             self.translate_chat();
-            self.update_scoreboard();
 
             sleep(LOBBY_LOOP_DELAY);
         }
@@ -90,10 +94,11 @@ impl LobbyThread {
 
     fn process_g15_dump(&mut self, g15_dump: G15DumpPlayerOutput) {
         let now = Local::now();
+        let mut lobby = self.shared_lobby.get_mut();
 
         // Merge data from the G15 dump into the lobby
         for player in g15_dump.players.iter() {
-            if let Some(lobby_player) = self.lobby.get_player_mut(None, Some(player.steamid)) {
+            if let Some(lobby_player) = lobby.get_player_mut(None, Some(player.steamid)) {
                 // Player already exists in the lobby
                 Self::merge_player_g15_data(lobby_player, player);
                 lobby_player.last_seen = now;
@@ -104,22 +109,24 @@ impl LobbyThread {
                 Self::merge_player_g15_data(&mut lobby_player, player);
                 lobby_player.last_seen = now;
 
-                self.lobby.players.push(lobby_player);
+                lobby.players.push(lobby_player);
             };
         }
 
         // Remove players from the lobby that are not in the G15 dump
         let g15_steamids: HashSet<SteamID> = g15_dump.players.iter().map(|p| p.steamid).collect();
         let mut players_to_keep: Vec<Player> = vec![];
-        for player in self.lobby.players.iter() {
+        let mut players_to_move: Vec<Player> = vec![];
+        for player in lobby.players.iter() {
             if g15_steamids.contains(&player.steamid) {
                 players_to_keep.push(player.clone());
             } else {
                 log::info!("Player {} has left", player.name);
-                self.lobby.recently_left_players.push(player.clone());
+                players_to_move.push(player.clone());
             }
         }
-        self.lobby.players = players_to_keep;
+        lobby.players = players_to_keep;
+        lobby.recently_left_players.append(&mut players_to_move);
     }
 
     fn merge_player_g15_data(lobby_player: &mut Player, player: &G15PlayerData) {
@@ -139,9 +146,9 @@ impl LobbyThread {
         while let Ok(msg) = self.tf2bd_bus_rx.try_recv() {
             match msg {
                 Tf2bdMsg::Tf2bdPlayerMarking(steamid, player_info) => {
-                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                    self.shared_lobby.update_player(steamid, |player| {
                         player.player_info = player_info;
-                    }
+                    });
                 }
             }
         }
@@ -151,51 +158,50 @@ impl LobbyThread {
         while let Ok(msg) = self.steamapi_bus_rx.try_recv() {
             match msg {
                 SteamApiMsg::FriendsList(steamid, friends) => {
-                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                    self.shared_lobby.update_player(steamid, |player| {
                         player.friends = Some(friends);
-                    }
+                    });
                 }
                 SteamApiMsg::PlayerSummary(player_steam_info) => {
-                    if let Some(player) = self
-                        .lobby
-                        .get_player_mut(None, Some(player_steam_info.steamid))
-                    {
-                        match player_steam_info.account_age {
-                            Some(account_age) => {
-                                player.account_age = AccountAge::Loaded(account_age);
+                    let steamid = player_steam_info.steamid;
+                    let account_age = player_steam_info.account_age.clone();
+                    self.shared_lobby.update_player(steamid, |player| {
+                        match account_age {
+                            Some(age) => {
+                                player.account_age = AccountAge::Loaded(age);
                             }
                             None => {
                                 player.account_age = AccountAge::Private;
                             }
                         }
                         player.steam_info = Some(player_steam_info);
-                    }
+                    });
                 }
                 SteamApiMsg::Tf2Playtime(steamid, playtime) => {
-                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                    self.shared_lobby.update_player(steamid, |player| {
                         player.tf2_play_minutes = playtime;
-                    }
+                    });
                 }
                 SteamApiMsg::SteamBans(steamid, steam_bans) => {
-                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                    self.shared_lobby.update_player(steamid, |player| {
                         player.steam_bans = Some(steam_bans);
-                    }
+                    });
                 }
                 SteamApiMsg::ApproxAccountAge(steamid, account_age) => {
-                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                    self.shared_lobby.update_player(steamid, |player| {
                         player.account_age = account_age;
-                    }
+                    });
                 }
                 SteamApiMsg::ProfileComments(steamid, comments) => {
-                    if let Some(player) = self.lobby.get_player_mut(None, Some(steamid)) {
+                    self.shared_lobby.update_player(steamid, |player| {
                         player.profile_comments = Some(comments);
-                    }
+                    });
                 }
                 SteamApiMsg::Reputation(reputation) => {
-                    if let Some(player) = self.lobby.get_player_mut(None, Some(reputation.steamid))
-                    {
+                    let steamid = reputation.steamid;
+                    self.shared_lobby.update_player(steamid, |player| {
                         player.reputation = Some(reputation);
-                    }
+                    });
                 }
             }
         }
@@ -225,25 +231,20 @@ impl LobbyThread {
         }
     }
 
-    fn update_scoreboard(&mut self) {
-        let mut bus = self.bus.lock().unwrap();
-        bus.send_lobby_report(self.lobby.clone());
-    }
-
     fn new_lobby(&mut self, when: DateTime<Local>) {
+        let mut lobby = self.shared_lobby.get_mut();
         log::info!("*** Creating new lobby ***");
 
-        for player in self.lobby.players.iter_mut() {
+        for player in lobby.players.iter_mut() {
             player.last_seen = when;
         }
 
-        self.lobby
-            .recently_left_players
-            .append(&mut self.lobby.players);
+        let mut players_to_move = std::mem::take(&mut lobby.players);
+        lobby.recently_left_players.append(&mut players_to_move);
 
         log::info!(
             "Moving players to recently_left_players: {}",
-            self.lobby
+            lobby
                 .recently_left_players
                 .iter()
                 .map(|p| p.name.clone())
@@ -251,12 +252,12 @@ impl LobbyThread {
                 .join(", ")
         );
 
-        self.lobby.chat_msg_id = 0;
-        self.lobby.lobby_id = Local::now().format("%Y-%m-%d").to_string();
+        lobby.chat_msg_id = 0;
+        lobby.lobby_id = Local::now().format("%Y-%m-%d").to_string();
 
-        self.lobby.players.clear();
-        self.lobby.chat.clear();
-        self.lobby.kill_feed.clear();
+        lobby.players.clear();
+        lobby.chat.clear();
+        lobby.kill_feed.clear();
     }
 
     fn kill(
@@ -267,8 +268,10 @@ impl LobbyThread {
         weapon: String,
         crit: bool,
     ) {
+        let mut lobby = self.shared_lobby.get_mut();
+        
         // Change the counts of the kill and death to the players
-        if let Some(killer) = self.lobby.get_player_mut(Some(killer_name.as_str()), None) {
+        if let Some(killer) = lobby.get_player_mut(Some(killer_name.as_str()), None) {
             killer.kills += 1;
             if crit {
                 killer.crit_kills += 1;
@@ -281,7 +284,7 @@ impl LobbyThread {
             log::warn!("Killer not found: '{}'", victim_name);
         }
 
-        if let Some(victim) = self.lobby.get_player_mut(Some(victim_name.as_str()), None) {
+        if let Some(victim) = lobby.get_player_mut(Some(victim_name.as_str()), None) {
             victim.deaths += 1;
             if crit {
                 victim.crit_deaths += 1;
@@ -291,31 +294,36 @@ impl LobbyThread {
         }
 
         // Add the kill to the feed
-        let killer = self.lobby.get_player(Some(killer_name.as_str()), None);
-        let victim = self.lobby.get_player(Some(victim_name.as_str()), None);
+        let (killer_steamid, victim_steamid) = {
+            let killer = lobby.get_player(Some(killer_name.as_str()), None);
+            let victim = lobby.get_player(Some(victim_name.as_str()), None);
+            match (killer, victim) {
+                (Some(k), Some(v)) => (Some(k.steamid), Some(v.steamid)),
+                _ => {
+                    log::info!(
+                        "Killer or victim not found: '{}', '{}'",
+                        killer_name,
+                        victim_name
+                    );
+                    return;
+                }
+            }
+        };
 
-        match (killer, victim) {
-            (Some(killer), Some(victim)) => {
-                self.lobby.kill_feed.push(LobbyKill {
-                    when,
-                    killer: killer.steamid,
-                    victim: victim.steamid,
-                    weapon,
-                    crit,
-                });
-            }
-            _ => {
-                log::info!(
-                    "Killer or victim not found: '{}', '{}'",
-                    killer_name,
-                    victim_name
-                );
-            }
+        if let (Some(killer_steamid), Some(victim_steamid)) = (killer_steamid, victim_steamid) {
+            lobby.kill_feed.push(LobbyKill {
+                when,
+                killer: killer_steamid,
+                victim: victim_steamid,
+                weapon,
+                crit,
+            });
         }
     }
 
     fn suicide(&mut self, _when: DateTime<Local>, name: String) {
-        if let Some(player) = self.lobby.get_player_mut(Some(name.as_str()), None) {
+        let mut lobby = self.shared_lobby.get_mut();
+        if let Some(player) = lobby.get_player_mut(Some(name.as_str()), None) {
             player.deaths += 1;
         } else {
             log::warn!("Player not found: '{}'", name);
@@ -330,23 +338,28 @@ impl LobbyThread {
         dead: bool,
         team: bool,
     ) {
-        if let Some(player) = self.lobby.get_player(Some(name.as_str()), None) {
-            self.lobby.chat.push(LobbyChat {
-                chat_msg_id: self.lobby.chat_msg_id,
-                when,
-                steamid: player.steamid,
-                player_name: name,
-                message: message.trim().to_string(),
-                translated_message: None,
-                dead,
-                team,
-            })
-        } else {
-            log::warn!("Player not found: '{}'", name);
-            return;
-        }
+        let mut lobby = self.shared_lobby.get_mut();
+        let (steamid, chat_msg_id) = {
+            if let Some(player) = lobby.get_player(Some(name.as_str()), None) {
+                (player.steamid, lobby.chat_msg_id)
+            } else {
+                log::warn!("Player not found: '{}'", name);
+                return;
+            }
+        };
 
-        self.lobby.chat_msg_id += 1;
+        lobby.chat.push(LobbyChat {
+            chat_msg_id,
+            when,
+            steamid,
+            player_name: name,
+            message: message.trim().to_string(),
+            translated_message: None,
+            dead,
+            team,
+        });
+
+        lobby.chat_msg_id += 1;
     }
 
     // Go through the recently_left_players
@@ -354,12 +367,13 @@ impl LobbyThread {
     // and remove those who are older than a certain seconds
     fn purge_old_players(&mut self) {
         let when = Local::now();
+        let mut lobby = self.shared_lobby.get_mut();
 
         let lobby_steamids: HashSet<SteamID> =
-            self.lobby.players.iter().map(|p| p.steamid).collect();
+            lobby.players.iter().map(|p| p.steamid).collect();
 
         let mut recently_left_to_keep: Vec<Player> = vec![];
-        for player in self.lobby.recently_left_players.iter() {
+        for player in lobby.recently_left_players.iter() {
             if lobby_steamids.contains(&player.steamid) {
                 // The player also exists in the active player list
                 log::info!(
@@ -378,11 +392,12 @@ impl LobbyThread {
             }
         }
 
-        self.lobby.recently_left_players = recently_left_to_keep;
+        lobby.recently_left_players = recently_left_to_keep;
     }
 
     fn translate_chat(&mut self) {
-        for chat in self.lobby.chat.iter_mut() {
+        let mut lobby = self.shared_lobby.get_mut();
+        for chat in lobby.chat.iter_mut() {
             if chat.translated_message.is_some() {
                 continue;
             }

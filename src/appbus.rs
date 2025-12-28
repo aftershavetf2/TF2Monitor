@@ -1,7 +1,7 @@
 use crate::{
     models::app_settings::AppSettings,
     tf2::{
-        lobby::{Lobby, Player},
+        lobby::{shared_lobby::SharedLobby, Lobby, Player},
         logfile::LogLine,
         rcon::G15DumpPlayerOutput,
         steamapi::SteamApiMsg,
@@ -13,7 +13,6 @@ use bus::Bus;
 pub struct AppBus {
     pub logfile_bus: Bus<LogLine>,
     pub rcon_bus: Bus<String>,
-    pub lobby_report_bus: Bus<Lobby>,
     pub g15_report_bus: Bus<G15DumpPlayerOutput>,
     pub steamapi_bus: Bus<SteamApiMsg>,
     pub tf2bd_bus: Bus<Tf2bdMsg>,
@@ -21,6 +20,10 @@ pub struct AppBus {
     /// The events mostly from the user interface.
     /// Many different parts of the application can listen to these events.
     pub app_event_bus: Bus<AppEventMsg>,
+
+    /// Shared lobby state accessible from all threads.
+    /// Use shared_lobby.get() to get a copy of the current lobby state.
+    pub shared_lobby: SharedLobby,
     // pub rcon_thread_handle: Option<std::thread::JoinHandle<()>>,
     // pub lobby_thread_handle: Option<std::thread::JoinHandle<()>>,
     // pub steamapi_thread_handle: Option<std::thread::JoinHandle<()>>,
@@ -30,20 +33,23 @@ pub struct AppBus {
 
 impl Default for AppBus {
     fn default() -> Self {
-        Self::new()
+        // Use a default SteamID for default initialization
+        // In practice, AppBus::new() should be called with the actual SteamID
+        Self::new(crate::models::steamid::SteamID::from_u64(0))
     }
 }
 
 impl AppBus {
-    pub fn new() -> Self {
+    pub fn new(self_steamid: crate::models::steamid::SteamID) -> Self {
+        let initial_lobby = Lobby::new(self_steamid);
         Self {
             logfile_bus: Bus::new(10000),
             rcon_bus: Bus::new(100),
-            lobby_report_bus: Bus::new(25),
             g15_report_bus: Bus::new(100),
             steamapi_bus: Bus::new(10000),
             tf2bd_bus: Bus::new(10000),
             app_event_bus: Bus::new(1000),
+            shared_lobby: SharedLobby::new(initial_lobby),
             // rcon_thread_handle: None,
             // lobby_thread_handle: None,
             // steamapi_thread_handle: None,
@@ -54,10 +60,6 @@ impl AppBus {
 
     pub fn send_logline(&mut self, logline: LogLine) {
         self.logfile_bus.broadcast(logline);
-    }
-
-    pub fn send_lobby_report(&mut self, lobby: Lobby) {
-        let _ = self.lobby_report_bus.try_broadcast(lobby);
     }
 
     /// Send a RCON command to the TF2 RCON

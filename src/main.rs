@@ -48,7 +48,7 @@ fn main() -> Result<(), eframe::Error> {
     let _async_handle = setup_async_runtime();
 
     let settings = AppSettings::load_or_default();
-    let bus = Arc::new(Mutex::new(AppBus::default()));
+    let bus = Arc::new(Mutex::new(AppBus::new(settings.self_steamid64)));
 
     tf2::start(&settings, &bus);
     tf2bd::tf2bd_thread::start(&settings, &bus);

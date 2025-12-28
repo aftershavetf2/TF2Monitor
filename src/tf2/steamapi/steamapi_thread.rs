@@ -1,6 +1,10 @@
 use super::{
     get_steam_comments::get_steam_profile_comments, SteamApi, SteamPlayerBan, SteamProfileComment,
 };
+use crate::config::{
+    NUM_ACCOUNT_AGES_TO_APPROX, NUM_FRIENDS_TO_FETCH, NUM_PLAYTIMES_TO_FETCH,
+    NUM_PROFILE_COMMENTS_TO_FETCH, STEAMAPI_LOOP_DELAY, STEAMAPI_RETRY_DELAY,
+};
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
@@ -8,11 +12,6 @@ use crate::{
         lobby::{AccountAge, Lobby, Player, PlayerSteamInfo, Tf2PlayMinutes},
         steamapi::SteamApiMsg,
     },
-};
-use bus::BusReader;
-use crate::config::{
-    NUM_ACCOUNT_AGES_TO_APPROX, NUM_FRIENDS_TO_FETCH, NUM_PLAYTIMES_TO_FETCH,
-    NUM_PROFILE_COMMENTS_TO_FETCH, STEAMAPI_LOOP_DELAY, STEAMAPI_RETRY_DELAY,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -89,18 +88,18 @@ impl SteamApiCache {
 
 pub struct SteamApiThread {
     bus: Arc<Mutex<AppBus>>,
-    lobby_bus_rx: BusReader<Lobby>,
+    shared_lobby: crate::tf2::lobby::shared_lobby::SharedLobby,
     steam_api: SteamApi,
     steam_api_cache: SteamApiCache,
 }
 
 impl SteamApiThread {
     pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
-        let lobby_bus_rx = bus.lock().unwrap().lobby_report_bus.add_rx();
+        let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
 
         Self {
             bus: Arc::clone(bus),
-            lobby_bus_rx,
+            shared_lobby,
             steam_api: SteamApi::new(settings),
             steam_api_cache: SteamApiCache::new(),
         }
@@ -110,7 +109,7 @@ impl SteamApiThread {
         log::info!("SteamAPi background thread started");
 
         loop {
-            self.process_bus();
+            self.get_latest_lobby();
 
             sleep(STEAMAPI_LOOP_DELAY);
         }
@@ -120,23 +119,20 @@ impl SteamApiThread {
         self.bus.lock().unwrap().steamapi_bus.broadcast(msg);
     }
 
-    fn process_bus(&mut self) {
+    fn get_latest_lobby(&mut self) {
         // To fetch additional info from Steam Web Api a key is needed
         if !self.steam_api.has_key() {
             return;
         }
 
-        if let Ok(lobby) = self.lobby_bus_rx.try_recv() {
-            // log::info!("process_bus - received lobby");
-            self.fetch_summaries(&lobby);
-            self.fetch_steam_bans(&lobby);
-            self.fetch_friends(&lobby);
-            self.fetch_playtimes(&lobby);
-            self.fetch_comments(&lobby);
-            self.approximate_account_ages(&lobby);
-        }
-
-        while let Ok(_lobby) = self.lobby_bus_rx.try_recv() {}
+        // Get a copy of the current lobby state
+        let lobby = self.shared_lobby.get();
+        self.fetch_summaries(&lobby);
+        self.fetch_steam_bans(&lobby);
+        self.fetch_friends(&lobby);
+        self.fetch_playtimes(&lobby);
+        self.fetch_comments(&lobby);
+        self.approximate_account_ages(&lobby);
     }
 
     fn fetch_summaries(&mut self, lobby: &Lobby) {

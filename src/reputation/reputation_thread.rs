@@ -1,11 +1,10 @@
 use super::{get_reputation, Reputation};
+use crate::config::{NUM_REPUTATIONS_TO_FETCH, REPUTATION_LOOP_DELAY};
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
     tf2::{lobby::Lobby, steamapi::SteamApiMsg},
 };
-use bus::BusReader;
-use crate::config::{NUM_REPUTATIONS_TO_FETCH, REPUTATION_LOOP_DELAY};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -40,17 +39,17 @@ impl ReputationCache {
 
 pub struct ReputationThread {
     bus: Arc<Mutex<AppBus>>,
-    lobby_bus_rx: BusReader<Lobby>,
+    shared_lobby: crate::tf2::lobby::shared_lobby::SharedLobby,
     reputation_cache: ReputationCache,
 }
 
 impl ReputationThread {
     pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
-        let lobby_bus_rx = bus.lock().unwrap().lobby_report_bus.add_rx();
+        let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
 
         Self {
             bus: Arc::clone(bus),
-            lobby_bus_rx,
+            shared_lobby,
             reputation_cache: ReputationCache::new(),
         }
     }
@@ -59,7 +58,7 @@ impl ReputationThread {
         log::info!("SteamAPi background thread started");
 
         loop {
-            self.process_bus();
+            self.get_latest_lobby();
 
             sleep(REPUTATION_LOOP_DELAY);
         }
@@ -69,13 +68,10 @@ impl ReputationThread {
         self.bus.lock().unwrap().steamapi_bus.broadcast(msg);
     }
 
-    fn process_bus(&mut self) {
-        if let Ok(lobby) = self.lobby_bus_rx.try_recv() {
-            // log::info!("process_bus - received lobby");
-            self.calculate_reputations(&lobby);
-        }
-
-        while let Ok(_lobby) = self.lobby_bus_rx.try_recv() {}
+    fn get_latest_lobby(&mut self) {
+        // Get a copy of the current lobby state
+        let lobby = self.shared_lobby.get();
+        self.calculate_reputations(&lobby);
     }
 
     fn calculate_reputations(&mut self, lobby: &Lobby) {

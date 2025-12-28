@@ -1,5 +1,6 @@
 pub mod friendships;
 pub mod lobby_thread;
+pub mod shared_lobby;
 
 use super::steamapi::{SteamPlayerBan, SteamProfileComment};
 use crate::{

@@ -81,7 +81,7 @@ impl eframe::App for AppWin {
         egui_extras::install_image_loaders(ctx);
         colors::set_style(ctx);
 
-        self.process_bus();
+        self.get_latest_lobby();
 
         self.friendship_positions.clear();
 
