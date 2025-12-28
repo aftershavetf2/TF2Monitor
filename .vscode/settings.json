@@ -1,3 +1,11 @@
 {
-  "cSpell.words": ["cvarlist", "rconpwd"]
+  "cSpell.words": [
+    "cvarlist",
+    "eframe",
+    "egui",
+    "rconpwd",
+    "rustls",
+    "sqlx",
+    "winit"
+  ]
 }
