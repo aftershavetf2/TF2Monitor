@@ -47,6 +47,8 @@ sea-orm = { version = "1.1.19", features = [
 scraper = "0.25.0"
 
 rayon = "1.11.0"
+pollster = "0.3"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
 #
 # Platform specific crates
