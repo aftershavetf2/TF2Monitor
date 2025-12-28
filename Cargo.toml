@@ -12,7 +12,7 @@ chrono = "0.4.42"
 date_component = "0.4.7"
 fs-err = "3.2.2"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.147"
+serde_json = "1.0.148"
 
 log = { version = "0.4.29", features = [
     "max_level_info",
@@ -36,21 +36,17 @@ egui_extras = { version = "0.33.3", default-features = false, features = [
 image = { version = "0.25.9", default-features = false, features = ["jpeg"] }
 
 reqwest = { version = "0.12.28", features = ["blocking", "json"] }
-# url = "2.4"
 translators = { version = "0.1.5", features = ["google"] }
 
-# sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
+sea-orm = { version = "1.1.19", features = [
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "macros",
+] }
 
 scraper = "0.25.0"
 
 rayon = "1.11.0"
-
-serde_rusqlite = { version = "0.40.1" }
-
-# [dependencies.winit]
-# # version = "*"
-# version = "=0.30.9"
-# features = ["default"]
 
 #
 # Platform specific crates
