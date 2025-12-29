@@ -1,6 +1,7 @@
+use super::shared_lobby::SharedLobby;
 use super::LobbyKill;
 use super::{LobbyChat, Player, PlayerKill};
-use super::shared_lobby::SharedLobby;
+use crate::config::LOBBY_LOOP_DELAY;
 use crate::tf2::lobby::AccountAge;
 use crate::tf2::rcon::{G15DumpPlayerOutput, G15PlayerData};
 use crate::tf2::steamapi::SteamApiMsg;
@@ -13,7 +14,6 @@ use crate::{
 use bus::BusReader;
 use chrono::prelude::*;
 use std::collections::HashSet;
-use crate::config::LOBBY_LOOP_DELAY;
 use std::{
     sync::{Arc, Mutex},
     thread::{self, sleep},
@@ -164,7 +164,7 @@ impl LobbyThread {
                 }
                 SteamApiMsg::PlayerSummary(player_steam_info) => {
                     let steamid = player_steam_info.steamid;
-                    let account_age = player_steam_info.account_age.clone();
+                    let account_age = player_steam_info.account_age;
                     self.shared_lobby.update_player(steamid, |player| {
                         match account_age {
                             Some(age) => {
@@ -269,7 +269,7 @@ impl LobbyThread {
         crit: bool,
     ) {
         let mut lobby = self.shared_lobby.get_mut();
-        
+
         // Change the counts of the kill and death to the players
         if let Some(killer) = lobby.get_player_mut(Some(killer_name.as_str()), None) {
             killer.kills += 1;
@@ -369,8 +369,7 @@ impl LobbyThread {
         let when = Local::now();
         let mut lobby = self.shared_lobby.get_mut();
 
-        let lobby_steamids: HashSet<SteamID> =
-            lobby.players.iter().map(|p| p.steamid).collect();
+        let lobby_steamids: HashSet<SteamID> = lobby.players.iter().map(|p| p.steamid).collect();
 
         let mut recently_left_to_keep: Vec<Player> = vec![];
         for player in lobby.recently_left_players.iter() {
