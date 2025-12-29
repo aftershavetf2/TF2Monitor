@@ -66,7 +66,6 @@ impl G15DumpPlayerParser {
                     Some(3) => Some(Team::Blue),
                     _ => None,
                 },
-                score: player.score.unwrap_or(0) as i64,
                 health: player.health,
             });
         }
@@ -105,7 +104,6 @@ impl G15DumpPlayerParser {
                             "m_bAlive" => entry.alive = Some(value_str == "true"),
                             "m_iHealth" => entry.health = value_str.parse().ok(),
                             "m_iPing" => entry.ping = value_str.parse().ok(),
-                            "m_iScore" => entry.score = value_str.parse().ok(),
                             "m_iDeaths" => entry.deaths = value_str.parse().ok(),
                             "m_iTeam" => entry.team = value_str.parse().ok(),
                             "m_iAccountID" => entry.account_id = value_str.parse().ok(),
@@ -139,7 +137,6 @@ struct PlayerEntry {
     pub alive: Option<bool>,
     pub health: Option<u32>,
     pub ping: Option<u32>,
-    pub score: Option<u32>,
     pub deaths: Option<u32>,
     pub team: Option<u32>,
     pub account_id: Option<u32>,

@@ -8,7 +8,7 @@ use eframe::egui::{Color32, Ui};
 pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
     // Player list, also check if there are teams at all
     let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
-    sorted_players.sort_by(|a, b| cmp_for_scoreboard(a, b, app_win.app_settings.sort_by));
+    sorted_players.sort_by(|a, b| cmp_for_scoreboard(a, b));
 
     let blu_players: Vec<&Player> = sorted_players
         .iter()
@@ -72,38 +72,18 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
     add_recently_left_players(app_win, ui);
 }
 
-fn cmp_for_scoreboard(
-    a: &Player,
-    b: &Player,
-    sort_by: crate::models::app_settings::SortBy,
-) -> std::cmp::Ordering {
-    // Sort by team first, then by selected sort method, then by secondary criteria
+fn cmp_for_scoreboard(a: &Player, b: &Player) -> std::cmp::Ordering {
+    // Sort by team first, then by kills, then by secondary criteria
     if a.team != b.team {
         return a.team.cmp(&b.team);
     }
 
-    match sort_by {
-        crate::models::app_settings::SortBy::Score => {
-            if a.score != b.score {
-                return a.score.cmp(&b.score).reverse();
-            }
-            // If scores are equal, sort by kills as secondary
-            if a.kills != b.kills {
-                return a.kills.cmp(&b.kills).reverse();
-            }
-        }
-        crate::models::app_settings::SortBy::Kills => {
-            if a.kills != b.kills {
-                return a.kills.cmp(&b.kills).reverse();
-            }
-            // If kills are equal, sort by score as secondary
-            if a.score != b.score {
-                return a.score.cmp(&b.score).reverse();
-            }
-        }
+    // Sort by kills (descending)
+    if a.kills != b.kills {
+        return a.kills.cmp(&b.kills).reverse();
     }
 
-    // If primary and secondary are equal, sort by deaths (ascending), then name
+    // If kills are equal, sort by deaths (ascending), then name
     if a.deaths != b.deaths {
         return a.deaths.cmp(&b.deaths);
     }

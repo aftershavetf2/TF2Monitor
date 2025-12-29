@@ -3,15 +3,9 @@ use crate::tf2bd::models::PlayerAttribute;
 use crate::utils::BoxResult;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::prelude::*;
+use std::io::{self, prelude::*, ErrorKind};
 use std::path::Path;
 use std::process::exit;
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SortBy {
-    Score,
-    Kills,
-}
 
 const SETTINGS_FILENAME: &str = "settings.json";
 
@@ -21,10 +15,6 @@ fn get_true() -> bool {
 
 fn default_party_notifications_for() -> Vec<PlayerAttribute> {
     vec![PlayerAttribute::Cheater, PlayerAttribute::Bot]
-}
-
-fn default_sort_by() -> SortBy {
-    SortBy::Score
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -50,9 +40,6 @@ pub struct AppSettings {
 
     #[serde(default = "get_true")]
     pub show_crits: bool,
-
-    #[serde(default = "default_sort_by")]
-    pub sort_by: SortBy,
 
     // Auto actions
     #[serde(default = "bool::default")]
@@ -90,7 +77,6 @@ impl Default for AppSettings {
 
             show_friendship_indicators: true,
             show_crits: true,
-            sort_by: SortBy::Score,
 
             kick_cheaters: false,
             kick_bots: true,
@@ -142,7 +128,15 @@ impl AppSettings {
         let mut f = File::open(SETTINGS_FILENAME)?;
         let mut json = String::new();
         f.read_to_string(&mut json)?;
-        let settings: AppSettings = serde_json::from_str(&json).unwrap();
+        let settings: AppSettings = serde_json::from_str(&json).map_err(|e| {
+            Box::new(io::Error::new(
+                ErrorKind::InvalidData,
+                format!(
+                    "Failed to deserialize settings: {}. Please check your {} file.",
+                    e, SETTINGS_FILENAME
+                ),
+            )) as Box<dyn std::error::Error>
+        })?;
 
         log::info!("Settings loaded from file {}", SETTINGS_FILENAME);
         log::info!(
