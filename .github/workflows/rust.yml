@@ -28,7 +28,7 @@ jobs:
   release:
     needs: build
     runs-on: windows-latest
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
 
     steps:
       - uses: actions/checkout@v4
