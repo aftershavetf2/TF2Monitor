@@ -87,6 +87,10 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
 
     ui.label("");
 
+    add_player_sourcebans(player, ui);
+
+    ui.label("");
+
     add_player_kills(player, ui);
 
     ui.label("");
@@ -181,4 +185,30 @@ fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
             }
         });
     });
+}
+
+fn add_player_sourcebans(player: &Player, ui: &mut Ui) {
+    let mut has_bans = false;
+
+    ui.heading("SourceBans");
+
+    if let Some(reputation) = &player.reputation {
+        if reputation.has_bad_reputation {
+            for ban in &reputation.bans {
+                ui.label(format!(
+                    "- {}: {} for {} ({})\n",
+                    ban.source, ban.reason, ban.when, ban.ban_length
+                ));
+                has_bans = true;
+            }
+        }
+    }
+
+    if !has_bans {
+        if player.reputation.is_none() {
+            ui.label("Loading SourceBans...");
+        } else {
+            ui.label("No bans found");
+        }
+    }
 }
