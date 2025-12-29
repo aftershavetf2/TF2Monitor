@@ -26,9 +26,7 @@ impl LogLineParser {
     }
 
     pub fn parse_line(&self, org_line: &str) -> Option<LogLine> {
-        let when = self.try_get_when(org_line);
-        if when.is_some() {
-            let when = when.unwrap();
+        if let Some(when) = self.try_get_when(org_line) {
             let line = &org_line[TIMESTAMP_LEN..];
 
             let logobj = self.parse_killed_line(when, line);
