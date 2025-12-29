@@ -8,7 +8,7 @@ use eframe::egui::{Color32, Ui};
 pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
     // Player list, also check if there are teams at all
     let mut sorted_players: Vec<Player> = app_win.lobby.players.clone();
-    sorted_players.sort_by(|a, b| cmp_for_scoreboard(a, b));
+    sorted_players.sort_by(cmp_for_scoreboard);
 
     let blu_players: Vec<&Player> = sorted_players
         .iter()
