@@ -5,14 +5,15 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
-  workflow_dispatch:  # Manuell trigger
+  workflow_dispatch: # Manual trigger
+  release:
+    types: [created] # Trigger on manually created release
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-    # Här byter vi operativsystem
     runs-on: windows-latest
 
     steps:
@@ -27,7 +28,7 @@ jobs:
   release:
     needs: build
     runs-on: windows-latest
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
 
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +54,7 @@ jobs:
         shell: pwsh
         run: |
           $archiveName = "tf2monitor-v$env:VERSION-windows-x64.zip"
-          # Skapa zip med exe-filen som heter tf2monitor.exe
+          # Create zip with exe file named tf2monitor.exe
           Compress-Archive -Path "target\release\tf2monitor.exe" -DestinationPath $archiveName
           echo "Created archive: $archiveName"
           echo "ARCHIVE_NAME=$archiveName" >> $env:GITHUB_ENV
@@ -64,3 +65,13 @@ jobs:
           name: windows-release
           path: ${{ env.ARCHIVE_NAME }}
           retention-days: 30
+
+      - name: Create or update GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ env.ARCHIVE_NAME }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
