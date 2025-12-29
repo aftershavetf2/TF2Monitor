@@ -2,11 +2,7 @@
 
 [![Discord](https://gist.github.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/discord.svg)](https://discord.gg/z9Cn7m3gdN)
 
-**NOTE! This project is a work in progress and something I do on a hobby basis when I have spare time and energy.**
-
-**NOTE! Not ready to receive code contributions yet.**
-
-An application companion to be run along with you playing Team Fortress 2.
+An application companion to be run along when you are playing Team Fortress 2.
 
 With this app you can:
 
@@ -15,19 +11,15 @@ With this app you can:
   - Steam account creating time
   - Player's public avatar picture - Buttons with links to popular sites such as SteamHistory.net and SteamCommunity.com for each player
   - Number of TF2 hours
-  - VAC bans
+  - VAC and Game bans
   - Steam friends list
   - SourceBans reputation information
 
 - Get the chat in TF2 translated into English
 
-- View kill feed with critical hit indicators
-
 - Mark players with flags (Cheater, Bot, Suspicious, etc.) and save them to `playerlist.json`
 
 - Automatically votekick cheaters and bots (configurable in settings)
-
-- Window position and size are automatically saved and restored between sessions
 
 Players marked are saved in playerlist.json. The format is based on TF2BD file format but only the SteamID -> flags section are used, and flags for Cool(one-way soft-friendship) and Bot are added.
 
@@ -51,14 +43,6 @@ Under scoreboard there's a list of players that left recently. Players remain th
 
 When "Show friendships" is checked, there are white connections between friends.
 
-## Chat
-
-The chat panel displays all chat messages from the game with team colors (blue/red). Dead players are prefixed with "_DEAD_" and team chat messages are prefixed with "(TEAM)". Translated chat texts have black background and white text. Click on a player's name in chat to see their details in the right panel.
-
-## Kill Feed
-
-The kill feed shows recent kills in the game. Critical hits are indicated with "(crit)" after the weapon name. Click on a player's name to see their details.
-
 ## Player Details Panel
 
 Click on any player's name in the scoreboard, chat, or kill feed to open the player details panel on the right side. This panel shows:
@@ -66,12 +50,53 @@ Click on any player's name in the scoreboard, chat, or kill feed to open the pla
 - Player avatar and name
 - Steam account age
 - TF2 hours played
-- VAC ban status
+- VAC / Game ban status
 - SourceBans reputation
 - Steam friends
 - Player flags/markings (with editor)
 - Links to Steam profile, SteamHistory, etc.
 - Steam profile comments
+
+# How to set up and run
+
+Either you compile TF2Monitor yourself or download a pre-compiled binary from here: https://github.com/aftershavetf2/TF2Monitor/releases
+
+To compile it yourself you need to download the source code and [install The Rust programming language](https://www.rust-lang.org/tools/install).
+
+After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and type `cargo run` and the application will be compiled and started.
+
+1. Start Steam. If Steam is running your SteamID is read from the Windows registry if you are on Windows
+2. *IMPORTANT*: First start will complain about a missing `settings.json` file, and a skeleton settings file was created
+3. Quit the app and open that `settings.json` in a text editor
+4. Fill in your own SteamID, if you are on Windows and Steam was running, it is filled in already.
+5. Fill in the SteamAPI key, go to https://steamcommunity.com/dev/apikey to create a personal one
+6. `cargo run` again
+7. Use a second terminal and run `start_tf2.bat`
+
+## Start TF2 from the app or from Steam?
+
+Use the `start_tf2.bat` for now.
+
+If you change rcon-password or port you need to alter the bat file.
+
+`start_tf2.bat`
+
+````
+"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf_win64.exe" -steam -game tf  -usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +sv_rcon_whitelist_address 127.0.0.1 +sv_quota_stringcmdspersecond 1000000 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console -g15```
+
+# Player Markings and Reputation
+
+## TF2 Bot Detector files
+
+This app can read and write the usual TF2 Bot Detector files but will only use the subset of rules that point out a SteamID and a flag(Cheater, Suspicious, Racist, Exploiter).
+
+Where the `settings.json` file are your markings will be saved in `playerlist.json` whenever a player's flags are changed.
+
+Right now only one `playerlist.json` file is supported.
+
+## SourceBans Integration
+
+The app integrates with SourceBans to fetch ban information for players. Players with bans from SourceBans will have their reputation marked accordingly.
 
 # What about VAC?
 
@@ -88,48 +113,6 @@ Good that you reflected on this! This is after all an application downloaded fro
 I have no intention nor interest in collecting any of your personal information or any identifiable data.
 
 The source code is available for anyone to inspect.
-
-# How to set up and run
-
-At the moment you need to download the source code and [install The Rust programming language](https://www.rust-lang.org/tools/install).
-
-After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and type `cargo run` and the application will be compiled and started.
-
-1. Start Steam. If Steam is running your SteamID is read from the Windows registry if you are on Windows
-2. First start will complain about a missing `settings.json` file, and a skeleton settings file was created
-3. Quit the app and open that `settings.json` in a text editor
-4. Fill in your own SteamID, if you are on Windows and Steam was running, it is filled in already.
-5. Fill in the SteamAPI key, go to https://steamcommunity.com/dev/apikey to create a personal one
-6. `cargo run` again
-7. Use a second terminal and run `start_tf2.bat`
-
-## Start TF2 from the app or from Steam?
-
-Use the `start_tf2.bat` for now.
-
-If you change rcon-password or port you need to alter the bat file.
-
-`start_tf2.bat`
-
-```
-"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf_win64.exe" -steam -game tf  -usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +sv_rcon_whitelist_address 127.0.0.1 +sv_quota_stringcmdspersecond 1000000 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console
-```
-
-# Player Markings and Reputation
-
-## TF2 Bot Detector files
-
-This app can read and write the usual TF2 Bot Detector files but will only use the subset of rules that point out a SteamID and a flag(Cheater, Suspicious, Racist, Exploiter).
-
-Where the `settings.json` file are your markings will be saved in `playerlist.json` whenever a player's flags are changed.
-
-Right now only one `playerlist.json` file is supported.
-
-In the future there could be support for multiple `playerlist.XXX.json` along with autoupdate features.
-
-## SourceBans Integration
-
-The app integrates with SourceBans to fetch ban information for players. Players with bans from SourceBans will have their reputation marked accordingly. This information is displayed in the player details panel and can help identify players with a history of bans.
 
 # Linux support?
 
@@ -163,3 +146,4 @@ There are already several similar applications like this one. Some of them has b
   - Windows only AFAIK.
   - There are also forks with fixes and updates:
     - https://github.com/surepy/tf2_bot_detector
+````

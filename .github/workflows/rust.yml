@@ -56,8 +56,8 @@ jobs:
         shell: pwsh
         run: |
           $archiveName = "tf2monitor-v$env:VERSION-windows-x64.zip"
-          # Create zip with exe file named tf2monitor.exe
-          Compress-Archive -Path "target\release\tf2monitor.exe" -DestinationPath $archiveName
+          # Create zip with exe file, README.md, and start_tf2.bat
+          Compress-Archive -Path "target\release\tf2monitor.exe", "README.md", "start_tf2.bat" -DestinationPath $archiveName
           echo "Created archive: $archiveName"
           echo "ARCHIVE_NAME=$archiveName" >> $env:GITHUB_ENV
 

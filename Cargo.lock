@@ -4246,7 +4246,7 @@ dependencies = [
 
 [[package]]
 name = "tf2monitor"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "bus",
  "chrono",
