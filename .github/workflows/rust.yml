@@ -5,6 +5,7 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:  # Manuell trigger
 
 env:
   CARGO_TERM_COLOR: always
@@ -22,3 +23,44 @@ jobs:
 
       - name: Run tests
         run: cargo test
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Extract version from Cargo.toml
+        id: version
+        shell: pwsh
+        run: |
+          $content = Get-Content Cargo.toml -Raw
+          if ($content -match 'version\s*=\s*"([^"]+)"') {
+            $version = $matches[1]
+            echo "VERSION=$version" >> $env:GITHUB_ENV
+            echo "Version extracted: $version"
+          } else {
+            Write-Error "Could not extract version from Cargo.toml"
+            exit 1
+          }
+
+      - name: Create release archive
+        shell: pwsh
+        run: |
+          $archiveName = "tf2monitor-v$env:VERSION-windows-x64.zip"
+          # Skapa zip med exe-filen som heter tf2monitor.exe
+          Compress-Archive -Path "target\release\tf2monitor.exe" -DestinationPath $archiveName
+          echo "Created archive: $archiveName"
+          echo "ARCHIVE_NAME=$archiveName" >> $env:GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: ${{ env.ARCHIVE_NAME }}
+          retention-days: 30
