@@ -13,6 +13,10 @@ fn get_true() -> bool {
     true
 }
 
+fn get_false() -> bool {
+    false
+}
+
 fn default_party_notifications_for() -> Vec<PlayerAttribute> {
     vec![PlayerAttribute::Cheater, PlayerAttribute::Bot]
 }
@@ -40,6 +44,9 @@ pub struct AppSettings {
 
     #[serde(default = "get_true")]
     pub show_crits: bool,
+
+    #[serde(default = "get_false")]
+    pub show_health: bool,
 
     // Auto actions
     #[serde(default = "bool::default")]
@@ -77,6 +84,7 @@ impl Default for AppSettings {
 
             show_friendship_indicators: true,
             show_crits: true,
+            show_health: false,
 
             kick_cheaters: false,
             kick_bots: true,

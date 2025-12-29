@@ -40,9 +40,14 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         }
     });
 
+    let num_columns = if app_win.app_settings.show_health {
+        10
+    } else {
+        9
+    };
     Grid::new(title)
         .striped(true)
-        .num_columns(10)
+        .num_columns(num_columns)
         .show(ui, |ui| {
             // Header row
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
@@ -69,13 +74,14 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
                 ui.label("Ping");
             });
-            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                ui.label("Health").on_hover_text("Current health");
-            });
+            if app_win.app_settings.show_health {
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    ui.label("Health").on_hover_text("Current health");
+                });
+            }
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                ui.label("Rep.").on_hover_text(
-                    "Reputation (SourceBans) and flags",
-                );
+                ui.label("Rep.")
+                    .on_hover_text("Reputation (SourceBans) and flags");
             });
 
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
@@ -164,15 +170,17 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                         .on_hover_text_at_pointer("ms");
                 });
 
-                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                    if player.alive && player.health.is_some() {
-                        let health = player.health.unwrap();
-                        ui.label(format!("{}", health))
-                            .on_hover_text_at_pointer("Current health");
-                    } else {
-                        show_empty_value(ui);
-                    }
-                });
+                if app_win.app_settings.show_health {
+                    ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                        if player.alive && player.health.is_some() {
+                            let health = player.health.unwrap();
+                            ui.label(format!("{}", health))
+                                .on_hover_text_at_pointer("Current health");
+                        } else {
+                            show_empty_value(ui);
+                        }
+                    });
+                }
 
                 add_reputation(ui, player);
 
@@ -192,7 +200,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             // Add empty rows to fill the grid
             if players.len() < 12 {
                 for _ in 0..(12 - players.len()) {
-                    for _ in 0..10 {
+                    for _ in 0..num_columns {
                         ui.label("");
                     }
                     ui.end_row();
