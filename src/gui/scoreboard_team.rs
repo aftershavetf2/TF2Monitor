@@ -1,7 +1,7 @@
 use super::{
     account_age::add_account_age,
     colors::{TEAM_BLU_COLOR, TEAM_RED_COLOR},
-    markings::{add_flags, add_reputation},
+    markings::add_reputation,
     player_tooltip::add_player_tooltip,
     playtime::add_playtime,
     ui_utils::show_empty_value,
@@ -43,7 +43,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
 
     Grid::new(title)
         .striped(true)
-        .num_columns(12)
+        .num_columns(11)
         .show(ui, |ui| {
             // Header row
             ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
@@ -78,12 +78,9 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 ui.label("Health").on_hover_text("Current health");
             });
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                ui.label("Rep.")
-                    .on_hover_text("Reputation in the form of SourceBans");
-            });
-            ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                ui.label("Flags")
-                    .on_hover_text("Player flags (e.g. cheater, newbie, etc.)");
+                ui.label("Reputation").on_hover_text(
+                    "Reputation (SourceBans) and flags (e.g. cheater, newbie, etc.)",
+                );
             });
 
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
@@ -191,8 +188,6 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
 
                 add_reputation(ui, player);
 
-                add_flags(ui, player, true);
-
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                     ui.set_min_width(WEAPON_COLUMN_MIN_WIDTH);
                     if let Some(last_weapon) = player.kills_with.last() {
@@ -209,7 +204,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
             // Add empty rows to fill the grid
             if players.len() < 12 {
                 for _ in 0..(12 - players.len()) {
-                    for _ in 0..12 {
+                    for _ in 0..11 {
                         ui.label("");
                     }
                     ui.end_row();
