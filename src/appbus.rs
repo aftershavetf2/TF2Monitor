@@ -24,11 +24,6 @@ pub struct AppBus {
     /// Shared lobby state accessible from all threads.
     /// Use shared_lobby.get() to get a copy of the current lobby state.
     pub shared_lobby: SharedLobby,
-    // pub rcon_thread_handle: Option<std::thread::JoinHandle<()>>,
-    // pub lobby_thread_handle: Option<std::thread::JoinHandle<()>>,
-    // pub steamapi_thread_handle: Option<std::thread::JoinHandle<()>>,
-    // pub logfile_watcher_thread_handle: Option<std::thread::JoinHandle<()>>,
-    // pub tf2bd_thread_handle: Option<std::thread::JoinHandle<()>>,
 }
 
 impl Default for AppBus {
@@ -50,11 +45,6 @@ impl AppBus {
             tf2bd_bus: Bus::new(10000),
             app_event_bus: Bus::new(1000),
             shared_lobby: SharedLobby::new(initial_lobby),
-            // rcon_thread_handle: None,
-            // lobby_thread_handle: None,
-            // steamapi_thread_handle: None,
-            // logfile_watcher_thread_handle: None,
-            // tf2bd_thread_handle: None,
         }
     }
 
@@ -67,25 +57,6 @@ impl AppBus {
         log::info!("Sending RCON command: {}", cmd);
         self.rcon_bus.broadcast(cmd.to_string());
     }
-
-    // pub fn health_report(&self) {
-    //     log::info!("Health report");
-    //     log::info!(
-    //         "rcon_thread_handle: is_finished {:?}",
-    //         self.rcon_thread_handle.as_ref().unwrap().is_finished()
-    //     );
-    //     log::info!(
-    //         "lobby_thread_handle: is_finished {:?}",
-    //         self.lobby_thread_handle.as_ref().unwrap().is_finished()
-    //     );
-    //     log::info!(
-    //         "logfile_watcher_thread_handle: is_finished {:?}",
-    //         self.logfile_watcher_thread_handle
-    //             .as_ref()
-    //             .unwrap()
-    //             .is_finished()
-    //     );
-    // }
 }
 
 #[derive(Debug, Clone)]

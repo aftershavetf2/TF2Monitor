@@ -40,12 +40,6 @@ impl SharedLobby {
             updater(player);
         }
     }
-
-    /// Get a reference to the inner Arc<Mutex<Lobby>> for advanced use cases.
-    /// Prefer using get() or get_mut() when possible.
-    pub fn inner(&self) -> &Arc<Mutex<Lobby>> {
-        &self.lobby
-    }
 }
 
 impl Clone for SharedLobby {

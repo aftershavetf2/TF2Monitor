@@ -6,7 +6,7 @@ use super::ui_utils::show_empty_value;
 pub fn add_playtime(ui: &mut Ui, player: &Player) {
     match player.tf2_play_minutes {
         Tf2PlayMinutes::Loading => {
-            ui.spinner();
+            ui.spinner().on_hover_text("Loading TF2 playtime...");
         }
         Tf2PlayMinutes::PlayMinutes(minutes) => {
             ui.label(format!("{}h", minutes / 60));

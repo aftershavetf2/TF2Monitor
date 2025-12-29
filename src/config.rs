@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-/// Sleep times used throughout the application
+// Sleep times used throughout the application
 
 /// RCON thread delays
 pub const RCON_DELAY: Duration = Duration::from_millis(100);

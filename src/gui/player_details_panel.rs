@@ -59,11 +59,7 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
             ui.label(format!("SteamID64: {}", player.steamid.to_u64()));
             ui.label(format!("SteamID32: {}", player.steamid.to_steam_id32()));
 
-            // ui.label(format!("Console ID in game: {}", player.id));
-
             add_playtime(ui, player);
-
-            // ui.label("");
 
             if let Some(friends) = &player.friends {
                 ui.label(format!("{} friends", friends.len()));
@@ -75,7 +71,6 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
                 ui.label(reason);
             } else if player.steam_info.is_none() {
                 ui.label("Loading Steam bans...");
-                return;
             } else {
                 ui.label("No Steam bans");
             }

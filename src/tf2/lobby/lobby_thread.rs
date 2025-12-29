@@ -24,7 +24,6 @@ use translators::{GoogleTranslator, Translator};
 const RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS: i64 = 90;
 
 pub struct LobbyThread {
-    bus: Arc<Mutex<AppBus>>,
     logfile_bus_rx: BusReader<LogLine>,
     steamapi_bus_rx: BusReader<SteamApiMsg>,
     tf2bd_bus_rx: BusReader<Tf2bdMsg>,
@@ -42,7 +41,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 }
 
 impl LobbyThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
@@ -52,7 +51,6 @@ impl LobbyThread {
         let google_translator = GoogleTranslator::default();
 
         Self {
-            bus: Arc::clone(bus),
             logfile_bus_rx,
             steamapi_bus_rx,
             tf2bd_bus_rx,

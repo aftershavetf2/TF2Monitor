@@ -17,8 +17,9 @@ use super::entities::friendship;
 /// # Arguments
 /// * `db` - Database connection
 /// * `steam_id` - The SteamID64 to get friendships for
-/// * `active_only` - If `true`, returns only active friendships (where unfriend_date is NULL).
-///                   If `false`, returns both active and inactive friendships.
+/// * `active_only` -
+///   If `true`, returns only active friendships (where unfriend_date is NULL).
+///   If `false`, returns both active and inactive friendships.
 ///
 /// To extract the friend's steam_id from the result:
 /// - For direct friendships: use `friendship.friend_steam_id`
