@@ -127,15 +127,12 @@ impl eframe::App for AppWin {
             let pos_changed = self
                 .app_settings
                 .window_position
-                .map_or(true, |(old_x, old_y)| {
+                .is_none_or(|(old_x, old_y)| {
                     (old_x - pos.x).abs() > 1.0 || (old_y - pos.y).abs() > 1.0
                 });
-            let size_changed = self
-                .app_settings
-                .window_size
-                .map_or(true, |(old_w, old_h)| {
-                    (old_w - size.x).abs() > 1.0 || (old_h - size.y).abs() > 1.0
-                });
+            let size_changed = self.app_settings.window_size.is_none_or(|(old_w, old_h)| {
+                (old_w - size.x).abs() > 1.0 || (old_h - size.y).abs() > 1.0
+            });
 
             if pos_changed || size_changed {
                 self.app_settings.window_position = Some((pos.x, pos.y));
