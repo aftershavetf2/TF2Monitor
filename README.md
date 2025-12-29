@@ -66,7 +66,7 @@ To compile it yourself you need to download the source code and [install The Rus
 After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and type `cargo run` and the application will be compiled and started.
 
 1. Start Steam. If Steam is running your SteamID is read from the Windows registry if you are on Windows
-2. *IMPORTANT*: First start will complain about a missing `settings.json` file, and a skeleton settings file was created
+2. _IMPORTANT_: First start will complain about a missing `settings.json` file, and a skeleton settings file was created
 3. Quit the app and open that `settings.json` in a text editor
 4. Fill in your own SteamID, if you are on Windows and Steam was running, it is filled in already.
 5. Fill in the SteamAPI key, go to https://steamcommunity.com/dev/apikey to create a personal one
@@ -81,9 +81,9 @@ If you change rcon-password or port you need to alter the bat file.
 
 `start_tf2.bat`
 
-````
-"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf_win64.exe" -steam -game tf  -usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +sv_rcon_whitelist_address 127.0.0.1 +sv_quota_stringcmdspersecond 1000000 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console -g15```
-
+```
+"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf_win64.exe" -steam -game tf  -usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +sv_rcon_whitelist_address 127.0.0.1 +sv_quota_stringcmdspersecond 1000000 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console -g15
+```
 # Player Markings and Reputation
 
 ## TF2 Bot Detector files
@@ -146,4 +146,7 @@ There are already several similar applications like this one. Some of them has b
   - Windows only AFAIK.
   - There are also forks with fixes and updates:
     - https://github.com/surepy/tf2_bot_detector
-````
+
+```
+
+```
