@@ -29,6 +29,8 @@ jobs:
     needs: build
     runs-on: windows-latest
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +72,7 @@ jobs:
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ github.event.release.tag_name }}
           files: ${{ env.ARCHIVE_NAME }}
           draft: false
           prerelease: false
