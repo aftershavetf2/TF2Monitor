@@ -68,13 +68,11 @@ jobs:
           path: ${{ env.ARCHIVE_NAME }}
           retention-days: 30
 
-      - name: Create or update GitHub Release
+      - name: Upload to GitHub Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          release_id: ${{ github.event.release.id }}
           files: ${{ env.ARCHIVE_NAME }}
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
