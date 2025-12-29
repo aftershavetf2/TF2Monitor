@@ -73,8 +73,8 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 ui.label("Health").on_hover_text("Current health");
             });
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                ui.label("Reputation").on_hover_text(
-                    "Reputation (SourceBans) and flags (e.g. cheater, newbie, etc.)",
+                ui.label("Rep.").on_hover_text(
+                    "Reputation (SourceBans) and flags",
                 );
             });
 
