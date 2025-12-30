@@ -48,6 +48,9 @@ pub struct AppSettings {
     #[serde(default = "get_false")]
     pub show_health: bool,
 
+    #[serde(default = "get_true")]
+    pub show_ping: bool,
+
     // Auto actions
     #[serde(default = "bool::default")]
     pub kick_cheaters: bool,
@@ -85,6 +88,7 @@ impl Default for AppSettings {
             show_friendship_indicators: true,
             show_crits: true,
             show_health: false,
+            show_ping: false,
 
             kick_cheaters: false,
             kick_bots: true,

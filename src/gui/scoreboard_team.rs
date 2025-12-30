@@ -40,11 +40,13 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         }
     });
 
-    let num_columns = if app_win.app_settings.show_health {
-        10
-    } else {
-        9
-    };
+    let mut num_columns = 9; // Base columns: team, player, kills, deaths, age, hours, rep, weapon
+    if app_win.app_settings.show_ping {
+        num_columns += 1;
+    }
+    if app_win.app_settings.show_health {
+        num_columns += 1;
+    }
     Grid::new(title)
         .striped(true)
         .num_columns(num_columns)
@@ -71,9 +73,11 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 ui.set_min_width(HOURS_COLUMN_MIN_WIDTH);
                 ui.label("Hours").on_hover_text("TF2 hours played");
             });
-            ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                ui.label("Ping");
-            });
+            if app_win.app_settings.show_ping {
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    ui.label("Ping").on_hover_text("Ping in milliseconds");
+                });
+            }
             if app_win.app_settings.show_health {
                 ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
                     ui.label("Health").on_hover_text("Current health");
@@ -165,10 +169,12 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                     add_playtime(ui, player);
                 });
 
-                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                    ui.label(format!("{}", player.ping_ms))
-                        .on_hover_text_at_pointer("ms");
-                });
+                if app_win.app_settings.show_ping {
+                    ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                        ui.label(format!("{}", player.ping_ms))
+                            .on_hover_text_at_pointer("ms");
+                    });
+                }
 
                 if app_win.app_settings.show_health {
                     ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
