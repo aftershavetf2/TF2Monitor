@@ -6,7 +6,7 @@ use crate::{
     models::AppWin,
     tf2::lobby::{Player, PlayerKill},
 };
-use eframe::egui::{Image, OpenUrl, Ui, Vec2};
+use eframe::egui::{text::LayoutJob, Color32, Image, OpenUrl, TextFormat, Ui, Vec2};
 
 pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
     ui.heading("Player Details");
@@ -193,12 +193,41 @@ fn add_player_sourcebans(player: &Player, ui: &mut Ui) {
     ui.heading("SourceBans");
 
     if let Some(reputation) = &player.reputation {
-        if reputation.has_bad_reputation {
-            for ban in &reputation.bans {
-                ui.label(format!(
-                    "- {}: {} for {} ({})\n",
-                    ban.source, ban.reason, ban.when, ban.ban_length
-                ));
+        if reputation.has_bad_reputation && !reputation.bans.is_empty() {
+            // Sort the bans by when descending, but treat the date as a string
+            let mut bans = reputation.bans.clone();
+            bans.sort_by_key(|ban| ban.source.clone());
+
+            for ban in &bans {
+                let mut job = LayoutJob::default();
+
+                job.append(
+                    "- ",
+                    10.0,
+                    TextFormat {
+                        color: Color32::WHITE,
+                        ..Default::default()
+                    },
+                );
+                job.append(
+                    &ban.source,
+                    5.0,
+                    TextFormat {
+                        color: Color32::GRAY,
+                        ..Default::default()
+                    },
+                );
+                job.append(
+                    format!("\"{}\"", ban.reason).as_str(),
+                    5.0,
+                    TextFormat {
+                        color: Color32::WHITE,
+                        ..Default::default()
+                    },
+                );
+
+                ui.label(job);
+
                 has_bans = true;
             }
         }
