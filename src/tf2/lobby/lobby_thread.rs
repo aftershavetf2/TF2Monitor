@@ -66,10 +66,11 @@ impl LobbyThread {
 
         loop {
             self.process_bus();
-            {
-                let mut lobby = self.shared_lobby.get_mut();
-                lobby.update_friendships();
-            }
+
+            let mut lobby = self.shared_lobby.get();
+            lobby.update_friendships();
+
+            self.shared_lobby.set(lobby);
             self.translate_chat();
 
             sleep(LOBBY_LOOP_DELAY);
@@ -92,7 +93,7 @@ impl LobbyThread {
 
     fn process_g15_dump(&mut self, g15_dump: G15DumpPlayerOutput) {
         let now = Local::now();
-        let mut lobby = self.shared_lobby.get_mut();
+        let mut lobby = self.shared_lobby.get();
 
         // Merge data from the G15 dump into the lobby
         for player in g15_dump.players.iter() {
@@ -125,6 +126,8 @@ impl LobbyThread {
         }
         lobby.players = players_to_keep;
         lobby.recently_left_players.append(&mut players_to_move);
+
+        self.shared_lobby.set(lobby);
     }
 
     fn merge_player_g15_data(lobby_player: &mut Player, player: &G15PlayerData) {
@@ -230,7 +233,7 @@ impl LobbyThread {
     }
 
     fn new_lobby(&mut self, when: DateTime<Local>) {
-        let mut lobby = self.shared_lobby.get_mut();
+        let mut lobby = self.shared_lobby.get();
         log::info!("*** Creating new lobby ***");
 
         for player in lobby.players.iter_mut() {
@@ -256,6 +259,8 @@ impl LobbyThread {
         lobby.players.clear();
         lobby.chat.clear();
         lobby.kill_feed.clear();
+
+        self.shared_lobby.set(lobby);
     }
 
     fn kill(
@@ -266,7 +271,7 @@ impl LobbyThread {
         weapon: String,
         crit: bool,
     ) {
-        let mut lobby = self.shared_lobby.get_mut();
+        let mut lobby = self.shared_lobby.get();
 
         // Change the counts of the kill and death to the players
         if let Some(killer) = lobby.get_player_mut(Some(killer_name.as_str()), None) {
@@ -317,12 +322,15 @@ impl LobbyThread {
                 crit,
             });
         }
+
+        self.shared_lobby.set(lobby);
     }
 
     fn suicide(&mut self, _when: DateTime<Local>, name: String) {
-        let mut lobby = self.shared_lobby.get_mut();
+        let mut lobby = self.shared_lobby.get();
         if let Some(player) = lobby.get_player_mut(Some(name.as_str()), None) {
             player.deaths += 1;
+            self.shared_lobby.set(lobby);
         } else {
             log::warn!("Player not found: '{}'", name);
         }
@@ -336,7 +344,7 @@ impl LobbyThread {
         dead: bool,
         team: bool,
     ) {
-        let mut lobby = self.shared_lobby.get_mut();
+        let mut lobby = self.shared_lobby.get();
         let (steamid, chat_msg_id) = {
             if let Some(player) = lobby.get_player(Some(name.as_str()), None) {
                 (player.steamid, lobby.chat_msg_id)
@@ -358,6 +366,8 @@ impl LobbyThread {
         });
 
         lobby.chat_msg_id += 1;
+
+        self.shared_lobby.set(lobby);
     }
 
     // Go through the recently_left_players
@@ -365,7 +375,7 @@ impl LobbyThread {
     // and remove those who are older than a certain seconds
     fn purge_old_players(&mut self) {
         let when = Local::now();
-        let mut lobby = self.shared_lobby.get_mut();
+        let mut lobby = self.shared_lobby.get();
 
         let lobby_steamids: HashSet<SteamID> = lobby.players.iter().map(|p| p.steamid).collect();
 
@@ -390,24 +400,53 @@ impl LobbyThread {
         }
 
         lobby.recently_left_players = recently_left_to_keep;
+
+        self.shared_lobby.set(lobby);
     }
 
     fn translate_chat(&mut self) {
-        let mut lobby = self.shared_lobby.get_mut();
-        for chat in lobby.chat.iter_mut() {
-            if chat.translated_message.is_some() {
-                continue;
+        let mut lobby = self.shared_lobby.get();
+
+        // Step 1: Collect messages that need translation (hold lock briefly)
+        let messages_to_translate: Vec<(usize, String)> = {
+            lobby
+                .chat
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, chat)| {
+                    if chat.translated_message.is_none() {
+                        Some((idx, chat.message.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        };
+
+        // Step 2: Do the expensive translation work WITHOUT holding the lock
+        let translations: Vec<(usize, String)> = messages_to_translate
+            .into_iter()
+            .filter_map(|(idx, message)| {
+                self.text_translator
+                    .translate_sync(&message, "en", "")
+                    .map(|translated| (idx, translated))
+                    .map_err(|e| {
+                        log::error!("Error translating chat message: {:?}", e);
+                        e
+                    })
+                    .ok()
+            })
+            .collect();
+
+        // Step 3: Update the lobby with translations
+        if !translations.is_empty() {
+            for (idx, translated) in translations {
+                if let Some(chat) = lobby.chat.get_mut(idx) {
+                    chat.translated_message = Some(translated);
+                }
             }
-
-            let translated_message = self
-                .text_translator
-                .translate_sync(&chat.message, "en", "")
-                .unwrap_or_else(|e| {
-                    log::error!("Error translating chat message: {:?}", e);
-                    chat.message.clone()
-                });
-
-            chat.translated_message = Some(translated_message);
         }
+
+        self.shared_lobby.set(lobby);
     }
 }

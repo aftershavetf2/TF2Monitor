@@ -4,6 +4,9 @@ use std::sync::{Arc, Mutex};
 
 /// Shared lobby state that can be accessed from multiple threads.
 /// Provides thread-safe access to the lobby with a convenient API.
+///
+/// The lobby is protected by a Mutex, but the lock is only held briefly
+/// during get() and set() operations, not during long-running work.
 pub struct SharedLobby {
     lobby: Arc<Mutex<Lobby>>,
 }
@@ -18,15 +21,16 @@ impl SharedLobby {
 
     /// Get a copy of the current lobby state.
     /// This is the recommended way to read lobby data from other threads.
-    /// The copy is taken while holding the lock, ensuring consistency.
+    /// The copy is taken while holding the lock briefly, ensuring consistency.
     pub fn get(&self) -> Lobby {
         self.lobby.lock().unwrap().clone()
     }
 
-    /// Get mutable access to the lobby.
-    /// Use this when you need to modify the lobby (typically only in LobbyThread).
-    pub fn get_mut(&self) -> std::sync::MutexGuard<'_, Lobby> {
-        self.lobby.lock().unwrap()
+    /// Set the lobby state.
+    /// Use this when you have modified a copy of the lobby and want to update
+    /// the shared state. The lock is only held briefly during the update.
+    pub fn set(&self, lobby: Lobby) {
+        *self.lobby.lock().unwrap() = lobby;
     }
 
     /// Update a specific player in the lobby.
@@ -35,9 +39,10 @@ impl SharedLobby {
     where
         F: FnOnce(&mut crate::tf2::lobby::Player),
     {
-        let mut lobby = self.lobby.lock().unwrap();
+        let mut lobby = self.get();
         if let Some(player) = lobby.get_player_mut(None, Some(steamid)) {
             updater(player);
+            self.set(lobby);
         }
     }
 }
