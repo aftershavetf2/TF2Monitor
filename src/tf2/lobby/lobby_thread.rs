@@ -139,7 +139,7 @@ impl LobbyThread {
             lobby_player.team = player.team.unwrap();
         }
         lobby_player.alive = player.alive;
-        lobby_player.pingms = player.ping;
+        lobby_player.ping_ms = player.ping_ms;
         lobby_player.health = player.health;
     }
 

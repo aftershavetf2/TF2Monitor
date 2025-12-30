@@ -93,7 +93,7 @@ pub struct Player {
     pub name: String,
     pub team: Team,
     pub alive: bool,
-    pub pingms: i64,
+    pub ping_ms: i64,
     pub health: Option<u32>,
     pub kills: u32,
     pub deaths: u32,

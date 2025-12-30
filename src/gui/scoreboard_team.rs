@@ -166,7 +166,7 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                 });
 
                 ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                    ui.label(format!("{}", player.pingms))
+                    ui.label(format!("{}", player.ping_ms))
                         .on_hover_text_at_pointer("ms");
                 });
 

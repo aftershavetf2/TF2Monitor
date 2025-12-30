@@ -16,7 +16,7 @@ pub struct G15PlayerData {
     pub steamid: SteamID,
     pub id: i64,
     pub name: String,
-    pub ping: i64,
+    pub ping_ms: i64,
     pub alive: bool,
     pub team: Option<Team>,
     pub health: Option<u32>,
