@@ -122,6 +122,7 @@ impl SteamApiThread {
     fn get_latest_lobby(&mut self) {
         // To fetch additional info from Steam Web Api a key is needed
         if !self.steam_api.has_key() {
+            log::warn!("Steam API key is not set, skipping Steam API fetch");
             return;
         }
 
