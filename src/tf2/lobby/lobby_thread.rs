@@ -233,8 +233,9 @@ impl LobbyThread {
     }
 
     fn new_lobby(&mut self, when: DateTime<Local>) {
-        let mut lobby = self.shared_lobby.get();
         log::info!("*** Creating new lobby ***");
+
+        let mut lobby = self.shared_lobby.get();
 
         for player in lobby.players.iter_mut() {
             player.last_seen = when;
@@ -273,8 +274,12 @@ impl LobbyThread {
     ) {
         let mut lobby = self.shared_lobby.get();
 
-        // Change the counts of the kill and death to the players
+        let mut killer_steamid = None;
+        let mut victim_steamid = None;
+
+        // Change the counts of kills to the killer player
         if let Some(killer) = lobby.get_player_mut(Some(killer_name.as_str()), None) {
+            killer_steamid = Some(killer.steamid);
             killer.kills += 1;
             if crit {
                 killer.crit_kills += 1;
@@ -287,7 +292,9 @@ impl LobbyThread {
             log::warn!("Killer not found: '{}'", victim_name);
         }
 
+        // Change the counts of deaths to the victim player
         if let Some(victim) = lobby.get_player_mut(Some(victim_name.as_str()), None) {
+            victim_steamid = Some(victim.steamid);
             victim.deaths += 1;
             if crit {
                 victim.crit_deaths += 1;
@@ -297,22 +304,6 @@ impl LobbyThread {
         }
 
         // Add the kill to the feed
-        let (killer_steamid, victim_steamid) = {
-            let killer = lobby.get_player(Some(killer_name.as_str()), None);
-            let victim = lobby.get_player(Some(victim_name.as_str()), None);
-            match (killer, victim) {
-                (Some(k), Some(v)) => (Some(k.steamid), Some(v.steamid)),
-                _ => {
-                    log::info!(
-                        "Killer or victim not found: '{}', '{}'",
-                        killer_name,
-                        victim_name
-                    );
-                    return;
-                }
-            }
-        };
-
         if let (Some(killer_steamid), Some(victim_steamid)) = (killer_steamid, victim_steamid) {
             lobby.kill_feed.push(LobbyKill {
                 when,
@@ -321,6 +312,12 @@ impl LobbyThread {
                 weapon,
                 crit,
             });
+        } else {
+            log::warn!(
+                "Killer or victim not found: '{}', '{}'",
+                killer_name,
+                victim_name
+            );
         }
 
         self.shared_lobby.set(lobby);
@@ -328,12 +325,14 @@ impl LobbyThread {
 
     fn suicide(&mut self, _when: DateTime<Local>, name: String) {
         let mut lobby = self.shared_lobby.get();
+
         if let Some(player) = lobby.get_player_mut(Some(name.as_str()), None) {
             player.deaths += 1;
-            self.shared_lobby.set(lobby);
         } else {
             log::warn!("Player not found: '{}'", name);
         }
+
+        self.shared_lobby.set(lobby);
     }
 
     fn chat(
@@ -345,6 +344,7 @@ impl LobbyThread {
         team: bool,
     ) {
         let mut lobby = self.shared_lobby.get();
+
         let (steamid, chat_msg_id) = {
             if let Some(player) = lobby.get_player(Some(name.as_str()), None) {
                 (player.steamid, lobby.chat_msg_id)
