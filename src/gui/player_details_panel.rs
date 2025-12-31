@@ -1,5 +1,5 @@
 use super::{
-    colors::hexrgb, comments::add_profile_comments, player_flag_editor::add_player_flag_editor,
+    colors::hex_to_rgb, comments::add_profile_comments, player_flag_editor::add_player_flag_editor,
     playtime::add_playtime,
 };
 use crate::{
@@ -153,8 +153,8 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
 fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
     ui.horizontal_wrapped(|ui| {
         ui.scope(|ui| {
-            ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hexrgb(0x89161D);
-            ui.style_mut().visuals.widgets.hovered.weak_bg_fill = hexrgb(0x631016);
+            ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89161D);
+            ui.style_mut().visuals.widgets.hovered.weak_bg_fill = hex_to_rgb(0x631016);
 
             if ui.button("Kick for Cheating").clicked() {
                 log::info!("Voting to kick player '{}' for cheating", player.name);
@@ -164,8 +164,8 @@ fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
         });
 
         ui.scope(|ui| {
-            ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hexrgb(0x89161D);
-            ui.style_mut().visuals.widgets.hovered.weak_bg_fill = hexrgb(0x631016);
+            ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89161D);
+            ui.style_mut().visuals.widgets.hovered.weak_bg_fill = hex_to_rgb(0x631016);
 
             if ui.button("Kick for Idle").clicked() {
                 log::info!("Voting to kick player '{}' for idling", player.name);
@@ -175,8 +175,8 @@ fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
         });
 
         ui.scope(|ui| {
-            ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hexrgb(0x89161D);
-            ui.style_mut().visuals.widgets.hovered.weak_bg_fill = hexrgb(0x631016);
+            ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89161D);
+            ui.style_mut().visuals.widgets.hovered.weak_bg_fill = hex_to_rgb(0x631016);
 
             if ui.button("Kick for Scamming").clicked() {
                 log::info!("Voting to kick player '{}' for scamming", player.name);

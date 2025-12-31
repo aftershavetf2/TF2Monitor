@@ -1,5 +1,5 @@
 use super::{
-    colors::{hexrgb, CHAT_BLU_COLOR, CHAT_RED_COLOR},
+    colors::{hex_to_rgb, CHAT_BLU_COLOR, CHAT_RED_COLOR},
     markings::add_flags,
 };
 use crate::{
@@ -29,7 +29,7 @@ pub fn add_chat(ui: &mut Ui, app_win: &mut AppWin) {
             .auto_shrink(false)
             .show_rows(ui, row_height, num_rows, |ui, row_range| {
                 ui.scope(|ui| {
-                    ui.style_mut().visuals.panel_fill = hexrgb(0xffffff);
+                    ui.style_mut().visuals.panel_fill = hex_to_rgb(0xffffff);
 
                     for row in row_range {
                         let row = &app_win.lobby.chat[row].clone();

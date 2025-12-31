@@ -1,7 +1,7 @@
 use crate::tf2::{lobby::Player, steamapi::SteamProfileComment};
 use eframe::egui::{text::LayoutJob, Color32, OpenUrl, ScrollArea, TextFormat, TextStyle, Ui};
 
-use super::colors::hexrgb;
+use super::colors::hex_to_rgb;
 
 pub fn add_profile_comments(player: &Player, ui: &mut Ui) {
     // ui.heading("More info:");
@@ -19,7 +19,7 @@ pub fn add_profile_comments(player: &Player, ui: &mut Ui) {
                     .auto_shrink(false)
                     .show_rows(ui, row_height, num_rows, |ui, row_range| {
                         ui.scope(|ui| {
-                            ui.style_mut().visuals.panel_fill = hexrgb(0xffffff);
+                            ui.style_mut().visuals.panel_fill = hex_to_rgb(0xffffff);
 
                             for row in row_range {
                                 let row = &comments[row].clone();
