@@ -10,7 +10,7 @@ pub const RCON_LOOP_DELAY: Duration = Duration::from_millis(2000);
 pub const LOBBY_LOOP_DELAY: Duration = Duration::from_millis(500);
 
 /// Steam API thread delays
-pub const STEAMAPI_LOOP_DELAY: Duration = Duration::from_millis(500);
+pub const STEAMAPI_LOOP_DELAY: Duration = Duration::from_millis(100);
 pub const STEAMAPI_RETRY_DELAY: Duration = Duration::from_millis(5000);
 
 /// Reputation thread delay
@@ -25,7 +25,7 @@ pub const TF2BD_LOOP_DELAY: Duration = Duration::from_millis(50);
 
 /// GUI delays
 pub const GUI_SLEEP_DELAY: Duration = Duration::from_millis(40);
-pub const GUI_REPAINT_DELAY: Duration = Duration::from_millis(100);
+pub const GUI_REPAINT_DELAY: Duration = Duration::from_millis(50);
 
 /// Steam API batch sizes - how many players to process per loop iteration
 pub const NUM_PLAYTIMES_TO_FETCH: usize = 4;
