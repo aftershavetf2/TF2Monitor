@@ -1,6 +1,7 @@
 use sea_orm::entity::prelude::*;
 use sea_orm::{DatabaseConnection, DbErr};
 
+use super::entities::account;
 use super::entities::friendship;
 
 /// Get all friendships for a given steam_id.
@@ -54,4 +55,19 @@ pub async fn get_friendships(
     all_friendships.extend(reverse_friendships);
 
     Ok(all_friendships)
+}
+
+pub async fn get_account_by_steam_id(
+    db: &DatabaseConnection,
+    steam_id: u64,
+) -> Result<Option<account::Model>, DbErr> {
+    use account::Column as AccountColumn;
+    use account::Entity as Account;
+
+    let account = Account::find()
+        .filter(AccountColumn::SteamId.eq(steam_id))
+        .one(db)
+        .await?;
+
+    Ok(account)
 }
