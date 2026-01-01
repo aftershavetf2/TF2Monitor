@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, TimeZone};
 use date_component::date_component;
 use std::error::Error;
 
@@ -55,4 +55,26 @@ pub fn duration_as_string(when: DateTime<Local>) -> String {
     };
 
     format!("{}{}{}{}{}", years, months, days, hours, minutes)
+}
+
+pub fn unix_time_u64_to_local_datetime(unix_time: Option<u64>) -> Option<DateTime<Local>> {
+    if let Some(unix_time) = unix_time {
+        match chrono::Local.timestamp_opt(unix_time as i64, 0) {
+            chrono::offset::LocalResult::Single(x) => Some(x),
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
+pub fn unix_time_i64_to_local_datetime(unix_time: Option<i64>) -> Option<DateTime<Local>> {
+    if let Some(unix_time) = unix_time {
+        match chrono::Local.timestamp_opt(unix_time, 0) {
+            chrono::offset::LocalResult::Single(x) => Some(x),
+            _ => None,
+        }
+    } else {
+        None
+    }
 }
