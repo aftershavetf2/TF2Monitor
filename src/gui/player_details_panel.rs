@@ -100,7 +100,7 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
 
 fn add_player_avatar(player: &Player, ui: &mut Ui) {
     if let Some(steam_info) = &player.steam_info {
-        let image = Image::from_uri(&steam_info.avatarfull)
+        let image = Image::from_uri(&steam_info.avatar_full)
             .fit_to_exact_size(Vec2::new(100.0, 100.0))
             .corner_radius(3.0);
 

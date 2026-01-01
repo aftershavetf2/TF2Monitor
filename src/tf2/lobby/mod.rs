@@ -139,9 +139,9 @@ pub struct PlayerSteamInfo {
     pub steamid: SteamID,
     pub public_profile: bool,
     // pub name: String,
-    pub avatar: String,
+    pub avatar_thumb: String,
     // pub avatarmedium: String,
-    pub avatarfull: String,
+    pub avatar_full: String,
     pub account_age: Option<DateTime<Local>>,
 }
 

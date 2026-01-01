@@ -21,7 +21,11 @@ use std::{
 };
 
 /// Start the background thread for the rcon module
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> thread::JoinHandle<()> {
+pub fn start(
+    settings: &AppSettings,
+    bus: &Arc<Mutex<AppBus>>,
+    db: &DatabaseConnection,
+) -> thread::JoinHandle<()> {
     let mut steamapi_thread = SteamApiThread::new(settings, bus, db);
 
     thread::spawn(move || steamapi_thread.run())
@@ -164,9 +168,9 @@ impl SteamApiThread {
                         steamid,
                         public_profile,
                         // name: info.personaname.clone(),
-                        avatar: info.avatar.clone(),
+                        avatar_thumb: info.avatar.clone(),
                         // avatarmedium: info.avatarmedium.clone(),
-                        avatarfull: info.avatarfull.clone(),
+                        avatar_full: info.avatarfull.clone(),
                         account_age: info.get_account_age(),
                     };
 

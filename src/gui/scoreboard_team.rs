@@ -248,7 +248,7 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                 if let Some(steam_info) = &player.steam_info {
                     // if player.steamid.to_u64() != 76561198850780330 {
                     //     log::info!("Player avatar: {}", steam_info.avatar);
-                    ui.image(&steam_info.avatar)
+                    ui.image(&steam_info.avatar_thumb)
                         .on_hover_cursor(CursorIcon::Help)
                         .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
                     // }

@@ -15,8 +15,11 @@ pub struct Model {
     #[sea_orm(nullable)]
     pub created_date: Option<i64>,
 
-    /// URL to avatar image
-    pub avatar_url: String,
+    /// URL to avatar thumb image
+    pub avatar_thumb_url: String,
+
+    /// URL to avatar full image
+    pub avatar_full_url: String,
 
     /// Whether profile is public
     pub public_profile: bool,

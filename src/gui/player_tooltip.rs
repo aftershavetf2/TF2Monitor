@@ -9,7 +9,7 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
     // ui.heading(format!("({}) {}", player.id, &player.name));
 
     if let Some(steam_info) = &player.steam_info {
-        let image = Image::from_uri(&steam_info.avatarfull)
+        let image = Image::from_uri(&steam_info.avatar_full)
             .max_width(100.0)
             .corner_radius(3.0);
 
