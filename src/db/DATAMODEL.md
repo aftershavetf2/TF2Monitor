@@ -65,6 +65,7 @@ erDiagram
         integer last_updated "UnixTime when account data was last updated"
         integer friends_fetched "UnixTime when friend list was last fetched (nullable)"
         integer comments_fetched "UnixTime when comments was last fetched (nullable)"
+        integer fetch_date "UnixTime when account data was last fetched"
     }
 
     Friendship {

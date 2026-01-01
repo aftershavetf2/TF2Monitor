@@ -35,6 +35,9 @@ pub struct Model {
     /// UnixTime when comments was last fetched (nullable)
     #[sea_orm(nullable)]
     pub comments_fetched: Option<i64>,
+
+    /// UnixTime when account data was last fetched
+    pub fetch_date: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
