@@ -1,11 +1,13 @@
-use sea_orm::entity::prelude::*;
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "comments")]
-pub struct Model {
+use crate::db::schema::comments;
+
+#[derive(Clone, Debug, PartialEq, Eq, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = comments)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct Comment {
     /// Auto-increment primary key
-    #[sea_orm(primary_key, auto_increment = true)]
     pub id: i64,
 
     /// SteamID64 of account (Foreign Key to Account)
@@ -24,32 +26,17 @@ pub struct Model {
     pub created_date: i64,
 
     /// UnixTime when the comment no longer was found on the account (nullable)
-    #[sea_orm(nullable)]
     pub deleted_date: Option<i64>,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::account::Entity",
-        from = "Column::SteamId",
-        to = "super::account::Column::SteamId"
-    )]
-    Account,
-
-    #[sea_orm(
-        belongs_to = "super::account::Entity",
-        from = "Column::WriterSteamId",
-        to = "super::account::Column::SteamId"
-    )]
-    WriterAccount,
-}
-
-impl ActiveModelBehavior for ActiveModel {}
-
-impl Related<super::account::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Account.def()
-    }
+#[derive(Clone, Debug, Insertable)]
+#[diesel(table_name = comments)]
+pub struct NewComment {
+    pub steam_id: i64,
+    pub writer_steam_id: i64,
+    pub writer_name: String,
+    pub comment: String,
+    pub created_date: i64,
+    pub deleted_date: Option<i64>,
 }
 

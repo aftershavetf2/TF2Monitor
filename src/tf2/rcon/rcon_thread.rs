@@ -1,17 +1,17 @@
 use super::rcon_connection::{RConArgs, RConConnection};
 use crate::config::{RCON_DELAY, RCON_LOOP_DELAY};
+use crate::db::db::DbPool;
 use crate::models::app_settings::AppSettings;
 use crate::utils::BoxResult;
 use crate::{appbus::AppBus, tf2::rcon::g15_dumpplayer_parser::G15DumpPlayerParser};
 use bus::BusReader;
-use sea_orm::DatabaseConnection;
 use std::{
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
 
 /// Start the background thread for the rcon module
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> thread::JoinHandle<()> {
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> thread::JoinHandle<()> {
     let mut rcon_thread = RconThread::new(settings, bus, db);
 
     thread::spawn(move || rcon_thread.run())
@@ -21,11 +21,11 @@ pub struct RconThread {
     bus: Arc<Mutex<AppBus>>,
     rcon_args: RConArgs,
     rcon_bus_rx: BusReader<String>,
-    db: DatabaseConnection,
+    db: DbPool,
 }
 
 impl RconThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> Self {
         let mut rcon_args = RConArgs::new();
         rcon_args.ip.clone_from(&settings.rcon_ip);
         rcon_args.port = settings.rcon_port;

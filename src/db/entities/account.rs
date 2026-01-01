@@ -1,18 +1,19 @@
-use sea_orm::entity::prelude::*;
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "account")]
-pub struct Model {
+use crate::db::schema::account;
+
+#[derive(Clone, Debug, PartialEq, Eq, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = account)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct Account {
     /// SteamID64 of account (Primary Key)
-    #[sea_orm(primary_key)]
     pub steam_id: i64,
 
     /// Account name (max 32 visible characters, UTF-8)
     pub name: String,
 
     /// UnixTime when account was created, approximated if private (nullable)
-    #[sea_orm(nullable)]
     pub created_date: Option<i64>,
 
     /// URL to avatar thumb image
@@ -28,28 +29,26 @@ pub struct Model {
     pub last_updated: i64,
 
     /// UnixTime when friend list was last fetched (nullable)
-    #[sea_orm(nullable)]
     pub friends_fetched: Option<i64>,
 
     /// UnixTime when comments was last fetched (nullable)
-    #[sea_orm(nullable)]
     pub comments_fetched: Option<i64>,
 
     /// UnixTime when playtimes was last fetched (nullable)
-    #[sea_orm(nullable)]
     pub playtimes_fetched: Option<i64>,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::friendship::Entity")]
-    Friendships,
-
-    #[sea_orm(has_many = "super::comments::Entity")]
-    Comments,
-
-    #[sea_orm(has_many = "super::playtime::Entity")]
-    Playtimes,
+#[derive(Clone, Debug, Insertable, AsChangeset)]
+#[diesel(table_name = account)]
+pub struct NewAccount {
+    pub steam_id: i64,
+    pub name: String,
+    pub created_date: Option<i64>,
+    pub avatar_thumb_url: String,
+    pub avatar_full_url: String,
+    pub public_profile: bool,
+    pub last_updated: i64,
+    pub friends_fetched: Option<i64>,
+    pub comments_fetched: Option<i64>,
+    pub playtimes_fetched: Option<i64>,
 }
-
-impl ActiveModelBehavior for ActiveModel {}

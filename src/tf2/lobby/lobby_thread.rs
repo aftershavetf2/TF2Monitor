@@ -2,6 +2,7 @@ use super::shared_lobby::SharedLobby;
 use super::LobbyKill;
 use super::{LobbyChat, Player, PlayerKill};
 use crate::config::LOBBY_LOOP_DELAY;
+use crate::db::db::DbPool;
 use crate::tf2::lobby::AccountAge;
 use crate::tf2::rcon::{G15DumpPlayerOutput, G15PlayerData};
 use crate::tf2::steamapi::SteamApiMsg;
@@ -13,7 +14,6 @@ use crate::{
 };
 use bus::BusReader;
 use chrono::prelude::*;
-use sea_orm::DatabaseConnection;
 use std::collections::HashSet;
 use std::{
     sync::{Arc, Mutex},
@@ -32,18 +32,18 @@ pub struct LobbyThread {
     shared_lobby: SharedLobby,
 
     text_translator: GoogleTranslator,
-    db: DatabaseConnection,
+    db: DbPool,
 }
 
 /// Start the background thread for the lobby module
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> thread::JoinHandle<()> {
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> thread::JoinHandle<()> {
     let mut lobby_thread = LobbyThread::new(settings, bus, db);
 
     thread::spawn(move || lobby_thread.run())
 }
 
 impl LobbyThread {
-    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> Self {
+    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();

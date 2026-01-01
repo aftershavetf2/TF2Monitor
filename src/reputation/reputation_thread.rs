@@ -1,18 +1,21 @@
 use super::{get_reputation, Reputation};
 use crate::config::{NUM_REPUTATIONS_TO_FETCH, REPUTATION_LOOP_DELAY};
+use crate::db::db::DbPool;
+use crate::db::entities::NewBan;
+use crate::db::queries;
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
     tf2::{lobby::Lobby, steamapi::SteamApiMsg},
 };
-use sea_orm::DatabaseConnection;
+use chrono::Utc;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
 
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> thread::JoinHandle<()> {
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> thread::JoinHandle<()> {
     let mut reputation_thread = ReputationThread::new(settings, bus, db);
 
     thread::spawn(move || reputation_thread.run())
@@ -42,11 +45,11 @@ pub struct ReputationThread {
     bus: Arc<Mutex<AppBus>>,
     shared_lobby: crate::tf2::lobby::shared_lobby::SharedLobby,
     reputation_cache: ReputationCache,
-    db: DatabaseConnection,
+    db: DbPool,
 }
 
 impl ReputationThread {
-    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> Self {
+    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> Self {
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
 
         Self {
@@ -102,7 +105,32 @@ impl ReputationThread {
 
                 self.reputation_cache.set(reputation.clone());
 
-                self.send(SteamApiMsg::Reputation(reputation));
+                self.send(SteamApiMsg::Reputation(reputation.clone()));
+
+                // Persist bans to database
+                if let Ok(mut conn) = self.db.get() {
+                    let current_time = Utc::now().timestamp();
+
+                    for ban in &reputation.bans {
+                        // Parse ban_length to determine if permanent
+                        let permanent = ban.ban_length.to_lowercase().contains("permanent")
+                            || ban.ban_length.to_lowercase().contains("never");
+
+                        let new_ban = NewBan {
+                            steam_id: ban.steamid.to_u64() as i64,
+                            source: ban.source.clone(),
+                            ban_type: String::from("sourcebans"),
+                            reason: Some(ban.reason.clone()),
+                            created_date: current_time,
+                            expires_date: None, // Could parse ban_length here if needed
+                            permanent,
+                        };
+
+                        if let Err(e) = queries::insert_ban(&mut conn, new_ban) {
+                            log::debug!("Ban already exists or error: {}", e);
+                        }
+                    }
+                }
             }
         }
     }

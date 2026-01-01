@@ -1,8 +1,10 @@
-use sea_orm::entity::prelude::*;
-use sea_orm::{DatabaseConnection, DbErr};
+use diesel::prelude::*;
 
-use super::entities::account;
-use super::entities::friendship;
+use super::entities::{
+    Account, Ban, Comment, Friendship, Game, NewAccount, NewBan, NewComment, NewFriendship,
+    NewPlayerFlag, NewPlaytime, PlayerFlag,
+};
+use super::schema::{account, bans, comments, friendship, player_flags, playtime};
 
 /// Get all friendships for a given steam_id.
 ///
@@ -16,7 +18,7 @@ use super::entities::friendship;
 /// but we can still find friendships from other public accounts that list this account as a friend.
 ///
 /// # Arguments
-/// * `db` - Database connection
+/// * `conn` - Database connection
 /// * `steam_id` - The SteamID64 to get friendships for
 /// * `active_only` -
 ///   If `true`, returns only active friendships (where unfriend_date is NULL).
@@ -25,28 +27,33 @@ use super::entities::friendship;
 /// To extract the friend's steam_id from the result:
 /// - For direct friendships: use `friendship.friend_steam_id`
 /// - For reverse friendships: use `friendship.steam_id`
-pub async fn get_friendships(
-    db: &DatabaseConnection,
+pub fn get_friendships(
+    conn: &mut SqliteConnection,
     steam_id: i64,
     active_only: bool,
-) -> Result<Vec<friendship::Model>, DbErr> {
-    use friendship::Column as FriendshipColumn;
-    use friendship::Entity as Friendship;
+) -> Result<Vec<Friendship>, diesel::result::Error> {
+    use friendship::dsl;
 
     // Build query for direct friendships: where steam_id = given_steam_id
-    let mut direct_query = Friendship::find().filter(FriendshipColumn::SteamId.eq(steam_id));
+    let mut direct_query = friendship::table
+        .filter(dsl::steam_id.eq(steam_id))
+        .into_boxed();
+
     if active_only {
-        direct_query = direct_query.filter(FriendshipColumn::UnfriendDate.is_null());
+        direct_query = direct_query.filter(dsl::unfriend_date.is_null());
     }
-    let direct_friendships = direct_query.all(db).await?;
+    let direct_friendships = direct_query.load::<Friendship>(conn)?;
 
     // Build query for reverse friendships: where friend_steam_id = given_steam_id
     // These represent accounts that have the given steam_id as a friend
-    let mut reverse_query = Friendship::find().filter(FriendshipColumn::FriendSteamId.eq(steam_id));
+    let mut reverse_query = friendship::table
+        .filter(dsl::friend_steam_id.eq(steam_id))
+        .into_boxed();
+
     if active_only {
-        reverse_query = reverse_query.filter(FriendshipColumn::UnfriendDate.is_null());
+        reverse_query = reverse_query.filter(dsl::unfriend_date.is_null());
     }
-    let reverse_friendships = reverse_query.all(db).await?;
+    let reverse_friendships = reverse_query.load::<Friendship>(conn)?;
 
     // Combine both lists
     // Note: We might get duplicates if a friendship exists in both directions,
@@ -57,17 +64,311 @@ pub async fn get_friendships(
     Ok(all_friendships)
 }
 
-pub async fn get_account_by_steam_id(
-    db: &DatabaseConnection,
-    steam_id: u64,
-) -> Result<Option<account::Model>, DbErr> {
-    use account::Column as AccountColumn;
-    use account::Entity as Account;
+pub fn get_account_by_steam_id(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+) -> Result<Option<Account>, diesel::result::Error> {
+    use account::dsl;
 
-    let account = Account::find()
-        .filter(AccountColumn::SteamId.eq(steam_id))
-        .one(db)
-        .await?;
+    let result = account::table
+        .filter(dsl::steam_id.eq(steam_id))
+        .first::<Account>(conn)
+        .optional()?;
 
-    Ok(account)
+    Ok(result)
+}
+
+/// Insert or update an account record.
+/// Uses INSERT OR REPLACE to update existing records.
+pub fn upsert_account(
+    conn: &mut SqliteConnection,
+    new_account: NewAccount,
+) -> Result<(), diesel::result::Error> {
+    diesel::insert_into(account::table)
+        .values(&new_account)
+        .on_conflict(account::steam_id)
+        .do_update()
+        .set(&new_account)
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Insert or update a friendship record.
+/// If the friendship already exists, updates the friend_name and keeps friend_date.
+/// Sets unfriend_date to NULL (reactivates friendship if it was unfriended).
+pub fn upsert_friendship(
+    conn: &mut SqliteConnection,
+    new_friendship: NewFriendship,
+) -> Result<(), diesel::result::Error> {
+    use friendship::dsl;
+
+    diesel::insert_into(friendship::table)
+        .values(&new_friendship)
+        .on_conflict((dsl::steam_id, dsl::friend_steam_id))
+        .do_update()
+        .set((
+            dsl::friend_name.eq(&new_friendship.friend_name),
+            dsl::unfriend_date.eq::<Option<i64>>(None),
+        ))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Mark a friendship as ended by setting unfriend_date.
+pub fn mark_friendship_ended(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    friend_steam_id: i64,
+    unfriend_date: i64,
+) -> Result<(), diesel::result::Error> {
+    use friendship::dsl;
+
+    diesel::update(
+        friendship::table.filter(
+            dsl::steam_id
+                .eq(steam_id)
+                .and(dsl::friend_steam_id.eq(friend_steam_id)),
+        ),
+    )
+    .set(dsl::unfriend_date.eq(Some(unfriend_date)))
+    .execute(conn)?;
+    Ok(())
+}
+
+/// Insert a new comment record.
+/// Does not update if already exists (comments are immutable once created).
+pub fn insert_comment(
+    conn: &mut SqliteConnection,
+    new_comment: NewComment,
+) -> Result<(), diesel::result::Error> {
+    diesel::insert_into(comments::table)
+        .values(&new_comment)
+        .on_conflict_do_nothing()
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Mark a comment as deleted by setting deleted_date.
+pub fn mark_comment_deleted(
+    conn: &mut SqliteConnection,
+    comment_id: i64,
+    deleted_date: i64,
+) -> Result<(), diesel::result::Error> {
+    use comments::dsl;
+
+    diesel::update(comments::table.filter(dsl::id.eq(comment_id)))
+        .set(dsl::deleted_date.eq(Some(deleted_date)))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Get all active (non-deleted) comments for a steam_id.
+pub fn get_active_comments_for_account(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+) -> Result<Vec<Comment>, diesel::result::Error> {
+    use comments::dsl;
+
+    comments::table
+        .filter(dsl::steam_id.eq(steam_id))
+        .filter(dsl::deleted_date.is_null())
+        .load::<Comment>(conn)
+}
+
+/// Insert or update a playtime record.
+pub fn upsert_playtime(
+    conn: &mut SqliteConnection,
+    new_playtime: NewPlaytime,
+) -> Result<(), diesel::result::Error> {
+    use playtime::dsl;
+
+    diesel::insert_into(playtime::table)
+        .values(&new_playtime)
+        .on_conflict((dsl::steam_id, dsl::game))
+        .do_update()
+        .set((
+            dsl::play_minutes.eq(&new_playtime.play_minutes),
+            dsl::last_updated.eq(&new_playtime.last_updated),
+        ))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Update account's friends_fetched timestamp.
+pub fn update_account_friends_fetched(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    friends_fetched: i64,
+) -> Result<(), diesel::result::Error> {
+    use account::dsl;
+
+    diesel::update(account::table.filter(dsl::steam_id.eq(steam_id)))
+        .set(dsl::friends_fetched.eq(Some(friends_fetched)))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Update account's comments_fetched timestamp.
+pub fn update_account_comments_fetched(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    comments_fetched: i64,
+) -> Result<(), diesel::result::Error> {
+    use account::dsl;
+
+    diesel::update(account::table.filter(dsl::steam_id.eq(steam_id)))
+        .set(dsl::comments_fetched.eq(Some(comments_fetched)))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Update account's playtimes_fetched timestamp.
+pub fn update_account_playtimes_fetched(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    playtimes_fetched: i64,
+) -> Result<(), diesel::result::Error> {
+    use account::dsl;
+
+    diesel::update(account::table.filter(dsl::steam_id.eq(steam_id)))
+        .set(dsl::playtimes_fetched.eq(Some(playtimes_fetched)))
+        .execute(conn)?;
+    Ok(())
+}
+
+// ============================================================================
+// Ban-related queries
+// ============================================================================
+
+/// Insert a new ban record.
+/// Does not update if already exists (bans are immutable once created).
+pub fn insert_ban(
+    conn: &mut SqliteConnection,
+    new_ban: NewBan,
+) -> Result<(), diesel::result::Error> {
+    diesel::insert_into(bans::table)
+        .values(&new_ban)
+        .on_conflict_do_nothing()
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Get all active (non-expired) bans for a steam_id.
+pub fn get_active_bans_for_account(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    current_time: i64,
+) -> Result<Vec<Ban>, diesel::result::Error> {
+    use bans::dsl;
+
+    bans::table
+        .filter(dsl::steam_id.eq(steam_id))
+        .filter(
+            dsl::permanent
+                .eq(true)
+                .or(dsl::expires_date.is_null())
+                .or(dsl::expires_date.gt(current_time)),
+        )
+        .load::<Ban>(conn)
+}
+
+/// Get all bans for a steam_id (including expired).
+pub fn get_all_bans_for_account(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+) -> Result<Vec<Ban>, diesel::result::Error> {
+    use bans::dsl;
+
+    bans::table
+        .filter(dsl::steam_id.eq(steam_id))
+        .load::<Ban>(conn)
+}
+
+// ============================================================================
+// Player flag-related queries
+// ============================================================================
+
+/// Insert or update a player flag.
+/// If the flag already exists, updates last_seen timestamp.
+pub fn upsert_player_flag(
+    conn: &mut SqliteConnection,
+    new_flag: NewPlayerFlag,
+) -> Result<(), diesel::result::Error> {
+    use player_flags::dsl;
+
+    diesel::insert_into(player_flags::table)
+        .values(&new_flag)
+        .on_conflict((dsl::steam_id, dsl::flag_type, dsl::source))
+        .do_update()
+        .set(dsl::last_seen.eq(&new_flag.last_seen))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Mark a player flag as notified.
+pub fn mark_player_flag_notified(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    flag_type: &str,
+    source: &str,
+) -> Result<(), diesel::result::Error> {
+    use player_flags::dsl;
+
+    diesel::update(
+        player_flags::table.filter(
+            dsl::steam_id
+                .eq(steam_id)
+                .and(dsl::flag_type.eq(flag_type))
+                .and(dsl::source.eq(source)),
+        ),
+    )
+    .set(dsl::notified.eq(true))
+    .execute(conn)?;
+    Ok(())
+}
+
+/// Get all player flags for a steam_id.
+pub fn get_player_flags(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+) -> Result<Vec<PlayerFlag>, diesel::result::Error> {
+    use player_flags::dsl;
+
+    player_flags::table
+        .filter(dsl::steam_id.eq(steam_id))
+        .load::<PlayerFlag>(conn)
+}
+
+/// Get unnotified player flags for a steam_id.
+pub fn get_unnotified_player_flags(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+) -> Result<Vec<PlayerFlag>, diesel::result::Error> {
+    use player_flags::dsl;
+
+    player_flags::table
+        .filter(dsl::steam_id.eq(steam_id))
+        .filter(dsl::notified.eq(false))
+        .load::<PlayerFlag>(conn)
+}
+
+/// Remove a player flag.
+pub fn remove_player_flag(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    flag_type: &str,
+    source: &str,
+) -> Result<(), diesel::result::Error> {
+    use player_flags::dsl;
+
+    diesel::delete(
+        player_flags::table.filter(
+            dsl::steam_id
+                .eq(steam_id)
+                .and(dsl::flag_type.eq(flag_type))
+                .and(dsl::source.eq(source)),
+        ),
+    )
+    .execute(conn)?;
+    Ok(())
 }

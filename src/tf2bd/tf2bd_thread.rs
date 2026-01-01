@@ -1,12 +1,15 @@
 use super::{models::PlayerAttribute, ruleset_handler::RulesetHandler, Tf2bdMsg};
 use crate::config::TF2BD_LOOP_DELAY;
+use crate::db::db::DbPool;
+use crate::db::entities::NewPlayerFlag;
+use crate::db::queries;
 use crate::{
     appbus::{AppBus, AppEventMsg},
     models::{app_settings::AppSettings, steamid::SteamID},
     tf2::lobby::{Lobby, Player, Team},
 };
 use bus::BusReader;
-use sea_orm::DatabaseConnection;
+use chrono::Utc;
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
@@ -18,7 +21,7 @@ const FILENAME: &str = "playerlist.json";
 
 const VOTE_PERIOD_SECONDS: u64 = 10;
 
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> thread::JoinHandle<()> {
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> thread::JoinHandle<()> {
     let mut tf2bd_thread = Tf2bdThread::new(settings, bus, db);
 
     thread::spawn(move || tf2bd_thread.run())
@@ -33,7 +36,7 @@ struct Tf2bdThread {
 
     ruleset_handler: RulesetHandler,
 
-    db: DatabaseConnection,
+    db: DbPool,
 
     last_lobby_id: String,
     last_vote_time: Instant,
@@ -42,7 +45,7 @@ struct Tf2bdThread {
 }
 
 impl Tf2bdThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> Self {
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
         let app_event_bus_rx = bus.lock().unwrap().app_event_bus.add_rx();
 
@@ -125,7 +128,48 @@ impl Tf2bdThread {
         self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.cloned()));
 
         self.ruleset_handler
-            .set_player_flags(player, player_attribute, enable);
+            .set_player_flags(player.clone(), player_attribute, enable);
+
+        // Persist to database
+        if let Ok(mut conn) = self.db.get() {
+            let current_time = Utc::now().timestamp();
+            let flag_type = format!("{:?}", player_attribute);
+            let source = "manual".to_string();
+
+            if enable {
+                // Add or update the flag
+                let new_flag = NewPlayerFlag {
+                    steam_id: player.steamid.to_u64() as i64,
+                    flag_type,
+                    source,
+                    first_seen: current_time,
+                    last_seen: current_time,
+                    notified: false,
+                };
+
+                if let Err(e) = queries::upsert_player_flag(&mut conn, new_flag) {
+                    log::error!(
+                        "Failed to persist player flag for {}: {}",
+                        player.steamid.to_u64(),
+                        e
+                    );
+                }
+            } else {
+                // Remove the flag
+                if let Err(e) = queries::remove_player_flag(
+                    &mut conn,
+                    player.steamid.to_u64() as i64,
+                    &flag_type,
+                    &source,
+                ) {
+                    log::error!(
+                        "Failed to remove player flag for {}: {}",
+                        player.steamid.to_u64(),
+                        e
+                    );
+                }
+            }
+        }
     }
 
     fn apply_rules_to_lobby(&mut self) {
@@ -135,7 +179,37 @@ impl Tf2bdThread {
                 .ruleset_handler
                 .get_player_marking(&player.steamid)
                 .cloned();
-            self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data));
+            self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.clone()));
+
+            // Persist flags from ruleset to database
+            if let Some(player_info) = &data {
+                if let Ok(mut conn) = self.db.get() {
+                    let current_time = Utc::now().timestamp();
+
+                    for attribute in &player_info.attributes {
+                        let flag_type = format!("{:?}", attribute);
+                        // Get the source from file_info if available, otherwise use filename
+                        let source = FILENAME.to_string();
+
+                        let new_flag = NewPlayerFlag {
+                            steam_id: player.steamid.to_u64() as i64,
+                            flag_type,
+                            source,
+                            first_seen: current_time,
+                            last_seen: current_time,
+                            notified: false,
+                        };
+
+                        if let Err(e) = queries::upsert_player_flag(&mut conn, new_flag) {
+                            log::debug!(
+                                "Failed to persist player flag for {}: {}",
+                                player.steamid.to_u64(),
+                                e
+                            );
+                        }
+                    }
+                }
+            }
         }
     }
 

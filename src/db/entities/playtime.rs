@@ -1,38 +1,70 @@
-use sea_orm::entity::prelude::*;
+use diesel::backend::Backend;
+use diesel::deserialize::{self, FromSql};
+use diesel::prelude::*;
+use diesel::serialize::{self, Output, ToSql};
+use diesel::sql_types::Text;
+use diesel::sqlite::Sqlite;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize)]
-#[sea_orm(rs_type = "String", db_type = "String(StringLen::N(50))")]
+use crate::db::schema::playtime;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, diesel::AsExpression, diesel::FromSqlRow)]
+#[diesel(sql_type = Text)]
 pub enum Game {
-    #[sea_orm(string_value = "TF2")]
     Tf2,
-    #[sea_orm(string_value = "CS2")]
     Cs2,
-    #[sea_orm(string_value = "CSGO")]
     Csgo,
-    #[sea_orm(string_value = "DOTA2")]
     Dota2,
-    #[sea_orm(string_value = "PUBG")]
     Pubg,
-    #[sea_orm(string_value = "APEX")]
     Apex,
-    #[sea_orm(string_value = "RUST")]
     Rust,
-    #[sea_orm(string_value = "GTA5")]
     Gta5,
-    #[sea_orm(string_value = "OTHER")]
     Other,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "playtime")]
-pub struct Model {
+impl ToSql<Text, Sqlite> for Game {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> serialize::Result {
+        let s = match self {
+            Game::Tf2 => "TF2",
+            Game::Cs2 => "CS2",
+            Game::Csgo => "CSGO",
+            Game::Dota2 => "DOTA2",
+            Game::Pubg => "PUBG",
+            Game::Apex => "APEX",
+            Game::Rust => "RUST",
+            Game::Gta5 => "GTA5",
+            Game::Other => "OTHER",
+        };
+        ToSql::<Text, Sqlite>::to_sql(s, out)
+    }
+}
+
+impl FromSql<Text, Sqlite> for Game {
+    fn from_sql(value: <Sqlite as Backend>::RawValue<'_>) -> deserialize::Result<Self> {
+        let s = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
+        match s.as_str() {
+            "TF2" => Ok(Game::Tf2),
+            "CS2" => Ok(Game::Cs2),
+            "CSGO" => Ok(Game::Csgo),
+            "DOTA2" => Ok(Game::Dota2),
+            "PUBG" => Ok(Game::Pubg),
+            "APEX" => Ok(Game::Apex),
+            "RUST" => Ok(Game::Rust),
+            "GTA5" => Ok(Game::Gta5),
+            "OTHER" => Ok(Game::Other),
+            _ => Ok(Game::Other),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = playtime)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct Playtime {
     /// SteamID64 of account (Composite Primary Key, Foreign Key to Account)
-    #[sea_orm(primary_key)]
     pub steam_id: i64,
 
     /// Game identifier (Composite Primary Key)
-    #[sea_orm(primary_key)]
     pub game: Game,
 
     /// Number of minutes playing the game
@@ -42,20 +74,11 @@ pub struct Model {
     pub last_updated: i64,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::account::Entity",
-        from = "Column::SteamId",
-        to = "super::account::Column::SteamId"
-    )]
-    Account,
-}
-
-impl ActiveModelBehavior for ActiveModel {}
-
-impl Related<super::account::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Account.def()
-    }
+#[derive(Clone, Debug, Insertable, AsChangeset)]
+#[diesel(table_name = playtime)]
+pub struct NewPlaytime {
+    pub steam_id: i64,
+    pub game: Game,
+    pub play_minutes: i64,
+    pub last_updated: i64,
 }

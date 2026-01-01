@@ -5,6 +5,9 @@ use crate::config::{
     NUM_ACCOUNT_AGES_TO_APPROX, NUM_FRIENDS_TO_FETCH, NUM_PLAYTIMES_TO_FETCH,
     NUM_PROFILE_COMMENTS_TO_FETCH, STEAMAPI_LOOP_DELAY, STEAMAPI_RETRY_DELAY,
 };
+use crate::db::db::DbPool;
+use crate::db::entities::{Game, NewAccount, NewComment, NewFriendship, NewPlaytime};
+use crate::db::queries;
 use crate::{
     appbus::AppBus,
     models::{app_settings::AppSettings, steamid::SteamID},
@@ -13,7 +16,7 @@ use crate::{
         steamapi::SteamApiMsg,
     },
 };
-use sea_orm::DatabaseConnection;
+use chrono::Utc;
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
@@ -24,7 +27,7 @@ use std::{
 pub fn start(
     settings: &AppSettings,
     bus: &Arc<Mutex<AppBus>>,
-    db: &DatabaseConnection,
+    db: &DbPool,
 ) -> thread::JoinHandle<()> {
     let mut steamapi_thread = SteamApiThread::new(settings, bus, db);
 
@@ -96,11 +99,11 @@ pub struct SteamApiThread {
     shared_lobby: crate::tf2::lobby::shared_lobby::SharedLobby,
     steam_api: SteamApi,
     steam_api_cache: SteamApiCache,
-    db: DatabaseConnection,
+    db: DbPool,
 }
 
 impl SteamApiThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> Self {
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
 
         Self {
@@ -163,6 +166,7 @@ impl SteamApiThread {
             for info in infos {
                 if let Some(steamid) = SteamID::from_u64_string(&info.steamid) {
                     let public_profile = matches!(info.communityvisibilitystate, 3);
+                    let account_age = info.get_account_age();
 
                     let info = PlayerSteamInfo {
                         steamid,
@@ -171,12 +175,40 @@ impl SteamApiThread {
                         avatar_thumb: info.avatar.clone(),
                         // avatarmedium: info.avatarmedium.clone(),
                         avatar_full: info.avatarfull.clone(),
-                        account_age: info.get_account_age(),
+                        account_age: account_age.clone(),
                     };
 
                     // Add to cache and then send
                     self.steam_api_cache.set_summary(info.clone());
-                    self.send(SteamApiMsg::PlayerSummary(info));
+                    self.send(SteamApiMsg::PlayerSummary(info.clone()));
+
+                    // Persist to database
+                    if let Ok(mut conn) = self.db.get() {
+                        // Find the player name from the lobby
+                        let player_name = lobby
+                            .get_player(None, Some(steamid))
+                            .map(|p| p.name.clone())
+                            .unwrap_or_else(|| String::from("Unknown"));
+
+                        let created_date = account_age.map(|dt| dt.timestamp());
+
+                        let new_account = NewAccount {
+                            steam_id: steamid.to_u64() as i64,
+                            name: player_name,
+                            created_date,
+                            avatar_thumb_url: info.avatar_thumb.clone(),
+                            avatar_full_url: info.avatar_full.clone(),
+                            public_profile: info.public_profile,
+                            last_updated: Utc::now().timestamp(),
+                            friends_fetched: None,
+                            comments_fetched: None,
+                            playtimes_fetched: None,
+                        };
+
+                        if let Err(e) = queries::upsert_account(&mut conn, new_account) {
+                            log::error!("Failed to persist account {}: {}", steamid.to_u64(), e);
+                        }
+                    }
                 }
             }
         }
@@ -200,6 +232,50 @@ impl SteamApiThread {
                 if let Some(friends) = self.steam_api.get_friendlist(steamid) {
                     self.steam_api_cache.set_friends(steamid, friends.clone());
                     self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
+
+                    // Persist to database
+                    if let Ok(mut conn) = self.db.get() {
+                        let current_time = Utc::now().timestamp();
+
+                        // Insert/update each friendship
+                        for friend_steamid in &friends {
+                            // Get friend name from lobby if available
+                            let friend_name = lobby
+                                .get_player(None, Some(*friend_steamid))
+                                .map(|p| p.name.clone())
+                                .unwrap_or_else(|| String::from("Unknown"));
+
+                            let new_friendship = NewFriendship {
+                                steam_id: steamid.to_u64() as i64,
+                                friend_steam_id: friend_steamid.to_u64() as i64,
+                                friend_name,
+                                friend_date: current_time,
+                                unfriend_date: None,
+                            };
+
+                            if let Err(e) = queries::upsert_friendship(&mut conn, new_friendship) {
+                                log::error!(
+                                    "Failed to persist friendship {}->{}: {}",
+                                    steamid.to_u64(),
+                                    friend_steamid.to_u64(),
+                                    e
+                                );
+                            }
+                        }
+
+                        // Update friends_fetched timestamp
+                        if let Err(e) = queries::update_account_friends_fetched(
+                            &mut conn,
+                            steamid.to_u64() as i64,
+                            current_time,
+                        ) {
+                            log::error!(
+                                "Failed to update friends_fetched for {}: {}",
+                                steamid.to_u64(),
+                                e
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -221,7 +297,38 @@ impl SteamApiThread {
             log::info!("Fetching playtime for {}", player.name);
             let playtime = self.steam_api.get_tf2_play_minutes(steamid);
             self.steam_api_cache.set_playtime(steamid, &playtime);
-            self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
+            self.send(SteamApiMsg::Tf2Playtime(steamid, playtime.clone()));
+
+            // Persist to database
+            if let Tf2PlayMinutes::PlayMinutes(minutes) = playtime {
+                if let Ok(mut conn) = self.db.get() {
+                    let current_time = Utc::now().timestamp();
+
+                    let new_playtime = NewPlaytime {
+                        steam_id: steamid.to_u64() as i64,
+                        game: Game::Tf2,
+                        play_minutes: minutes as i64,
+                        last_updated: current_time,
+                    };
+
+                    if let Err(e) = queries::upsert_playtime(&mut conn, new_playtime) {
+                        log::error!("Failed to persist playtime for {}: {}", steamid.to_u64(), e);
+                    }
+
+                    // Update playtimes_fetched timestamp
+                    if let Err(e) = queries::update_account_playtimes_fetched(
+                        &mut conn,
+                        steamid.to_u64() as i64,
+                        current_time,
+                    ) {
+                        log::error!(
+                            "Failed to update playtimes_fetched for {}: {}",
+                            steamid.to_u64(),
+                            e
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -373,7 +480,40 @@ impl SteamApiThread {
                 let comments = get_steam_profile_comments(steamid.to_u64());
                 if let Some(comments) = comments {
                     self.steam_api_cache.set_comments(steamid, comments.clone());
-                    self.send(SteamApiMsg::ProfileComments(steamid, comments));
+                    self.send(SteamApiMsg::ProfileComments(steamid, comments.clone()));
+
+                    // Persist to database
+                    if let Ok(mut conn) = self.db.get() {
+                        let current_time = Utc::now().timestamp();
+
+                        for comment in &comments {
+                            let new_comment = NewComment {
+                                steam_id: steamid.to_u64() as i64,
+                                writer_steam_id: comment.steamid.to_u64() as i64,
+                                writer_name: comment.name.clone(),
+                                comment: comment.comment.clone(),
+                                created_date: current_time,
+                                deleted_date: None,
+                            };
+
+                            if let Err(e) = queries::insert_comment(&mut conn, new_comment) {
+                                log::debug!("Comment already exists or error: {}", e);
+                            }
+                        }
+
+                        // Update comments_fetched timestamp
+                        if let Err(e) = queries::update_account_comments_fetched(
+                            &mut conn,
+                            steamid.to_u64() as i64,
+                            current_time,
+                        ) {
+                            log::error!(
+                                "Failed to update comments_fetched for {}: {}",
+                                steamid.to_u64(),
+                                e
+                            );
+                        }
+                    }
                 } else {
                     log::info!("Error fetching comments for {}", steamid.to_u64());
 
