@@ -6,6 +6,7 @@ use crate::{
     tf2::lobby::{Lobby, Player, Team},
 };
 use bus::BusReader;
+use sea_orm::DatabaseConnection;
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
@@ -17,8 +18,8 @@ const FILENAME: &str = "playerlist.json";
 
 const VOTE_PERIOD_SECONDS: u64 = 10;
 
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
-    let mut tf2bd_thread = Tf2bdThread::new(settings, bus);
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> thread::JoinHandle<()> {
+    let mut tf2bd_thread = Tf2bdThread::new(settings, bus, db);
 
     thread::spawn(move || tf2bd_thread.run())
 }
@@ -32,6 +33,8 @@ struct Tf2bdThread {
 
     ruleset_handler: RulesetHandler,
 
+    db: DatabaseConnection,
+
     last_lobby_id: String,
     last_vote_time: Instant,
 
@@ -39,7 +42,7 @@ struct Tf2bdThread {
 }
 
 impl Tf2bdThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> Self {
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
         let app_event_bus_rx = bus.lock().unwrap().app_event_bus.add_rx();
 
@@ -53,6 +56,8 @@ impl Tf2bdThread {
             app_settings: settings.clone(),
 
             ruleset_handler,
+
+            db: db.clone(),
 
             last_lobby_id: String::new(),
 

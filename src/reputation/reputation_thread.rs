@@ -5,14 +5,15 @@ use crate::{
     models::{app_settings::AppSettings, steamid::SteamID},
     tf2::{lobby::Lobby, steamapi::SteamApiMsg},
 };
+use sea_orm::DatabaseConnection;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
 
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
-    let mut reputation_thread = ReputationThread::new(settings, bus);
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> thread::JoinHandle<()> {
+    let mut reputation_thread = ReputationThread::new(settings, bus, db);
 
     thread::spawn(move || reputation_thread.run())
 }
@@ -41,16 +42,18 @@ pub struct ReputationThread {
     bus: Arc<Mutex<AppBus>>,
     shared_lobby: crate::tf2::lobby::shared_lobby::SharedLobby,
     reputation_cache: ReputationCache,
+    db: DatabaseConnection,
 }
 
 impl ReputationThread {
-    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> Self {
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
 
         Self {
             bus: Arc::clone(bus),
             shared_lobby,
             reputation_cache: ReputationCache::new(),
+            db: db.clone(),
         }
     }
 

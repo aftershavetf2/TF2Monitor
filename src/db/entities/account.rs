@@ -15,10 +15,6 @@ pub struct Model {
     #[sea_orm(nullable)]
     pub created_date: Option<i64>,
 
-    /// Number of minutes playing TF2 (nullable)
-    #[sea_orm(nullable)]
-    pub tf2_time: Option<i64>,
-
     /// URL to avatar image
     pub avatar_url: String,
 
@@ -36,8 +32,9 @@ pub struct Model {
     #[sea_orm(nullable)]
     pub comments_fetched: Option<i64>,
 
-    /// UnixTime when account data was last fetched
-    pub fetch_date: i64,
+    /// UnixTime when playtimes was last fetched (nullable)
+    #[sea_orm(nullable)]
+    pub playtimes_fetched: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -47,6 +44,9 @@ pub enum Relation {
 
     #[sea_orm(has_many = "super::comments::Entity")]
     Comments,
+
+    #[sea_orm(has_many = "super::playtime::Entity")]
+    Playtimes,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

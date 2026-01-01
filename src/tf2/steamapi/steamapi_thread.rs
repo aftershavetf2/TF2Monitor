@@ -13,6 +13,7 @@ use crate::{
         steamapi::SteamApiMsg,
     },
 };
+use sea_orm::DatabaseConnection;
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
@@ -20,8 +21,8 @@ use std::{
 };
 
 /// Start the background thread for the rcon module
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
-    let mut steamapi_thread = SteamApiThread::new(settings, bus);
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> thread::JoinHandle<()> {
+    let mut steamapi_thread = SteamApiThread::new(settings, bus, db);
 
     thread::spawn(move || steamapi_thread.run())
 }
@@ -91,10 +92,11 @@ pub struct SteamApiThread {
     shared_lobby: crate::tf2::lobby::shared_lobby::SharedLobby,
     steam_api: SteamApi,
     steam_api_cache: SteamApiCache,
+    db: DatabaseConnection,
 }
 
 impl SteamApiThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DatabaseConnection) -> Self {
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
 
         Self {
@@ -102,6 +104,7 @@ impl SteamApiThread {
             shared_lobby,
             steam_api: SteamApi::new(settings),
             steam_api_cache: SteamApiCache::new(),
+            db: db.clone(),
         }
     }
 

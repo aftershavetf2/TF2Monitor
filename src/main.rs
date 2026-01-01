@@ -13,6 +13,7 @@ use appbus::AppBus;
 use eframe::Result;
 use models::app_settings::AppSettings;
 use reputation::reputation_thread;
+use sea_orm::DatabaseConnection;
 use std::{
     sync::{Arc, Mutex},
     thread,
@@ -45,14 +46,21 @@ fn main() -> Result<(), eframe::Error> {
     log::info!("TF2Monitor is starting...");
 
     // Setup async runtime for background threads that need async support (e.g., database operations)
-    let _async_handle = setup_async_runtime();
+    let async_handle = setup_async_runtime();
+
+    // Connect to database
+    log::info!("Connecting to database...");
+    let db = async_handle
+        .block_on(crate::db::db::connect())
+        .expect("Failed to connect to database");
+    log::info!("Database connection established");
 
     let settings = AppSettings::load_or_default();
     let bus = Arc::new(Mutex::new(AppBus::new(settings.self_steamid64)));
 
-    tf2::start(&settings, &bus);
-    tf2bd::tf2bd_thread::start(&settings, &bus);
-    reputation_thread::start(&settings, &bus);
+    tf2::start(&settings, &bus, &db);
+    tf2bd::tf2bd_thread::start(&settings, &bus, &db);
+    reputation_thread::start(&settings, &bus, &db);
 
     gui::run(&settings, &bus)
 }

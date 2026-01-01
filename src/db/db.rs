@@ -1,9 +1,9 @@
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Schema, Statement};
 use std::path::Path;
 
-use crate::db::entities::{account, comments, friendship};
+use crate::db::entities::{account, comments, friendship, playtime};
 
-const DATABASE_FILE: &str = "appdata.db";
+const DATABASE_FILE: &str = "appdata.sqlite3";
 
 /// Connects to the SQLite database and sets up the schema if needed.
 ///
@@ -60,6 +60,9 @@ async fn setup_schema(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
     // Create comments table if it doesn't exist
     create_table_if_not_exists(db, &schema, comments::Entity, "comments").await?;
 
+    // Create playtime table if it doesn't exist
+    create_table_if_not_exists(db, &schema, playtime::Entity, "playtime").await?;
+
     // Create indexes as specified in DATAMODEL.md
     // Note: Primary keys are automatically indexed, so we only need to create additional indexes
 
@@ -89,6 +92,12 @@ async fn setup_schema(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
 
     // Index on Comments.created_date (for time-based queries)
     create_index_if_not_exists(db, "idx_comments_created_date", "comments", "created_date").await?;
+
+    // Index on Playtime.steam_id (for lookups by account)
+    create_index_if_not_exists(db, "idx_playtime_steam_id", "playtime", "steam_id").await?;
+
+    // Index on Playtime.game (for filtering by game)
+    create_index_if_not_exists(db, "idx_playtime_game", "playtime", "game").await?;
 
     log::info!("Database schema setup completed");
     Ok(())
