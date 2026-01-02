@@ -6,7 +6,7 @@ use std::{
     time::SystemTime,
 };
 
-const CACHE_ENABLED: bool = false;
+const CACHE_ENABLED: bool = true;
 
 pub fn get_from_cache_or_fetch(
     domain: &str,
@@ -30,6 +30,10 @@ pub fn get_from_cache_or_fetch(
 
     // If the file exists, it's not too old, return its content
     if path.exists() {
+        log::info!(
+            "Data found in cache, returning cached data for URL: {}",
+            url
+        );
         let content = std::fs::read_to_string(path).unwrap_or_default();
         return Some(content);
     }

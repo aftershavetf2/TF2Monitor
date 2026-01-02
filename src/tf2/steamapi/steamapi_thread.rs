@@ -282,50 +282,52 @@ impl SteamApiThread {
 
                 // Check database
                 if let Ok(mut conn) = self.db.get() {
-                    // Get account to check friends_fetched timestamp
-                    if let Ok(Some(account)) =
-                        queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
+                    // Get friendships from database first
+                    if let Ok(friendships) =
+                        queries::get_friendships(&mut conn, steamid.to_u64() as i64, true)
                     {
-                        if let Some(friends_fetched) = account.friends_fetched {
-                            let is_outdated = current_time - friends_fetched
-                                > DB_CACHE_TTL_FRIENDLIST_SECONDS;
-
-                            // Get friendships from database
-                            if let Ok(friendships) =
-                                queries::get_friendships(&mut conn, steamid.to_u64() as i64, true)
-                            {
-                                // Convert to HashSet<SteamID>
-                                let friends: HashSet<SteamID> = friendships
-                                    .iter()
-                                    .filter_map(|f| {
-                                        // Check if this is a direct or reverse friendship
-                                        if f.steam_id == steamid.to_u64() as i64 {
-                                            Some(SteamID::from_u64(f.friend_steam_id as u64))
-                                        } else {
-                                            Some(SteamID::from_u64(f.steam_id as u64))
-                                        }
-                                    })
-                                    .collect();
-
-                                if !friends.is_empty() {
-                                    // Add to in-memory cache
-                                    self.steam_api_cache.set_friends(steamid, friends.clone());
-
-                                    if is_outdated {
-                                        // Send cached data first so UI has something to show
-                                        log::info!(
-                                            "Sending outdated cached friends for {}, will refresh",
-                                            player.name
-                                        );
-                                        self.send(SteamApiMsg::FriendsList(steamid, friends));
-                                        // Continue to fetch fresh data below
-                                    } else {
-                                        // Data is fresh, use it
-                                        // log::info!("Fetched from database friends of {}", player.name);
-                                        self.send(SteamApiMsg::FriendsList(steamid, friends));
-                                        continue;
-                                    }
+                        // Convert to HashSet<SteamID>
+                        let friends: HashSet<SteamID> = friendships
+                            .iter()
+                            .filter_map(|f| {
+                                // Check if this is a direct or reverse friendship
+                                if f.steam_id == steamid.to_u64() as i64 {
+                                    Some(SteamID::from_u64(f.friend_steam_id as u64))
+                                } else {
+                                    Some(SteamID::from_u64(f.steam_id as u64))
                                 }
+                            })
+                            .collect();
+
+                        if !friends.is_empty() {
+                            // Add to in-memory cache
+                            self.steam_api_cache.set_friends(steamid, friends.clone());
+
+                            // Check if we need to refresh by looking at the account's friends_fetched timestamp
+                            let should_refresh = if let Ok(Some(account)) =
+                                queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
+                            {
+                                // Only refresh if timestamp exists AND is outdated
+                                account.friends_fetched
+                                    .map(|ts| current_time - ts > DB_CACHE_TTL_FRIENDLIST_SECONDS)
+                                    .unwrap_or(false) // If no timestamp exists, don't refresh
+                            } else {
+                                false // If no account exists, don't refresh
+                            };
+
+                            if should_refresh {
+                                // Send cached data first so UI has something to show
+                                log::info!(
+                                    "Sending outdated cached friends for {}, will refresh",
+                                    player.name
+                                );
+                                self.send(SteamApiMsg::FriendsList(steamid, friends));
+                                // Continue to fetch fresh data below
+                            } else {
+                                // Data is fresh or no timestamp, use cached data
+                                // log::info!("Fetched from database friends of {}", player.name);
+                                self.send(SteamApiMsg::FriendsList(steamid, friends));
+                                continue;
                             }
                         }
                     }
@@ -401,39 +403,56 @@ impl SteamApiThread {
 
             // Check database
             if let Ok(mut conn) = self.db.get() {
-                // Get account to check playtimes_fetched timestamp
-                if let Ok(Some(account)) =
-                    queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
+                // Get playtime from database first
+                if let Ok(Some(playtime_record)) =
+                    queries::get_playtime(&mut conn, steamid.to_u64() as i64, Game::Tf2)
                 {
-                    if let Some(playtimes_fetched) = account.playtimes_fetched {
-                        let is_outdated = current_time - playtimes_fetched
-                            > DB_CACHE_TTL_PLAYTIME_SECONDS;
+                    log::info!("Found playtime in database for {} ({}): {} minutes",
+                              player.name, steamid.to_u64(), playtime_record.play_minutes);
+                    let playtime = Tf2PlayMinutes::PlayMinutes(playtime_record.play_minutes as u32);
 
-                        // Get playtime from database
-                        if let Ok(Some(playtime_record)) =
-                            queries::get_playtime(&mut conn, steamid.to_u64() as i64, Game::Tf2)
-                        {
-                            let playtime = Tf2PlayMinutes::PlayMinutes(playtime_record.play_minutes as u32);
+                    // Add to in-memory cache
+                    self.steam_api_cache.set_playtime(steamid, &playtime);
 
-                            // Add to in-memory cache
-                            self.steam_api_cache.set_playtime(steamid, &playtime);
+                    // Check if we need to refresh by looking at the account's playtimes_fetched timestamp
+                    let should_refresh = if let Ok(Some(account)) =
+                        queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
+                    {
+                        // Only refresh if timestamp exists AND is outdated
+                        let result = account.playtimes_fetched
+                            .map(|ts| {
+                                let age = current_time - ts;
+                                let is_outdated = age > DB_CACHE_TTL_PLAYTIME_SECONDS;
+                                log::info!("Playtime timestamp for {}: age={}s, outdated={}",
+                                          player.name, age, is_outdated);
+                                is_outdated
+                            })
+                            .unwrap_or_else(|| {
+                                log::info!("Playtime timestamp for {} is None, not refreshing", player.name);
+                                false
+                            });
+                        result
+                    } else {
+                        log::info!("No account record for {}, not refreshing", player.name);
+                        false
+                    };
 
-                            if is_outdated {
-                                // Send cached data first so UI has something to show
-                                log::info!(
-                                    "Sending outdated cached playtime for {}, will refresh",
-                                    player.name
-                                );
-                                self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
-                                // Continue to fetch fresh data below
-                            } else {
-                                // Data is fresh, use it
-                                // log::info!("Fetched from database playtime for {}", player.name);
-                                self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
-                                continue;
-                            }
-                        }
+                    if should_refresh {
+                        // Send cached data first so UI has something to show
+                        log::info!(
+                            "Sending outdated cached playtime for {}, will refresh",
+                            player.name
+                        );
+                        self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
+                        // Continue to fetch fresh data below
+                    } else {
+                        // Data is fresh or no timestamp, use cached data
+                        log::info!("Using cached playtime from database for {}", player.name);
+                        self.send(SteamApiMsg::Tf2Playtime(steamid, playtime));
+                        continue;
                     }
+                } else {
+                    log::info!("No playtime found in database for {}, will fetch from API", player.name);
                 }
             }
 
@@ -444,33 +463,73 @@ impl SteamApiThread {
             self.send(SteamApiMsg::Tf2Playtime(steamid, playtime.clone()));
 
             // Persist to database
-            if let Tf2PlayMinutes::PlayMinutes(minutes) = playtime {
-                if let Ok(mut conn) = self.db.get() {
-                    let current_time = Utc::now().timestamp();
+            // Save both PlayMinutes and Unknown to avoid re-fetching every time
+            match &playtime {
+                Tf2PlayMinutes::PlayMinutes(minutes) => {
+                    if let Ok(mut conn) = self.db.get() {
+                        let current_time = Utc::now().timestamp();
 
-                    let new_playtime = NewPlaytime {
-                        steam_id: steamid.to_u64() as i64,
-                        game: Game::Tf2,
-                        play_minutes: minutes as i64,
-                        last_updated: current_time,
-                    };
+                        let new_playtime = NewPlaytime {
+                            steam_id: steamid.to_u64() as i64,
+                            game: Game::Tf2,
+                            play_minutes: *minutes as i64,
+                            last_updated: current_time,
+                        };
 
-                    if let Err(e) = queries::upsert_playtime(&mut conn, new_playtime) {
-                        log::error!("Failed to persist playtime for {}: {}", steamid.to_u64(), e);
+                        if let Err(e) = queries::upsert_playtime(&mut conn, new_playtime) {
+                            log::error!("Failed to persist playtime for {}: {}", steamid.to_u64(), e);
+                        }
+
+                        // Update playtimes_fetched timestamp
+                        if let Err(e) = queries::update_account_playtimes_fetched(
+                            &mut conn,
+                            steamid.to_u64() as i64,
+                            current_time,
+                        ) {
+                            log::error!(
+                                "Failed to update playtimes_fetched for {}: {}",
+                                steamid.to_u64(),
+                                e
+                            );
+                        } else {
+                            log::info!("Updated playtimes_fetched timestamp for {}", steamid.to_u64());
+                        }
                     }
+                }
+                Tf2PlayMinutes::Unknown => {
+                    // For Unknown playtime, store 0 minutes to avoid re-fetching
+                    if let Ok(mut conn) = self.db.get() {
+                        let current_time = Utc::now().timestamp();
 
-                    // Update playtimes_fetched timestamp
-                    if let Err(e) = queries::update_account_playtimes_fetched(
-                        &mut conn,
-                        steamid.to_u64() as i64,
-                        current_time,
-                    ) {
-                        log::error!(
-                            "Failed to update playtimes_fetched for {}: {}",
-                            steamid.to_u64(),
-                            e
-                        );
+                        let new_playtime = NewPlaytime {
+                            steam_id: steamid.to_u64() as i64,
+                            game: Game::Tf2,
+                            play_minutes: 0,
+                            last_updated: current_time,
+                        };
+
+                        if let Err(e) = queries::upsert_playtime(&mut conn, new_playtime) {
+                            log::error!("Failed to persist playtime for {}: {}", steamid.to_u64(), e);
+                        }
+
+                        // Update playtimes_fetched timestamp
+                        if let Err(e) = queries::update_account_playtimes_fetched(
+                            &mut conn,
+                            steamid.to_u64() as i64,
+                            current_time,
+                        ) {
+                            log::error!(
+                                "Failed to update playtimes_fetched for {}: {}",
+                                steamid.to_u64(),
+                                e
+                            );
+                        } else {
+                            log::info!("Updated playtimes_fetched timestamp for {} (Unknown playtime)", steamid.to_u64());
+                        }
                     }
+                }
+                Tf2PlayMinutes::Loading => {
+                    // Don't save Loading state
                 }
             }
         }
@@ -609,50 +668,52 @@ impl SteamApiThread {
 
                 // Check database
                 if let Ok(mut conn) = self.db.get() {
-                    // Get account to check comments_fetched timestamp
-                    if let Ok(Some(account)) = queries::get_account_by_steam_id(
+                    // Get comments from database first
+                    if let Ok(db_comments) = queries::get_active_comments_for_account(
                         &mut conn,
                         player.steamid.to_u64() as i64,
                     ) {
-                        if let Some(comments_fetched) = account.comments_fetched {
-                            let is_outdated = current_time - comments_fetched
-                                > DB_CACHE_TTL_COMMENTS_SECONDS;
+                        // Convert database comments to SteamProfileComment
+                        let comments: Vec<SteamProfileComment> = db_comments
+                            .iter()
+                            .map(|c| SteamProfileComment {
+                                name: c.writer_name.clone(),
+                                steamid: SteamID::from_u64(c.writer_steam_id as u64),
+                                comment: c.comment.clone(),
+                            })
+                            .collect();
 
-                            // Get comments from database
-                            if let Ok(db_comments) = queries::get_active_comments_for_account(
-                                &mut conn,
-                                player.steamid.to_u64() as i64,
-                            ) {
-                                // Convert database comments to SteamProfileComment
-                                let comments: Vec<SteamProfileComment> = db_comments
-                                    .iter()
-                                    .map(|c| SteamProfileComment {
-                                        name: c.writer_name.clone(),
-                                        steamid: SteamID::from_u64(c.writer_steam_id as u64),
-                                        comment: c.comment.clone(),
-                                    })
-                                    .collect();
+                        // Add to in-memory cache
+                        self.steam_api_cache.set_comments(player.steamid, comments.clone());
 
-                                // Add to in-memory cache
-                                self.steam_api_cache.set_comments(player.steamid, comments.clone());
+                        // Check if we need to refresh by looking at the account's comments_fetched timestamp
+                        let should_refresh = if let Ok(Some(account)) = queries::get_account_by_steam_id(
+                            &mut conn,
+                            player.steamid.to_u64() as i64,
+                        ) {
+                            // Only refresh if timestamp exists AND is outdated
+                            account.comments_fetched
+                                .map(|ts| current_time - ts > DB_CACHE_TTL_COMMENTS_SECONDS)
+                                .unwrap_or(false) // If no timestamp exists, don't refresh
+                        } else {
+                            false // If no account exists, don't refresh
+                        };
 
-                                if is_outdated {
-                                    // Send cached data first so UI has something to show
-                                    log::info!(
-                                        "Sending outdated cached comments for {}, will refresh",
-                                        player.name
-                                    );
-                                    self.send(SteamApiMsg::ProfileComments(player.steamid, comments));
-                                    // Mark for refresh
-                                    comments_to_fetch.push(player.steamid);
-                                    continue;
-                                } else {
-                                    // Data is fresh, use it
-                                    // log::info!("Fetched from database comments for {}", player.name);
-                                    self.send(SteamApiMsg::ProfileComments(player.steamid, comments));
-                                    continue;
-                                }
-                            }
+                        if should_refresh {
+                            // Send cached data first so UI has something to show
+                            log::info!(
+                                "Sending outdated cached comments for {}, will refresh",
+                                player.name
+                            );
+                            self.send(SteamApiMsg::ProfileComments(player.steamid, comments));
+                            // Mark for refresh
+                            comments_to_fetch.push(player.steamid);
+                            continue;
+                        } else {
+                            // Data is fresh or no timestamp, use cached data
+                            log::info!("Using cached comments from database for {}", player.name);
+                            self.send(SteamApiMsg::ProfileComments(player.steamid, comments));
+                            continue;
                         }
                     }
                 }

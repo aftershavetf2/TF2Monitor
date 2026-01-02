@@ -79,16 +79,28 @@ pub fn get_account_by_steam_id(
 }
 
 /// Insert or update an account record.
-/// Uses INSERT OR REPLACE to update existing records.
+/// When updating existing records, preserves timestamp fields (friends_fetched, comments_fetched,
+/// playtimes_fetched, reputation_fetched) and only updates account info fields.
 pub fn upsert_account(
     conn: &mut SqliteConnection,
     new_account: NewAccount,
 ) -> Result<(), diesel::result::Error> {
+    use account::dsl;
+
     diesel::insert_into(account::table)
         .values(&new_account)
         .on_conflict(account::steam_id)
         .do_update()
-        .set(&new_account)
+        .set((
+            dsl::name.eq(&new_account.name),
+            dsl::created_date.eq(&new_account.created_date),
+            dsl::avatar_thumb_url.eq(&new_account.avatar_thumb_url),
+            dsl::avatar_full_url.eq(&new_account.avatar_full_url),
+            dsl::public_profile.eq(&new_account.public_profile),
+            dsl::last_updated.eq(&new_account.last_updated),
+            // Note: We deliberately do NOT update the *_fetched timestamp fields here
+            // to preserve them. They are managed by their respective update functions.
+        ))
         .execute(conn)?;
     Ok(())
 }
@@ -195,6 +207,8 @@ pub fn upsert_playtime(
 }
 
 /// Update account's friends_fetched timestamp.
+/// If the account doesn't exist, creates a minimal placeholder account record
+/// that will be updated by the SteamAPI thread later with full details.
 pub fn update_account_friends_fetched(
     conn: &mut SqliteConnection,
     steam_id: i64,
@@ -202,13 +216,35 @@ pub fn update_account_friends_fetched(
 ) -> Result<(), diesel::result::Error> {
     use account::dsl;
 
-    diesel::update(account::table.filter(dsl::steam_id.eq(steam_id)))
+    // Create a minimal account record with placeholder data if it doesn't exist
+    let placeholder_account = NewAccount {
+        steam_id,
+        name: String::from("Unknown"),
+        created_date: None,
+        avatar_thumb_url: String::new(),
+        avatar_full_url: String::new(),
+        public_profile: false,
+        last_updated: friends_fetched,
+        friends_fetched: Some(friends_fetched),
+        comments_fetched: None,
+        playtimes_fetched: None,
+        reputation_fetched: None,
+    };
+
+    // Use INSERT OR REPLACE (UPSERT) to either create or update the record
+    // on_conflict will update only friends_fetched if account already exists
+    diesel::insert_into(account::table)
+        .values(&placeholder_account)
+        .on_conflict(account::steam_id)
+        .do_update()
         .set(dsl::friends_fetched.eq(Some(friends_fetched)))
         .execute(conn)?;
     Ok(())
 }
 
 /// Update account's comments_fetched timestamp.
+/// If the account doesn't exist, creates a minimal placeholder account record
+/// that will be updated by the SteamAPI thread later with full details.
 pub fn update_account_comments_fetched(
     conn: &mut SqliteConnection,
     steam_id: i64,
@@ -216,13 +252,35 @@ pub fn update_account_comments_fetched(
 ) -> Result<(), diesel::result::Error> {
     use account::dsl;
 
-    diesel::update(account::table.filter(dsl::steam_id.eq(steam_id)))
+    // Create a minimal account record with placeholder data if it doesn't exist
+    let placeholder_account = NewAccount {
+        steam_id,
+        name: String::from("Unknown"),
+        created_date: None,
+        avatar_thumb_url: String::new(),
+        avatar_full_url: String::new(),
+        public_profile: false,
+        last_updated: comments_fetched,
+        friends_fetched: None,
+        comments_fetched: Some(comments_fetched),
+        playtimes_fetched: None,
+        reputation_fetched: None,
+    };
+
+    // Use INSERT OR REPLACE (UPSERT) to either create or update the record
+    // on_conflict will update only comments_fetched if account already exists
+    diesel::insert_into(account::table)
+        .values(&placeholder_account)
+        .on_conflict(account::steam_id)
+        .do_update()
         .set(dsl::comments_fetched.eq(Some(comments_fetched)))
         .execute(conn)?;
     Ok(())
 }
 
 /// Update account's playtimes_fetched timestamp.
+/// If the account doesn't exist, creates a minimal placeholder account record
+/// that will be updated by the SteamAPI thread later with full details.
 pub fn update_account_playtimes_fetched(
     conn: &mut SqliteConnection,
     steam_id: i64,
@@ -230,7 +288,27 @@ pub fn update_account_playtimes_fetched(
 ) -> Result<(), diesel::result::Error> {
     use account::dsl;
 
-    diesel::update(account::table.filter(dsl::steam_id.eq(steam_id)))
+    // Create a minimal account record with placeholder data if it doesn't exist
+    let placeholder_account = NewAccount {
+        steam_id,
+        name: String::from("Unknown"),
+        created_date: None,
+        avatar_thumb_url: String::new(),
+        avatar_full_url: String::new(),
+        public_profile: false,
+        last_updated: playtimes_fetched,
+        friends_fetched: None,
+        comments_fetched: None,
+        playtimes_fetched: Some(playtimes_fetched),
+        reputation_fetched: None,
+    };
+
+    // Use INSERT OR REPLACE (UPSERT) to either create or update the record
+    // on_conflict will update only playtimes_fetched if account already exists
+    diesel::insert_into(account::table)
+        .values(&placeholder_account)
+        .on_conflict(account::steam_id)
+        .do_update()
         .set(dsl::playtimes_fetched.eq(Some(playtimes_fetched)))
         .execute(conn)?;
     Ok(())
