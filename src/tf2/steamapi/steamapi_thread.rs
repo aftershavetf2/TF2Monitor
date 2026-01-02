@@ -203,6 +203,7 @@ impl SteamApiThread {
                             friends_fetched: None,
                             comments_fetched: None,
                             playtimes_fetched: None,
+                            reputation_fetched: None,
                         };
 
                         if let Err(e) = queries::upsert_account(&mut conn, new_account) {

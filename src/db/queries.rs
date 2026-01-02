@@ -1,10 +1,10 @@
 use diesel::prelude::*;
 
 use super::entities::{
-    Account, Ban, Comment, Friendship, Game, NewAccount, NewBan, NewComment, NewFriendship,
-    NewPlayerFlag, NewPlaytime, PlayerFlag,
+    Account, Ban, BanSource, Comment, Friendship, Game, NewAccount, NewBan, NewBanSource,
+    NewComment, NewFriendship, NewPlayerFlag, NewPlaytime, PlayerFlag,
 };
-use super::schema::{account, bans, comments, friendship, player_flags, playtime};
+use super::schema::{account, ban_sources, bans, comments, friendship, player_flags, playtime};
 
 /// Get all friendships for a given steam_id.
 ///
@@ -236,6 +236,20 @@ pub fn update_account_playtimes_fetched(
     Ok(())
 }
 
+/// Update account's reputation_fetched timestamp.
+pub fn update_account_reputation_fetched(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    reputation_fetched: i64,
+) -> Result<(), diesel::result::Error> {
+    use account::dsl;
+
+    diesel::update(account::table.filter(dsl::steam_id.eq(steam_id)))
+        .set(dsl::reputation_fetched.eq(Some(reputation_fetched)))
+        .execute(conn)?;
+    Ok(())
+}
+
 // ============================================================================
 // Ban-related queries
 // ============================================================================
@@ -282,6 +296,77 @@ pub fn get_all_bans_for_account(
     bans::table
         .filter(dsl::steam_id.eq(steam_id))
         .load::<Ban>(conn)
+}
+
+// ============================================================================
+// Ban source-related queries
+// ============================================================================
+
+/// Insert or update a ban source.
+/// If the source already exists, updates url, parser, and active status.
+pub fn upsert_ban_source(
+    conn: &mut SqliteConnection,
+    new_source: NewBanSource,
+) -> Result<(), diesel::result::Error> {
+    use ban_sources::dsl;
+
+    diesel::insert_into(ban_sources::table)
+        .values(&new_source)
+        .on_conflict(dsl::name)
+        .do_update()
+        .set((
+            dsl::url.eq(&new_source.url),
+            dsl::parser.eq(&new_source.parser),
+            dsl::active.eq(&new_source.active),
+        ))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Update the last_checked timestamp for a ban source.
+pub fn update_ban_source_last_checked(
+    conn: &mut SqliteConnection,
+    name: &str,
+    last_checked: i64,
+) -> Result<(), diesel::result::Error> {
+    use ban_sources::dsl;
+
+    diesel::update(ban_sources::table.filter(dsl::name.eq(name)))
+        .set(dsl::last_checked.eq(Some(last_checked)))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Get all active ban sources.
+pub fn get_active_ban_sources(
+    conn: &mut SqliteConnection,
+) -> Result<Vec<BanSource>, diesel::result::Error> {
+    use ban_sources::dsl;
+
+    ban_sources::table
+        .filter(dsl::active.eq(true))
+        .load::<BanSource>(conn)
+}
+
+/// Get all ban sources (active and inactive).
+pub fn get_all_ban_sources(
+    conn: &mut SqliteConnection,
+) -> Result<Vec<BanSource>, diesel::result::Error> {
+    ban_sources::table.load::<BanSource>(conn)
+}
+
+/// Enable or disable a ban source.
+pub fn set_ban_source_active(
+    conn: &mut SqliteConnection,
+    name: &str,
+    active: bool,
+) -> Result<(), diesel::result::Error> {
+    use ban_sources::dsl;
+
+    diesel::update(ban_sources::table.filter(dsl::name.eq(name)))
+        .set(dsl::active.eq(active))
+        .execute(conn)?;
+    Ok(())
 }
 
 // ============================================================================

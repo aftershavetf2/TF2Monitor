@@ -36,6 +36,9 @@ pub struct Account {
 
     /// UnixTime when playtimes was last fetched (nullable)
     pub playtimes_fetched: Option<i64>,
+
+    /// UnixTime when reputation/sourcebans was last fetched (nullable)
+    pub reputation_fetched: Option<i64>,
 }
 
 #[derive(Clone, Debug, Insertable, AsChangeset)]
@@ -51,4 +54,5 @@ pub struct NewAccount {
     pub friends_fetched: Option<i64>,
     pub comments_fetched: Option<i64>,
     pub playtimes_fetched: Option<i64>,
+    pub reputation_fetched: Option<i64>,
 }

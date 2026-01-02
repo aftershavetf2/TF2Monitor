@@ -1,7 +1,7 @@
-use super::{get_reputation, Reputation};
+use super::{get_reputation, sourcebans, Reputation};
 use crate::config::{NUM_REPUTATIONS_TO_FETCH, REPUTATION_LOOP_DELAY};
 use crate::db::db::DbPool;
-use crate::db::entities::NewBan;
+use crate::db::entities::{NewBan, NewBanSource};
 use crate::db::queries;
 use crate::{
     appbus::AppBus,
@@ -63,10 +63,38 @@ impl ReputationThread {
     pub fn run(&mut self) {
         log::info!("SteamAPi background thread started");
 
+        // Persist all configured ban sources to the database on startup
+        self.persist_ban_sources();
+
         loop {
             self.get_latest_lobby();
 
             sleep(REPUTATION_LOOP_DELAY);
+        }
+    }
+
+    fn persist_ban_sources(&self) {
+        let sources = sourcebans::get_sources();
+
+        if let Ok(mut conn) = self.db.get() {
+            for source in sources {
+                let parser_str = match source.parser {
+                    sourcebans::SourceBanParser::Ul => "Ul",
+                    sourcebans::SourceBanParser::Table => "Table",
+                };
+
+                let new_source = NewBanSource {
+                    name: source.name.clone(),
+                    url: source.url.clone(),
+                    parser: parser_str.to_string(),
+                    last_checked: None,
+                    active: true,
+                };
+
+                if let Err(e) = queries::upsert_ban_source(&mut conn, new_source) {
+                    log::error!("Failed to persist ban source {}: {}", source.name, e);
+                }
+            }
         }
     }
 
@@ -99,39 +127,83 @@ impl ReputationThread {
             }
 
             if !one_fetched {
-                one_fetched = true;
+                // Check if reputation was fetched recently (within 7 days)
+                if self.should_fetch_reputation(player.steamid) {
+                    one_fetched = true;
 
-                let reputation = get_reputation(player.steamid);
+                    let reputation = get_reputation(player.steamid);
 
-                self.reputation_cache.set(reputation.clone());
+                    self.reputation_cache.set(reputation.clone());
 
-                self.send(SteamApiMsg::Reputation(reputation.clone()));
+                    self.send(SteamApiMsg::Reputation(reputation.clone()));
 
-                // Persist bans to database
-                if let Ok(mut conn) = self.db.get() {
-                    let current_time = Utc::now().timestamp();
+                    // Persist bans to database and update reputation_fetched timestamp
+                    if let Ok(mut conn) = self.db.get() {
+                        let current_time = Utc::now().timestamp();
 
-                    for ban in &reputation.bans {
-                        // Parse ban_length to determine if permanent
-                        let permanent = ban.ban_length.to_lowercase().contains("permanent")
-                            || ban.ban_length.to_lowercase().contains("never");
+                        for ban in &reputation.bans {
+                            // Parse ban_length to determine if permanent
+                            let permanent = ban.ban_length.to_lowercase().contains("permanent")
+                                || ban.ban_length.to_lowercase().contains("never");
 
-                        let new_ban = NewBan {
-                            steam_id: ban.steamid.to_u64() as i64,
-                            source: ban.source.clone(),
-                            ban_type: String::from("sourcebans"),
-                            reason: Some(ban.reason.clone()),
-                            created_date: current_time,
-                            expires_date: None, // Could parse ban_length here if needed
-                            permanent,
-                        };
+                            let new_ban = NewBan {
+                                steam_id: ban.steamid.to_u64() as i64,
+                                source: ban.source.clone(),
+                                ban_type: String::from("sourcebans"),
+                                reason: Some(ban.reason.clone()),
+                                created_date: current_time,
+                                expires_date: None, // Could parse ban_length here if needed
+                                permanent,
+                            };
 
-                        if let Err(e) = queries::insert_ban(&mut conn, new_ban) {
-                            log::debug!("Ban already exists or error: {}", e);
+                            if let Err(e) = queries::insert_ban(&mut conn, new_ban) {
+                                log::debug!("Ban already exists or error: {}", e);
+                            }
+                        }
+
+                        // Update reputation_fetched timestamp
+                        if let Err(e) = queries::update_account_reputation_fetched(
+                            &mut conn,
+                            player.steamid.to_u64() as i64,
+                            current_time,
+                        ) {
+                            log::error!(
+                                "Failed to update reputation_fetched for {}: {}",
+                                player.steamid.to_u64(),
+                                e
+                            );
                         }
                     }
                 }
             }
         }
+    }
+
+    /// Check if reputation should be fetched for this steam_id.
+    /// Returns true if reputation hasn't been fetched, or was fetched more than 7 days ago.
+    fn should_fetch_reputation(&self, steamid: SteamID) -> bool {
+        if let Ok(mut conn) = self.db.get() {
+            if let Ok(Some(account)) =
+                queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
+            {
+                if let Some(reputation_fetched) = account.reputation_fetched {
+                    let current_time = Utc::now().timestamp();
+                    let seven_days_in_seconds = 7 * 24 * 60 * 60;
+                    let time_since_fetch = current_time - reputation_fetched;
+
+                    if time_since_fetch < seven_days_in_seconds {
+                        log::debug!(
+                            "Skipping reputation fetch for {} - last fetched {} days ago",
+                            steamid.to_u64(),
+                            time_since_fetch / (24 * 60 * 60)
+                        );
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // If account doesn't exist or reputation_fetched is None, or DB error, fetch it
+        true
     }
 }

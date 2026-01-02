@@ -12,6 +12,7 @@ diesel::table! {
         friends_fetched -> Nullable<BigInt>,
         comments_fetched -> Nullable<BigInt>,
         playtimes_fetched -> Nullable<BigInt>,
+        reputation_fetched -> Nullable<BigInt>,
     }
 }
 
@@ -25,6 +26,16 @@ diesel::table! {
         created_date -> BigInt,
         expires_date -> Nullable<BigInt>,
         permanent -> Bool,
+    }
+}
+
+diesel::table! {
+    ban_sources (name) {
+        name -> Text,
+        url -> Text,
+        parser -> Text,
+        last_checked -> Nullable<BigInt>,
+        active -> Bool,
     }
 }
 
@@ -79,6 +90,7 @@ diesel::joinable!(playtime -> account (steam_id));
 diesel::allow_tables_to_appear_in_same_query!(
     account,
     bans,
+    ban_sources,
     comments,
     friendship,
     player_flags,
