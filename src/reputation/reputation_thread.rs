@@ -123,7 +123,7 @@ impl ReputationThread {
 
             if let Some(reputation) = self.reputation_cache.get(player.steamid) {
                 self.send(SteamApiMsg::Reputation(reputation.clone()));
-                return;
+                continue;
             }
 
             if !one_fetched {

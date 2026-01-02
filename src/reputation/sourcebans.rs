@@ -126,13 +126,42 @@ pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
     log::info!("SourceBans: Fetching SourceBans for {}", steamid.to_u64());
     let sources = get_sources();
 
+    let mut successful_sources = 0;
+    let mut failed_sources = 0;
+
     let result = sources
         // .par_iter()
         .iter()
-        .map(|source| get_source_ban(source, steamid))
+        .map(|source| {
+            let bans = get_source_ban(source, steamid);
+            if bans.is_some() {
+                successful_sources += 1;
+            } else {
+                failed_sources += 1;
+                log::debug!("SourceBans: Failed to fetch from {}", source.name);
+            }
+            bans
+        })
         .filter(|x| x.is_some())
         .flat_map(|x| x.unwrap())
         .collect::<Vec<_>>();
+
+    log::info!(
+        "SourceBans: Completed fetch for {} - {} bans found from {}/{} sources ({} failed)",
+        steamid.to_u64(),
+        result.len(),
+        successful_sources,
+        sources.len(),
+        failed_sources
+    );
+
+    if successful_sources == 0 {
+        log::warn!(
+            "SourceBans: All {} sources failed to fetch for {} - possible network issue",
+            sources.len(),
+            steamid.to_u64()
+        );
+    }
 
     result
 }
