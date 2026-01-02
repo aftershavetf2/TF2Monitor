@@ -250,6 +250,21 @@ pub fn update_account_reputation_fetched(
     Ok(())
 }
 
+/// Get playtime for a specific steam_id and game.
+pub fn get_playtime(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    game: Game,
+) -> Result<Option<super::entities::Playtime>, diesel::result::Error> {
+    use playtime::dsl;
+
+    playtime::table
+        .filter(dsl::steam_id.eq(steam_id))
+        .filter(dsl::game.eq(game))
+        .first::<super::entities::Playtime>(conn)
+        .optional()
+}
+
 // ============================================================================
 // Ban-related queries
 // ============================================================================

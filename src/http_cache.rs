@@ -28,7 +28,7 @@ pub fn get_from_cache_or_fetch(
     }
 
     // Fetch the URL contents and save it to the cache
-    // log::info!("Data not in cache, fetching URL: {}", url);
+    log::info!("Data not in cache, fetching URL: {}", url);
     let html = get_html(url)?;
 
     match write(&path, &html) {

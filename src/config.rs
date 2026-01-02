@@ -44,3 +44,10 @@ pub const HTTP_CACHE_TTL_TF2_PLAYTIME_DAYS: i32 = 30;
 pub const HTTP_CACHE_TTL_FRIENDLIST_DAYS: i32 = 30;
 pub const HTTP_CACHE_TTL_STEAM_COMMENTS_DAYS: i32 = 30;
 pub const HTTP_CACHE_TTL_SOURCEBANS_DAYS: i32 = 30;
+
+/// Database cache TTL (Time To Live) in seconds - how long cached data should be used before refreshing
+pub const DB_CACHE_TTL_ACCOUNT_SECONDS: i64 = 7 * 24 * 60 * 60; // 7 days
+pub const DB_CACHE_TTL_FRIENDLIST_SECONDS: i64 = 30 * 24 * 60 * 60; // 30 days
+pub const DB_CACHE_TTL_PLAYTIME_SECONDS: i64 = 30 * 24 * 60 * 60; // 30 days
+pub const DB_CACHE_TTL_COMMENTS_SECONDS: i64 = 30 * 24 * 60 * 60; // 30 days
+pub const DB_CACHE_TTL_REPUTATION_SECONDS: i64 = 30 * 24 * 60 * 60; // 30 days
