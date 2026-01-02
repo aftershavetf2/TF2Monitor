@@ -1,10 +1,50 @@
 use diesel::prelude::*;
-use diesel::r2d2::{self, ConnectionManager, Pool};
+use diesel::r2d2::{self, ConnectionManager, Pool, CustomizeConnection};
 use std::path::Path;
 
 const DATABASE_FILE: &str = "appdata.sqlite3";
 
 pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
+
+/// Connection customizer to configure SQLite for concurrent access
+#[derive(Debug, Clone, Copy)]
+struct SqliteConnectionCustomizer;
+
+impl CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for SqliteConnectionCustomizer {
+    fn on_acquire(&self, conn: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
+        use diesel::sql_query;
+
+        // Enable WAL (Write-Ahead Logging) mode for better concurrent access
+        // This allows multiple readers and one writer simultaneously
+        sql_query("PRAGMA journal_mode = WAL")
+            .execute(conn)
+            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+
+        // Set busy timeout to 5 seconds (5000ms)
+        // SQLite will retry for this duration instead of immediately failing with "database is locked"
+        sql_query("PRAGMA busy_timeout = 5000")
+            .execute(conn)
+            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+
+        // Use NORMAL synchronous mode for better performance
+        // Still safe with WAL mode, provides good balance of safety and speed
+        sql_query("PRAGMA synchronous = NORMAL")
+            .execute(conn)
+            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+
+        // Store temp tables in memory for better performance
+        sql_query("PRAGMA temp_store = MEMORY")
+            .execute(conn)
+            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+
+        // Enable foreign keys (best practice)
+        sql_query("PRAGMA foreign_keys = ON")
+            .execute(conn)
+            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+
+        Ok(())
+    }
+}
 
 /// Connects to the SQLite database and sets up the schema if needed.
 ///
@@ -34,11 +74,16 @@ pub fn connect() -> Result<DbPool, Box<dyn std::error::Error>> {
     // SQLite will create the file if it doesn't exist
     let database_url = DATABASE_FILE;
     let manager = ConnectionManager::<SqliteConnection>::new(database_url);
+
+    // Build connection pool with optimized settings for concurrent access
     let pool = r2d2::Pool::builder()
-        .max_size(5)
+        .max_size(10) // Increased from 5 to handle multiple concurrent threads
+        .min_idle(Some(2)) // Keep minimum 2 idle connections ready
+        .connection_timeout(std::time::Duration::from_secs(30)) // Wait up to 30s for a connection
+        .connection_customizer(Box::new(SqliteConnectionCustomizer)) // Apply WAL mode and other settings
         .build(manager)?;
 
-    log::info!("Connected to database '{}'", DATABASE_FILE);
+    log::info!("Connected to database '{}' with WAL mode enabled", DATABASE_FILE);
 
     // Set up schema (create tables if they don't exist)
     let mut conn = pool.get()?;
