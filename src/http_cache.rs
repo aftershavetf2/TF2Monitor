@@ -6,12 +6,19 @@ use std::{
     time::SystemTime,
 };
 
+const CACHE_ENABLED: bool = false;
+
 pub fn get_from_cache_or_fetch(
     domain: &str,
     key: &str,
     days_to_live: i32,
     url: &str,
 ) -> Option<String> {
+    if !CACHE_ENABLED {
+        log::info!("HTTP-cache not enabled, fetching URL: {}", url);
+        return get_html(url);
+    }
+
     let mut path: PathBuf = [HTTP_CACHE_BASE_DIR, domain, key].iter().collect();
     ensure_directories_exist(&path);
 
