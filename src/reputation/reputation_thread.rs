@@ -129,6 +129,7 @@ impl ReputationThread {
             if !one_fetched {
                 // Check if reputation was fetched recently (within 7 days)
                 if self.should_fetch_reputation(player.steamid) {
+                    // Fetch from internet
                     one_fetched = true;
 
                     let reputation = get_reputation(player.steamid);
@@ -172,6 +173,40 @@ impl ReputationThread {
                                 player.steamid.to_u64(),
                                 e
                             );
+                        }
+                    }
+                } else {
+                    // Load from database (reputation was fetched within 7 days)
+                    if let Ok(mut conn) = self.db.get() {
+                        if let Ok(bans) = queries::get_all_bans_for_account(
+                            &mut conn,
+                            player.steamid.to_u64() as i64,
+                        ) {
+                            // Convert database bans to SourceBans
+                            let source_bans: Vec<sourcebans::SourceBan> = bans
+                                .iter()
+                                .filter(|ban| ban.ban_type == "sourcebans")
+                                .map(|ban| sourcebans::SourceBan {
+                                    source: ban.source.clone(),
+                                    steamid: player.steamid,
+                                    when: String::new(), // Not stored in DB
+                                    ban_length: if ban.permanent {
+                                        String::from("Permanent")
+                                    } else {
+                                        String::new()
+                                    },
+                                    reason: ban.reason.clone().unwrap_or_default(),
+                                })
+                                .collect();
+
+                            let reputation = Reputation {
+                                steamid: player.steamid,
+                                has_bad_reputation: !source_bans.is_empty(),
+                                bans: source_bans,
+                            };
+
+                            self.reputation_cache.set(reputation.clone());
+                            self.send(SteamApiMsg::Reputation(reputation));
                         }
                     }
                 }
