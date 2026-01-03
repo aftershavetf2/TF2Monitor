@@ -138,7 +138,7 @@ pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
                 successful_sources += 1;
             } else {
                 failed_sources += 1;
-                log::debug!("SourceBans: Failed to fetch from {}", source.name);
+                log::warn!("SourceBans: Failed to fetch from {}", source.name);
             }
             bans
         })
