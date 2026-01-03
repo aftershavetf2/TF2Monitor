@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager, Pool, CustomizeConnection};
 use std::path::Path;
 
-const DATABASE_FILE: &str = "appdata.sqlite3";
+const DATABASE_FILE: &str = "appdata.sqlite";
 
 pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 
@@ -49,7 +49,7 @@ impl CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for SqliteConnec
 /// Connects to the SQLite database and sets up the schema if needed.
 ///
 /// This function:
-/// - Connects to the SQLite database file `appdata.sqlite3`
+/// - Connects to the SQLite database file `appdata.sqlite`
 /// - Creates the database file if it doesn't exist
 /// - Creates all necessary tables based on the entity definitions
 /// - Creates indexes as specified in the data model
