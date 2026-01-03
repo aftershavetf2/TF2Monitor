@@ -5,4 +5,4 @@
 /playerlist.json
 playerlist - Copy.json
 .http-cache
-*.sqlite3*
+*.sqlite*
