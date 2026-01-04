@@ -15,7 +15,7 @@ pub fn get_from_cache_or_fetch(
     url: &str,
 ) -> Option<String> {
     if !CACHE_ENABLED {
-        log::info!("HTTP-cache not enabled, fetching URL: {}", url);
+        log::info!("http_cache: Cache is not enabled, fetching URL: {}", url);
         return get_html(url);
     }
 
@@ -31,7 +31,7 @@ pub fn get_from_cache_or_fetch(
     // If the file exists, it's not too old, return its content
     if path.exists() {
         log::info!(
-            "Data found in cache, returning cached data for URL: {}",
+            "http_cache: Data found in cache, returning cached data for URL: {}",
             url
         );
         let content = std::fs::read_to_string(path).unwrap_or_default();
@@ -39,14 +39,14 @@ pub fn get_from_cache_or_fetch(
     }
 
     // Fetch the URL contents and save it to the cache
-    log::info!("Data not in cache, fetching URL: {}", url);
+    log::info!("http_cache: Data not in cache, fetching URL: {}", url);
     let html = get_html(url)?;
 
     match write(&path, &html) {
         Ok(_) => (),
         Err(e) => {
             log::error!(
-                "XXX Failed to write to file: {}, full path = {}",
+                "http_cache: Failed to write to file: {}, full path = {}",
                 e,
                 path.display()
             );
@@ -71,7 +71,7 @@ fn ensure_directories_exist(path: &PathBuf) {
     match create_dir_all(path) {
         Ok(_) => (),
         Err(e) => {
-            log::error!("Failed to create directory: {}", e);
+            log::error!("http_cache: Failed to create directory: {}", e);
         }
     }
 }
@@ -100,7 +100,7 @@ fn get_modified_time(path: &PathBuf) -> Option<SystemTime> {
             Ok(modified_time) => Some(modified_time),
             Err(e) => {
                 log::error!(
-                    "Failed to get modified time for file: {}. Error: {}",
+                    "http_cache: Failed to get modified time for file: {}. Error: {}",
                     path.display(),
                     e
                 );
@@ -109,7 +109,7 @@ fn get_modified_time(path: &PathBuf) -> Option<SystemTime> {
         },
         Err(e) => {
             log::error!(
-                "Failed to get metadata for file: {}. Error: {}",
+                "http_cache: Failed to get metadata for file: {}. Error: {}",
                 path.display(),
                 e
             );
