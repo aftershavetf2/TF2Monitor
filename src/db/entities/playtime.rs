@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::db::schema::playtime;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, diesel::AsExpression, diesel::FromSqlRow)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, diesel::AsExpression, diesel::FromSqlRow,
+)]
 #[diesel(sql_type = Text)]
 pub enum Game {
     Tf2,
@@ -19,6 +21,7 @@ pub enum Game {
     Apex,
     Rust,
     Gta5,
+    Valorant,
     Other,
 }
 
@@ -33,6 +36,7 @@ impl ToSql<Text, Sqlite> for Game {
             Game::Apex => "APEX",
             Game::Rust => "RUST",
             Game::Gta5 => "GTA5",
+            Game::Valorant => "VALORANT",
             Game::Other => "OTHER",
         };
         ToSql::<Text, Sqlite>::to_sql(s, out)
@@ -51,6 +55,7 @@ impl FromSql<Text, Sqlite> for Game {
             "APEX" => Ok(Game::Apex),
             "RUST" => Ok(Game::Rust),
             "GTA5" => Ok(Game::Gta5),
+            "VALORANT" => Ok(Game::Valorant),
             "OTHER" => Ok(Game::Other),
             _ => Ok(Game::Other),
         }
