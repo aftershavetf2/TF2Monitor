@@ -6,7 +6,7 @@ use std::{
     time::SystemTime,
 };
 
-const CACHE_ENABLED: bool = true;
+const CACHE_ENABLED: bool = false;
 
 pub fn get_from_cache_or_fetch(
     domain: &str,
