@@ -40,11 +40,14 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
         }
     });
 
-    let mut num_columns = 9; // Base columns: team, player, kills, deaths, age, hours, rep, weapon
+    let mut num_columns = 8; // Base columns: team, player, kills, deaths, age, hours, rep
     if app_win.app_settings.show_ping {
         num_columns += 1;
     }
     if app_win.app_settings.show_health {
+        num_columns += 1;
+    }
+    if app_win.app_settings.show_weapons {
         num_columns += 1;
     }
     Grid::new(title)
@@ -88,10 +91,12 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
                     .on_hover_text("Reputation (SourceBans) and flags");
             });
 
-            ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                ui.set_min_width(WEAPON_COLUMN_MIN_WIDTH);
-                ui.label("Weapon").on_hover_text("Last weapon used");
-            });
+            if app_win.app_settings.show_weapons {
+                ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                    ui.set_min_width(WEAPON_COLUMN_MIN_WIDTH);
+                    ui.label("Weapon").on_hover_text("Last weapon used");
+                });
+            }
 
             ui.end_row();
 
@@ -190,15 +195,17 @@ pub fn scoreboard_team(app_win: &mut AppWin, ui: &mut Ui, title: &str, players: 
 
                 add_reputation(ui, player);
 
-                ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                    ui.set_min_width(WEAPON_COLUMN_MIN_WIDTH);
-                    if let Some(last_weapon) = player.kills_with.last() {
-                        ui.label(last_weapon.weapon.clone())
-                            .on_hover_text_at_pointer("Last weapon used");
-                    } else {
-                        show_empty_value(ui);
-                    }
-                });
+                if app_win.app_settings.show_weapons {
+                    ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                        ui.set_min_width(WEAPON_COLUMN_MIN_WIDTH);
+                        if let Some(last_weapon) = player.kills_with.last() {
+                            ui.label(last_weapon.weapon.clone())
+                                .on_hover_text_at_pointer("Last weapon used");
+                        } else {
+                            show_empty_value(ui);
+                        }
+                    });
+                }
 
                 ui.end_row();
             }

@@ -60,6 +60,13 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             {
                 app_win.updated_settings();
             }
+
+            if ui
+                .checkbox(&mut app_win.app_settings.show_weapons, "Show weapons")
+                .changed()
+            {
+                app_win.updated_settings();
+            }
         });
 
         ui.menu_button("Actions", |ui| {
