@@ -407,9 +407,18 @@ impl SteamApiThread {
                 if let Ok(Some(playtime_record)) =
                     queries::get_playtime(&mut conn, steamid.to_u64() as i64, Game::Tf2)
                 {
-                    log::info!("Found playtime in database for {} ({}): {} minutes",
-                              player.name, steamid.to_u64(), playtime_record.play_minutes);
-                    let playtime = Tf2PlayMinutes::PlayMinutes(playtime_record.play_minutes as u32);
+                    let playtime = match playtime_record.play_minutes {
+                        Some(minutes) => {
+                            log::info!("Found playtime in database for {} ({}): {} minutes",
+                                      player.name, steamid.to_u64(), minutes);
+                            Tf2PlayMinutes::PlayMinutes(minutes as u32)
+                        }
+                        None => {
+                            log::info!("Found Unknown playtime in database for {} ({})",
+                                      player.name, steamid.to_u64());
+                            Tf2PlayMinutes::Unknown
+                        }
+                    };
 
                     // Add to in-memory cache
                     self.steam_api_cache.set_playtime(steamid, &playtime);
@@ -472,7 +481,7 @@ impl SteamApiThread {
                         let new_playtime = NewPlaytime {
                             steam_id: steamid.to_u64() as i64,
                             game: Game::Tf2,
-                            play_minutes: *minutes as i64,
+                            play_minutes: Some(*minutes as i64),
                             last_updated: current_time,
                         };
 
@@ -497,14 +506,14 @@ impl SteamApiThread {
                     }
                 }
                 Tf2PlayMinutes::Unknown => {
-                    // For Unknown playtime, store 0 minutes to avoid re-fetching
+                    // For Unknown playtime, store NULL to avoid re-fetching
                     if let Ok(mut conn) = self.db.get() {
                         let current_time = Utc::now().timestamp();
 
                         let new_playtime = NewPlaytime {
                             steam_id: steamid.to_u64() as i64,
                             game: Game::Tf2,
-                            play_minutes: 0,
+                            play_minutes: None,
                             last_updated: current_time,
                         };
 

@@ -76,7 +76,7 @@ diesel::table! {
     playtime (steam_id, game) {
         steam_id -> BigInt,
         game -> Text,
-        play_minutes -> BigInt,
+        play_minutes -> Nullable<BigInt>,
         last_updated -> BigInt,
     }
 }

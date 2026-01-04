@@ -72,8 +72,8 @@ pub struct Playtime {
     /// Game identifier (Composite Primary Key)
     pub game: Game,
 
-    /// Number of minutes playing the game
-    pub play_minutes: i64,
+    /// Number of minutes playing the game (None = Unknown playtime)
+    pub play_minutes: Option<i64>,
 
     /// UnixTime when playtime was last updated
     pub last_updated: i64,
@@ -84,6 +84,6 @@ pub struct Playtime {
 pub struct NewPlaytime {
     pub steam_id: i64,
     pub game: Game,
-    pub play_minutes: i64,
+    pub play_minutes: Option<i64>,
     pub last_updated: i64,
 }

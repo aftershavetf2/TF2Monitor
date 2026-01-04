@@ -150,11 +150,79 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
         "CREATE TABLE IF NOT EXISTS playtime (
             steam_id INTEGER NOT NULL,
             game TEXT NOT NULL,
-            play_minutes INTEGER NOT NULL,
+            play_minutes INTEGER,
             last_updated INTEGER NOT NULL,
             PRIMARY KEY (steam_id, game)
         )"
     ).execute(conn)?;
+
+    // Migrate existing playtime table to make play_minutes nullable
+    // SQLite doesn't support ALTER COLUMN, so we need to recreate the table if needed
+    // Check table schema using PRAGMA table_info and migrate if play_minutes is NOT NULL
+
+    let migration_result: Result<(), Box<dyn std::error::Error>> = (|| {
+        // Use PRAGMA to check if play_minutes column allows NULL
+        // In the result, 'notnull' will be 1 if NOT NULL, 0 if NULL allowed
+        #[derive(diesel::QueryableByName)]
+        struct ColumnInfo {
+            #[diesel(sql_type = diesel::sql_types::Integer)]
+            #[diesel(column_name = "notnull")]
+            notnull: i32,
+        }
+
+        let column_info: Result<ColumnInfo, _> = diesel::sql_query(
+            "SELECT * FROM pragma_table_info('playtime') WHERE name = 'play_minutes'"
+        ).get_result(conn);
+
+        // Check if column is NOT NULL (notnull=1)
+        let needs_migration = match &column_info {
+            Ok(info) => {
+                log::info!("PRAGMA check: play_minutes notnull={}", info.notnull);
+                info.notnull == 1
+            }
+            Err(e) => {
+                log::warn!("PRAGMA check failed: {}, assuming migration needed", e);
+                true // If we can't check, assume migration is needed
+            }
+        };
+
+        if !needs_migration {
+            log::info!("Playtime table already supports NULL play_minutes, no migration needed");
+            return Ok(());
+        }
+
+        // Migration needed - recreate the table
+        log::info!("Migrating playtime table to support NULL play_minutes...");
+
+        // Create new table with correct schema
+        diesel::sql_query(
+            "CREATE TABLE playtime_new (
+                steam_id INTEGER NOT NULL,
+                game TEXT NOT NULL,
+                play_minutes INTEGER,
+                last_updated INTEGER NOT NULL,
+                PRIMARY KEY (steam_id, game)
+            )"
+        ).execute(conn)?;
+
+        // Copy data, converting 0 to NULL for unknown playtime
+        diesel::sql_query(
+            "INSERT INTO playtime_new (steam_id, game, play_minutes, last_updated)
+             SELECT steam_id, game, CASE WHEN play_minutes = 0 THEN NULL ELSE play_minutes END, last_updated
+             FROM playtime"
+        ).execute(conn)?;
+
+        // Swap tables
+        diesel::sql_query("DROP TABLE playtime").execute(conn)?;
+        diesel::sql_query("ALTER TABLE playtime_new RENAME TO playtime").execute(conn)?;
+
+        log::info!("Successfully migrated playtime table");
+        Ok(())
+    })();
+
+    if let Err(e) = migration_result {
+        log::error!("Playtime table migration failed: {}", e);
+    }
 
     // Create bans table
     diesel::sql_query(
