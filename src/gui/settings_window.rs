@@ -87,7 +87,9 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
         .min_col_width(200.0)
         .show(ui, |ui| {
             // self_steamid64
-            ui.label("Self SteamID64:");
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                ui.label("Self SteamID64:");
+            });
             ui.vertical(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut temp.self_steamid64)
@@ -113,7 +115,9 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
             ui.end_row();
 
             // steam_api_key
-            ui.label("Steam API Key:");
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                ui.label("Steam API Key:");
+            });
             ui.vertical(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut temp.steam_api_key)
@@ -130,29 +134,39 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
             ui.end_row();
 
             // rcon_password
-            ui.label("RCON Password:");
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                ui.label("RCON Password:");
+            });
             ui.add(
                 egui::TextEdit::singleline(&mut temp.rcon_password).desired_width(f32::INFINITY),
             );
             ui.end_row();
 
             // rcon_ip
-            ui.label("RCON IP:");
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                ui.label("RCON IP:");
+            });
             ui.add(egui::TextEdit::singleline(&mut temp.rcon_ip).desired_width(f32::INFINITY));
             ui.end_row();
 
             // rcon_port
-            ui.label("RCON Port:");
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                ui.label("RCON Port:");
+            });
             ui.add(egui::TextEdit::singleline(&mut temp.rcon_port).desired_width(f32::INFINITY));
             ui.end_row();
 
             // log_filename
-            ui.label("TF2Log Filename:");
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                ui.label("TF2Log Filename:");
+            });
             ui.add(egui::TextEdit::singleline(&mut temp.log_filename).desired_width(f32::INFINITY));
             ui.end_row();
 
             // exe_filename
-            ui.label("TF2 Exe Filename:");
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                ui.label("TF2 Exe Filename:");
+            });
             ui.add(egui::TextEdit::singleline(&mut temp.exe_filename).desired_width(f32::INFINITY));
             ui.end_row();
         });
