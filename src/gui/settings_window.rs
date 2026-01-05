@@ -83,7 +83,7 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
 
     Grid::new("settings_grid")
         .num_columns(2)
-        .spacing([10.0, 8.0])
+        .spacing([10.0, 16.0])
         .min_col_width(200.0)
         .show(ui, |ui| {
             // self_steamid64
@@ -95,6 +95,8 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
                     egui::TextEdit::singleline(&mut temp.self_steamid64)
                         .desired_width(f32::INFINITY),
                 );
+
+                ui.add_space(5.0);
 
                 // Show Steam Community link for verification
                 let steamid = if let Some(id) = SteamID::from_u64_string(&temp.self_steamid64) {
@@ -111,6 +113,10 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
                 } else {
                     ui.label("(Invalid SteamID)");
                 }
+
+                ui.add_space(10.0);
+                ui.label("This is your SteamID64. You can find it by going to your Steam profile and copying the ID from the URL. It is used to identify yourself in the game.");
+
             });
             ui.end_row();
 
@@ -123,51 +129,64 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
                     egui::TextEdit::singleline(&mut temp.steam_api_key)
                         .desired_width(f32::INFINITY),
                 );
+                ui.add_space(5.0);
                 ui.hyperlink_to(
                     "Go to Steam API Key page",
                     "https://steamcommunity.com/dev/apikey",
                 );
-                ui.separator();
-                ui.label("You can get your personal Steam API Key by going to the Steam API Key page and creating a new key. This is needed to fetch profile information from Steam Community.");
+                ui.add_space(10.0);
+                ui.label("Get your personal Steam API Key by going to the Steam API Key page and creating a new key. This key is needed to fetch profile information from Steam Community.");
             });
-
             ui.end_row();
 
             // rcon_password
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                ui.label("RCON Password:");
-            });
-            ui.add(
-                egui::TextEdit::singleline(&mut temp.rcon_password).desired_width(f32::INFINITY),
-            );
-            ui.end_row();
+            // ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+            //     ui.label("RCON Password:");
+            // });
+            // ui.add(
+            //     egui::TextEdit::singleline(&mut temp.rcon_password).desired_width(f32::INFINITY),
+            // );
+            // ui.end_row();
 
             // rcon_ip
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                ui.label("RCON IP:");
-            });
-            ui.add(egui::TextEdit::singleline(&mut temp.rcon_ip).desired_width(f32::INFINITY));
-            ui.end_row();
-
+            // ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+            //     ui.label("RCON IP:");
+            // });
+            // ui.vertical(|ui| {
+            //     ui.add(egui::TextEdit::singleline(&mut temp.rcon_ip).desired_width(f32::INFINITY));
+            //     ui.add_space(10.0);
+            //     ui.label("This is the IP address of the server you want to connect to. It is used to send commands to the server.");
+            // });
+            // ui.add(egui::TextEdit::singleline(&mut temp.rcon_ip).desired_width(f32::INFINITY));
+            // ui.end_row();
+            
             // rcon_port
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                ui.label("RCON Port:");
-            });
-            ui.add(egui::TextEdit::singleline(&mut temp.rcon_port).desired_width(f32::INFINITY));
-            ui.end_row();
+            // ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+            //     ui.label("RCON Port:");
+            // });
+            // ui.add(egui::TextEdit::singleline(&mut temp.rcon_port).desired_width(f32::INFINITY));
+            // ui.end_row();
 
             // log_filename
             ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.label("TF2Log Filename:");
             });
-            ui.add(egui::TextEdit::singleline(&mut temp.log_filename).desired_width(f32::INFINITY));
+        ui.vertical(|ui| {
+                ui.add(egui::TextEdit::singleline(&mut temp.log_filename).desired_width(f32::INFINITY));
+                ui.add_space(10.0);
+                ui.label("This is the filename of the TF2 log file that TF2Monitor will use to read information from while you play. Default is C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf\\console.log.");
+            });
             ui.end_row();
 
             // exe_filename
             ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.label("TF2 Exe Filename:");
             });
-            ui.add(egui::TextEdit::singleline(&mut temp.exe_filename).desired_width(f32::INFINITY));
+            ui.vertical(|ui| {
+                ui.add(egui::TextEdit::singleline(&mut temp.exe_filename).desired_width(f32::INFINITY));
+                ui.add_space(10.0);
+                ui.label("This is the filename of the TF2 executable that TF2Monitor will use to start TF2. Default is C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf_win64.exe.");
+            });
             ui.end_row();
         });
 }
