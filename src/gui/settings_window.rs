@@ -70,6 +70,8 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
 }
 
 fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
+    use crate::models::steamid::SteamID;
+
     Grid::new("settings_grid")
         .num_columns(2)
         .spacing([10.0, 8.0])
@@ -77,17 +79,42 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
         .show(ui, |ui| {
             // self_steamid64
             ui.label("Self SteamID64:");
-            ui.add(egui::TextEdit::singleline(&mut temp.self_steamid64).desired_width(f32::INFINITY));
+            ui.vertical(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut temp.self_steamid64)
+                        .desired_width(f32::INFINITY),
+                );
+
+                // Show Steam Community link for verification
+                let steamid = if let Some(id) = SteamID::from_u64_string(&temp.self_steamid64) {
+                    id
+                } else if temp.self_steamid64.starts_with("[U:1:") {
+                    SteamID::from_steam_id32(&temp.self_steamid64)
+                } else {
+                    SteamID::from_u64(0)
+                };
+
+                if steamid.is_valid() {
+                    let url = steamid.steam_community_url();
+                    ui.hyperlink_to("View Profile on Steam Community", &url);
+                } else {
+                    ui.label("(Invalid SteamID)");
+                }
+            });
             ui.end_row();
 
             // steam_api_key
             ui.label("Steam API Key:");
-            ui.add(egui::TextEdit::singleline(&mut temp.steam_api_key).desired_width(f32::INFINITY));
+            ui.add(
+                egui::TextEdit::singleline(&mut temp.steam_api_key).desired_width(f32::INFINITY),
+            );
             ui.end_row();
 
             // rcon_password
             ui.label("RCON Password:");
-            ui.add(egui::TextEdit::singleline(&mut temp.rcon_password).desired_width(f32::INFINITY));
+            ui.add(
+                egui::TextEdit::singleline(&mut temp.rcon_password).desired_width(f32::INFINITY),
+            );
             ui.end_row();
 
             // rcon_ip
