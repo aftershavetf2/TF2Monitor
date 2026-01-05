@@ -1,5 +1,5 @@
 use crate::models::{AppWin, TempSettings};
-use eframe::egui::{self, Ui};
+use eframe::egui::{self, Grid, Ui};
 
 /// Shows the settings window as an egui Window (internal frame)
 pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
@@ -70,42 +70,46 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
 }
 
 fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
-    ui.vertical(|ui| {
-        // self_steamid64
-        ui.label("Self SteamID64:");
-        ui.text_edit_singleline(&mut temp.self_steamid64);
-        ui.add_space(8.0);
+    Grid::new("settings_grid")
+        .num_columns(2)
+        .spacing([10.0, 8.0])
+        .min_col_width(200.0)
+        .show(ui, |ui| {
+            // self_steamid64
+            ui.label("Self SteamID64:");
+            ui.add(egui::TextEdit::singleline(&mut temp.self_steamid64).desired_width(f32::INFINITY));
+            ui.end_row();
 
-        // steam_api_key
-        ui.label("Steam API Key:");
-        ui.text_edit_singleline(&mut temp.steam_api_key);
-        ui.add_space(8.0);
+            // steam_api_key
+            ui.label("Steam API Key:");
+            ui.add(egui::TextEdit::singleline(&mut temp.steam_api_key).desired_width(f32::INFINITY));
+            ui.end_row();
 
-        // rcon_password
-        ui.label("RCON Password:");
-        ui.text_edit_singleline(&mut temp.rcon_password);
-        ui.add_space(8.0);
+            // rcon_password
+            ui.label("RCON Password:");
+            ui.add(egui::TextEdit::singleline(&mut temp.rcon_password).desired_width(f32::INFINITY));
+            ui.end_row();
 
-        // rcon_ip
-        ui.label("RCON IP:");
-        ui.text_edit_singleline(&mut temp.rcon_ip);
-        ui.add_space(8.0);
+            // rcon_ip
+            ui.label("RCON IP:");
+            ui.add(egui::TextEdit::singleline(&mut temp.rcon_ip).desired_width(f32::INFINITY));
+            ui.end_row();
 
-        // rcon_port
-        ui.label("RCON Port:");
-        ui.text_edit_singleline(&mut temp.rcon_port);
-        ui.add_space(8.0);
+            // rcon_port
+            ui.label("RCON Port:");
+            ui.add(egui::TextEdit::singleline(&mut temp.rcon_port).desired_width(f32::INFINITY));
+            ui.end_row();
 
-        // log_filename
-        ui.label("TF2Log Filename:");
-        ui.text_edit_singleline(&mut temp.log_filename);
-        ui.add_space(8.0);
+            // log_filename
+            ui.label("TF2Log Filename:");
+            ui.add(egui::TextEdit::singleline(&mut temp.log_filename).desired_width(f32::INFINITY));
+            ui.end_row();
 
-        // exe_filename
-        ui.label("TF2 Exe Filename:");
-        ui.text_edit_singleline(&mut temp.exe_filename);
-        ui.add_space(8.0);
-    });
+            // exe_filename
+            ui.label("TF2 Exe Filename:");
+            ui.add(egui::TextEdit::singleline(&mut temp.exe_filename).desired_width(f32::INFINITY));
+            ui.end_row();
+        });
 }
 
 fn save_settings(app_win: &mut AppWin, temp: &TempSettings) {
