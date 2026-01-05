@@ -30,6 +30,15 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
         .resizable(true)
         .default_width(500.0)
         .show(ctx, |ui| {
+            // Show warning message if configuration is incomplete
+            if !app_win.app_settings.config_is_ok {
+                ui.colored_label(
+                    ui.visuals().warn_fg_color,
+                    "⚠ Configuration is incomplete. Please fill in the required fields below.",
+                );
+                ui.add_space(10.0);
+            }
+
             if let Some(ref mut temp) = app_win.temp_settings {
                 show_settings_content(ui, temp);
 
@@ -105,9 +114,19 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
 
             // steam_api_key
             ui.label("Steam API Key:");
-            ui.add(
-                egui::TextEdit::singleline(&mut temp.steam_api_key).desired_width(f32::INFINITY),
-            );
+            ui.vertical(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut temp.steam_api_key)
+                        .desired_width(f32::INFINITY),
+                );
+                ui.hyperlink_to(
+                    "Go to Steam API Key page",
+                    "https://steamcommunity.com/dev/apikey",
+                );
+                ui.separator();
+                ui.label("You can get your personal Steam API Key by going to the Steam API Key page and creating a new key. This is needed to fetch profile information from Steam Community.");
+            });
+
             ui.end_row();
 
             // rcon_password

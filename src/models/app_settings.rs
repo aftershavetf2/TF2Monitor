@@ -70,6 +70,11 @@ pub struct AppSettings {
 
     #[serde(default)]
     pub window_size: Option<(f32, f32)>,
+
+    /// Flag indicating if configuration is complete and valid.
+    /// Not saved to settings.json - computed at runtime.
+    #[serde(skip)]
+    pub config_is_ok: bool,
 }
 
 impl Default for AppSettings {
@@ -101,6 +106,8 @@ impl Default for AppSettings {
 
             window_position: None,
             window_size: None,
+
+            config_is_ok: false,
         }
     }
 }
@@ -144,7 +151,7 @@ impl AppSettings {
         let mut f = File::open(SETTINGS_FILENAME)?;
         let mut json = String::new();
         f.read_to_string(&mut json)?;
-        let settings: AppSettings = serde_json::from_str(&json).map_err(|e| {
+        let mut settings: AppSettings = serde_json::from_str(&json).map_err(|e| {
             Box::new(io::Error::new(
                 ErrorKind::InvalidData,
                 format!(
@@ -159,6 +166,9 @@ impl AppSettings {
             "Settings: \n{}",
             serde_json::to_string_pretty(&settings).unwrap()
         );
+
+        // Check if configuration is complete
+        settings.config_is_ok = settings.check_config_is_ok();
 
         settings.save();
 
@@ -207,6 +217,27 @@ impl AppSettings {
         }
 
         valid
+    }
+
+    /// Checks if the configuration is complete enough to run the application.
+    /// This is a stricter check than validate_settings - it requires essential fields to be filled.
+    pub fn check_config_is_ok(&self) -> bool {
+        // Must have valid SteamID
+        if !self.self_steamid64.is_valid() {
+            return false;
+        }
+
+        // Must have Steam API key
+        if self.steam_api_key.is_empty() {
+            return false;
+        }
+
+        // Must have RCON password
+        if self.rcon_password.is_empty() {
+            return false;
+        }
+
+        true
     }
 }
 

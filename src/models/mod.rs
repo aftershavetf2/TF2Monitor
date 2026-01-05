@@ -47,6 +47,9 @@ pub struct TempSettings {
 
 impl AppWin {
     pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+        // Open settings window automatically if configuration is incomplete
+        let settings_window_open = !settings.config_is_ok;
+
         Self {
             bus: Arc::clone(bus),
 
@@ -60,13 +63,17 @@ impl AppWin {
 
             friendship_positions: HashMap::new(),
 
-            settings_window_open: false,
+            settings_window_open,
             temp_settings: None,
         }
     }
 
     pub fn updated_settings(&mut self) {
         log::info!("Saving and broadcasting updated settings");
+
+        // Update config_is_ok flag based on current settings
+        self.app_settings.config_is_ok = self.app_settings.check_config_is_ok();
+
         self.app_settings.save();
         self.bus
             .lock()
