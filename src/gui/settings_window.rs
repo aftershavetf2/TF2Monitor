@@ -44,14 +44,14 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
 
                 ui.separator();
 
-                // Buttons at the bottom
-                ui.horizontal(|ui| {
-                    if ui.button("Save").clicked() {
-                        should_save = true;
-                    }
-
+                // Buttons at the bottom - aligned to the right
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                     if ui.button("Cancel").clicked() {
                         should_close = true;
+                    }
+
+                    if ui.button("Save").clicked() {
+                        should_save = true;
                     }
                 });
             }
@@ -117,7 +117,7 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
                 }
 
                 ui.add_space(10.0);
-                ui.colored_label(info_label_color, "This is your SteamID64. You can find it by going to your Steam profile and copying the ID from the URL. It is used to identify yourself in the game.");
+                ui.colored_label(info_label_color, "This is your SteamID64. You can find it in your Steam profile URL. It identifies you on the scoreboard.");
 
             });
             ui.end_row();
@@ -137,7 +137,7 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
                     "https://steamcommunity.com/dev/apikey",
                 );
                 ui.add_space(10.0);
-                ui.colored_label(info_label_color, "Get your personal Steam API Key by going to the Steam API Key page and creating a new key. This key is needed to fetch profile information from Steam Community.");
+                ui.colored_label(info_label_color, "Get your personal Steam API key from the Steam API Key page. It is required to fetch profile information from Steam Community.");
             });
             ui.end_row();
 
@@ -176,7 +176,9 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
             ui.vertical(|ui| {
                 ui.add(egui::TextEdit::singleline(&mut temp.log_filename).desired_width(f32::INFINITY));
                 ui.add_space(10.0);
-                ui.colored_label(info_label_color, "This is the filename of the TF2 log file that TF2Monitor will use to read information from while you play. Default is C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf\\console.log.");
+                ui.colored_label(info_label_color, "The TF2 log file that TF2Monitor reads while you play.");
+                ui.add_space(5.0);
+                ui.colored_label(info_label_color, "Default is C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf\\console.log");
             });
             ui.end_row();
 
