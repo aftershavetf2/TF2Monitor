@@ -174,7 +174,7 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
                 ui.label("TF2Log Filename:");
             });
             ui.vertical(|ui| {
-                ui.add(egui::TextEdit::singleline(&mut temp.log_filename).desired_width(f32::INFINITY));
+                ui.add(egui::TextEdit::multiline(&mut temp.log_filename).desired_width(f32::INFINITY));
                 ui.add_space(10.0);
                 ui.colored_label(info_label_color, "The TF2 log file that TF2Monitor reads while you play.");
                 ui.add_space(5.0);
