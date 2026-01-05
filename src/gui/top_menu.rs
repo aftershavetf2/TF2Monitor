@@ -24,6 +24,13 @@ Rules(todo)
 pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
     MenuBar::new().ui(ui, |ui| {
         ui.menu_button("File", |ui| {
+            if ui.button("Settings...").clicked() {
+                app_win.settings_window_open = true;
+                ui.close();
+            }
+
+            ui.separator();
+
             if ui.button("Quit").clicked() {
                 ui.ctx().send_viewport_cmd(ViewportCommand::Close);
             }

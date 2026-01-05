@@ -27,6 +27,22 @@ pub struct AppWin {
     // When drawing the scoreboard, we remember the center positions of each player's team indicator.
     // This is used to draw friendship indicators between players.
     pub friendship_positions: HashMap<SteamID, Pos2>,
+
+    // Settings dialog state
+    pub settings_window_open: bool,
+    pub temp_settings: Option<TempSettings>,
+}
+
+/// Temporary settings used while editing in the settings dialog
+#[derive(Clone)]
+pub struct TempSettings {
+    pub self_steamid64: String,
+    pub steam_api_key: String,
+    pub rcon_password: String,
+    pub rcon_ip: String,
+    pub rcon_port: String,
+    pub log_filename: String,
+    pub exe_filename: String,
 }
 
 impl AppWin {
@@ -43,6 +59,9 @@ impl AppWin {
             spectating: false,
 
             friendship_positions: HashMap::new(),
+
+            settings_window_open: false,
+            temp_settings: None,
         }
     }
 

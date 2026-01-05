@@ -13,6 +13,7 @@ pub mod playtime;
 pub mod recently_left;
 pub mod scoreboard;
 pub mod scoreboard_team;
+pub mod settings_window;
 pub mod top_menu;
 pub mod ui_utils;
 pub mod window_status_row;
@@ -28,6 +29,7 @@ use chat::add_chat;
 use eframe::egui::{self};
 use kill_feed::add_kill_feed;
 use player_details_panel::add_player_details_panel;
+use settings_window::show_settings_window;
 use std::{
     sync::{Arc, Mutex},
     thread::sleep,
@@ -115,6 +117,9 @@ impl eframe::App for AppWin {
                 add_friendship_indicators(self, ui);
             }
         });
+
+        // Show settings window if open
+        show_settings_window(self, ctx);
 
         // Save window position and size to AppSettings
         // Use the viewport's outer rect to get the actual window position
