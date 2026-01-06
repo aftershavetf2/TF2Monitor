@@ -1,11 +1,13 @@
 use crate::{models::AppWin, tf2bd::models::PlayerAttribute};
 use eframe::egui::{containers::menu::MenuBar, Ui, ViewportCommand};
+use std::process::Command;
 
 /*
 Menu structure:
 
 File
 - Settings...
+- Start TF2
 - Quit
 
 View
@@ -24,6 +26,13 @@ Rules(todo)
 pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
     MenuBar::new().ui(ui, |ui| {
         ui.menu_button("File", |ui| {
+            if ui.button("Start TF2").clicked() {
+                start_tf2(app_win);
+                ui.close();
+            }
+
+            ui.separator();
+
             if ui.button("Settings...").clicked() {
                 app_win.settings_window_open = true;
                 ui.close();
@@ -170,4 +179,37 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             }
         });
     });
+}
+
+fn start_tf2(app_win: &AppWin) {
+    let exe_path = &app_win.app_settings.exe_filename;
+    let launch_options = &app_win.app_settings.launch_options;
+
+    log::info!("Starting TF2 with exe: {}", exe_path);
+    log::info!("Launch options: {}", launch_options);
+
+    // Build the command with -steam -game tf and then the launch options
+    let mut cmd = Command::new(exe_path);
+    cmd.arg("-steam").arg("-game").arg("tf");
+
+    // Parse and add launch options
+    if !launch_options.is_empty() {
+        // Split launch options by spaces, but be careful with quoted strings
+        let options: Vec<&str> = launch_options.split_whitespace().collect();
+        for option in options {
+            cmd.arg(option);
+        }
+    }
+
+    // Spawn the process
+    match cmd.spawn() {
+        Ok(mut child) => {
+            log::info!("TF2 started successfully with PID: {:?}", child.id());
+            // Detach the child process so it continues running independently
+            let _ = child;
+        }
+        Err(e) => {
+            log::error!("Failed to start TF2: {}", e);
+        }
+    }
 }
