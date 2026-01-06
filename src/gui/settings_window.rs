@@ -1,4 +1,4 @@
-use crate::models::{AppWin, TempSettings};
+use crate::models::{AppWin, TempSettings, app_settings::DEFAULT_LAUNCH_OPTIONS};
 use eframe::egui::{self, Grid, Ui};
 
 /// Shows the settings window as an egui Window (internal frame)
@@ -17,6 +17,7 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
             rcon_port: app_win.app_settings.rcon_port.to_string(),
             log_filename: app_win.app_settings.log_filename.clone(),
             exe_filename: app_win.app_settings.exe_filename.clone(),
+            launch_options: app_win.app_settings.launch_options.clone(),
         });
     }
 
@@ -183,15 +184,28 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
             ui.end_row();
 
             // exe_filename
-            // ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-            //     ui.label("TF2 Exe Filename:");
-            // });
-            // ui.vertical(|ui| {
-            //     ui.add(egui::TextEdit::singleline(&mut temp.exe_filename).desired_width(f32::INFINITY));
-            //     ui.add_space(10.0);
-            //     ui.colored_label(info_label_color, "This is the filename of the TF2 executable that TF2Monitor will use to start TF2. Default is C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf_win64.exe.");
-            // });
-            // ui.end_row();
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                ui.label("TF2 Exe Filename:");
+            });
+            ui.vertical(|ui| {
+                ui.add(egui::TextEdit::singleline(&mut temp.exe_filename).desired_width(f32::INFINITY));
+                ui.add_space(10.0);
+                ui.colored_label(info_label_color, "This is the filename of the TF2 executable that TF2Monitor will use to start TF2. Default is C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf_win64.exe.");
+            });
+            ui.end_row();
+
+            // launch_options
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                ui.label("Launch Options:");
+            });
+            ui.vertical(|ui| {
+                ui.add(egui::TextEdit::multiline(&mut temp.launch_options).desired_width(f32::INFINITY).desired_rows(3));
+                ui.add_space(10.0);
+                ui.colored_label(info_label_color, "Additional launch options for TF2. These will be passed to TF2 when starting the game.");
+                ui.add_space(5.0);
+                ui.colored_label(info_label_color, format!("Default is {}", DEFAULT_LAUNCH_OPTIONS));
+            });
+            ui.end_row();
         });
 }
 
@@ -224,6 +238,7 @@ fn save_settings(app_win: &mut AppWin, temp: &TempSettings) {
     app_win.app_settings.rcon_port = rcon_port;
     app_win.app_settings.log_filename = temp.log_filename.clone();
     app_win.app_settings.exe_filename = temp.exe_filename.clone();
+    app_win.app_settings.launch_options = temp.launch_options.clone();
 
     // Also update self_steamid in AppWin
     app_win.self_steamid = steamid;

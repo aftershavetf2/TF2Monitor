@@ -43,6 +43,7 @@ pub struct TempSettings {
     pub rcon_port: String,
     pub log_filename: String,
     pub exe_filename: String,
+    pub launch_options: String,
 }
 
 impl AppWin {

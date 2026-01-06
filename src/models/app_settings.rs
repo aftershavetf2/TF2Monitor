@@ -21,6 +21,8 @@ fn default_party_notifications_for() -> Vec<PlayerAttribute> {
     vec![PlayerAttribute::Cheater, PlayerAttribute::Bot]
 }
 
+pub const DEFAULT_LAUNCH_OPTIONS: &str = "-usercon -high +developer 1 +contimes 0 +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -console -g15";
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppSettings {
     pub log_filename: String,
@@ -37,6 +39,10 @@ pub struct AppSettings {
     pub rcon_password: String,
     pub rcon_ip: String,
     pub rcon_port: u16,
+
+    /// TF2 launch options
+    #[serde(default)]
+    pub launch_options: String,
 
     // View settings
     #[serde(default = "get_true")]
@@ -92,6 +98,8 @@ impl Default for AppSettings {
             rcon_password: "rconpwd".to_string(),
             rcon_ip: "127.0.0.1".to_string(),
             rcon_port: 40434,
+
+            launch_options: DEFAULT_LAUNCH_OPTIONS.to_string(),
 
             show_friendship_indicators: true,
             show_crits: true,
