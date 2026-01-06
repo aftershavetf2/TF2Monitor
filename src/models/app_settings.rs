@@ -27,7 +27,7 @@ pub const DEFAULT_EXE_FILENAME: &str =
 pub const DEFAULT_LOG_FILENAME: &str =
     "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf\\console.log";
 
-pub const DEFAULT_LAUNCH_OPTIONS: &str = "-usercon -high +developer 1 +contimes 0 +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -console -g15 -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console";
+pub const DEFAULT_LAUNCH_OPTIONS: &str = "-usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +net_start  +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -console -g15 -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppSettings {
