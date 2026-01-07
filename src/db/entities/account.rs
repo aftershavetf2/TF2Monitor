@@ -39,6 +39,9 @@ pub struct Account {
 
     /// UnixTime when reputation/sourcebans was last fetched (nullable)
     pub reputation_fetched: Option<i64>,
+
+    /// UnixTime when steam bans (VAC/Game bans) was last fetched (nullable)
+    pub steam_bans_last_fetched: Option<i64>,
 }
 
 #[derive(Clone, Debug, Insertable, AsChangeset)]
@@ -55,4 +58,5 @@ pub struct NewAccount {
     pub comments_fetched: Option<i64>,
     pub playtimes_fetched: Option<i64>,
     pub reputation_fetched: Option<i64>,
+    pub steam_bans_last_fetched: Option<i64>,
 }

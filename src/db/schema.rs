@@ -13,6 +13,7 @@ diesel::table! {
         comments_fetched -> Nullable<BigInt>,
         playtimes_fetched -> Nullable<BigInt>,
         reputation_fetched -> Nullable<BigInt>,
+        steam_bans_last_fetched -> Nullable<BigInt>,
     }
 }
 
@@ -81,11 +82,24 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    steam_bans (steam_id) {
+        steam_id -> BigInt,
+        community_banned -> Bool,
+        vac_banned -> Bool,
+        number_of_vac_bans -> Integer,
+        days_since_last_ban -> Integer,
+        number_of_game_bans -> Integer,
+        economy_ban -> Text,
+    }
+}
+
 diesel::joinable!(bans -> account (steam_id));
 diesel::joinable!(comments -> account (steam_id));
 diesel::joinable!(friendship -> account (steam_id));
 diesel::joinable!(player_flags -> account (steam_id));
 diesel::joinable!(playtime -> account (steam_id));
+// Note: steam_bans is NOT joinable with account - it's intentionally not a foreign key
 
 diesel::allow_tables_to_appear_in_same_query!(
     account,
@@ -95,4 +109,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     friendship,
     player_flags,
     playtime,
+    steam_bans,
 );

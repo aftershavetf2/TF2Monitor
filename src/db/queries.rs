@@ -2,9 +2,9 @@ use diesel::prelude::*;
 
 use super::entities::{
     Account, Ban, BanSource, Comment, Friendship, Game, NewAccount, NewBan, NewBanSource,
-    NewComment, NewFriendship, NewPlayerFlag, NewPlaytime, PlayerFlag,
+    NewComment, NewFriendship, NewPlayerFlag, NewPlaytime, NewSteamBan, PlayerFlag, SteamBan,
 };
-use super::schema::{account, ban_sources, bans, comments, friendship, player_flags, playtime};
+use super::schema::{account, ban_sources, bans, comments, friendship, player_flags, playtime, steam_bans};
 
 /// Get all friendships for a given steam_id.
 ///
@@ -229,6 +229,7 @@ pub fn update_account_friends_fetched(
         comments_fetched: None,
         playtimes_fetched: None,
         reputation_fetched: None,
+        steam_bans_last_fetched: None,
     };
 
     // Use INSERT OR REPLACE (UPSERT) to either create or update the record
@@ -265,6 +266,7 @@ pub fn update_account_comments_fetched(
         comments_fetched: Some(comments_fetched),
         playtimes_fetched: None,
         reputation_fetched: None,
+        steam_bans_last_fetched: None,
     };
 
     // Use INSERT OR REPLACE (UPSERT) to either create or update the record
@@ -301,6 +303,7 @@ pub fn update_account_playtimes_fetched(
         comments_fetched: None,
         playtimes_fetched: Some(playtimes_fetched),
         reputation_fetched: None,
+        steam_bans_last_fetched: None,
     };
 
     // Use INSERT OR REPLACE (UPSERT) to either create or update the record
@@ -337,6 +340,7 @@ pub fn update_account_reputation_fetched(
         comments_fetched: None,
         playtimes_fetched: None,
         reputation_fetched: Some(reputation_fetched),
+        steam_bans_last_fetched: None,
     };
 
     // Use INSERT OR REPLACE (UPSERT) to either create or update the record
@@ -570,5 +574,57 @@ pub fn remove_player_flag(
         ),
     )
     .execute(conn)?;
+    Ok(())
+}
+
+//
+// Steam Bans queries
+//
+
+/// Save or update steam bans for a player
+///
+/// Uses REPLACE INTO to either insert new ban data or update existing data.
+/// This is an upsert operation - it will update if the steam_id already exists,
+/// or insert if it doesn't.
+pub fn upsert_steam_bans(
+    conn: &mut SqliteConnection,
+    new_ban: &NewSteamBan,
+) -> Result<(), diesel::result::Error> {
+    diesel::replace_into(steam_bans::table)
+        .values(new_ban)
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Get steam bans for a player
+pub fn get_steam_bans(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+) -> Result<Option<SteamBan>, diesel::result::Error> {
+    steam_bans::table
+        .filter(steam_bans::steam_id.eq(steam_id))
+        .first::<SteamBan>(conn)
+        .optional()
+}
+
+/// Get steam bans for multiple players
+pub fn get_steam_bans_batch(
+    conn: &mut SqliteConnection,
+    steam_ids: &[i64],
+) -> Result<Vec<SteamBan>, diesel::result::Error> {
+    steam_bans::table
+        .filter(steam_bans::steam_id.eq_any(steam_ids))
+        .load::<SteamBan>(conn)
+}
+
+/// Update the steam_bans_last_fetched timestamp for an account
+pub fn update_steam_bans_last_fetched(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    timestamp: i64,
+) -> Result<(), diesel::result::Error> {
+    diesel::update(account::table.filter(account::steam_id.eq(steam_id)))
+        .set(account::steam_bans_last_fetched.eq(timestamp))
+        .execute(conn)?;
     Ok(())
 }

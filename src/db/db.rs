@@ -120,6 +120,11 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
         "ALTER TABLE account ADD COLUMN reputation_fetched INTEGER"
     ).execute(conn).ok(); // Ignore error if column already exists
 
+    // Add steam_bans_last_fetched column if it doesn't exist (for existing databases)
+    diesel::sql_query(
+        "ALTER TABLE account ADD COLUMN steam_bans_last_fetched INTEGER"
+    ).execute(conn).ok(); // Ignore error if column already exists
+
     // Create friendship table
     diesel::sql_query(
         "CREATE TABLE IF NOT EXISTS friendship (
@@ -262,6 +267,21 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
         )"
     ).execute(conn)?;
 
+    // Create steam_bans table
+    // Note: steam_id is NOT a foreign key - we want to store bans for players
+    // that may not yet exist in the account table
+    diesel::sql_query(
+        "CREATE TABLE IF NOT EXISTS steam_bans (
+            steam_id INTEGER PRIMARY KEY NOT NULL,
+            community_banned INTEGER NOT NULL,
+            vac_banned INTEGER NOT NULL,
+            number_of_vac_bans INTEGER NOT NULL,
+            days_since_last_ban INTEGER NOT NULL,
+            number_of_game_bans INTEGER NOT NULL,
+            economy_ban TEXT NOT NULL
+        )"
+    ).execute(conn)?;
+
     // Create indexes as specified in DATAMODEL.md
     // Note: Primary keys are automatically indexed, so we only need to create additional indexes
 
@@ -277,6 +297,7 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
     diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_ban_sources_active ON ban_sources(active)").execute(conn)?;
     diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_player_flags_steam_id ON player_flags(steam_id)").execute(conn)?;
     diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_player_flags_notified ON player_flags(notified)").execute(conn)?;
+    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_steam_bans_steam_id ON steam_bans(steam_id)").execute(conn)?;
 
     log::info!("Database schema setup completed");
     Ok(())

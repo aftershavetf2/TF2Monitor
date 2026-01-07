@@ -253,6 +253,7 @@ impl SteamApiThread {
                                 comments_fetched: None,
                                 playtimes_fetched: None,
                                 reputation_fetched: None,
+                                steam_bans_last_fetched: None,
                             };
 
                             if let Err(e) = queries::upsert_account(&mut conn, new_account) {
@@ -561,10 +562,36 @@ impl SteamApiThread {
         }
 
         if let Some(bans) = self.steam_api.get_bans(bans_to_fetch) {
+            let current_time = Utc::now().timestamp();
+
             for ban in bans {
                 // Add to cache and then send
                 self.steam_api_cache.set_steam_ban(ban.steamid, ban.clone());
-                self.send(SteamApiMsg::SteamBans(ban.steamid, ban));
+                self.send(SteamApiMsg::SteamBans(ban.steamid, ban.clone()));
+
+                // Persist to database
+                if let Ok(mut conn) = self.db.get() {
+                    use crate::db::entities::NewSteamBan;
+
+                    let new_ban = NewSteamBan {
+                        steam_id: ban.steamid.to_u64() as i64,
+                        community_banned: ban.community_banned,
+                        vac_banned: ban.vac_banned,
+                        number_of_vac_bans: ban.number_of_vac_bans as i32,
+                        days_since_last_ban: ban.days_since_last_ban as i32,
+                        number_of_game_bans: ban.number_of_game_bans as i32,
+                        economy_ban: String::from("none"), // Default value, Steam API doesn't provide this in our struct
+                    };
+
+                    if let Err(e) = queries::upsert_steam_bans(&mut conn, &new_ban) {
+                        log::error!("Failed to persist steam bans for {}: {}", ban.steamid.to_u64(), e);
+                    } else {
+                        // Update the steam_bans_last_fetched timestamp for this account
+                        if let Err(e) = queries::update_steam_bans_last_fetched(&mut conn, ban.steamid.to_u64() as i64, current_time) {
+                            log::debug!("Failed to update steam_bans_last_fetched for {}: {}", ban.steamid.to_u64(), e);
+                        }
+                    }
+                }
             }
         }
     }
