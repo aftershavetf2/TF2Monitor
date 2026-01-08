@@ -196,10 +196,10 @@ impl AppSettings {
 
         settings.save();
 
-        if !settings.validate_settings() {
-            log::info!("Settings are not valid.");
-            exit(1);
-        }
+        // if !settings.validate_settings() {
+        //     log::info!("Settings are not valid.");
+        //     exit(1);
+        // }
 
         Ok(settings)
     }
