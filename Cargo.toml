@@ -27,6 +27,8 @@ eframe = { version = "0.33.3", default-features = false, features = [
     "glow",
     "default_fonts",
     "persistence",
+    "x11",      # Linux X11 support (required for Linux)
+    "wayland",  # Linux Wayland support (modern Linux display server)
 ] }
 
 egui_extras = { version = "0.33.3", default-features = false, features = [
