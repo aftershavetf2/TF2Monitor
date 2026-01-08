@@ -1,5 +1,5 @@
 use super::{
-    get_steam_comments::get_steam_profile_comments, SteamApi, SteamPlayerBan, SteamProfileComment,
+    get_steam_comments::get_steam_profile_comments, SteamApi, SteamProfileComment,
 };
 use crate::config::{
     DB_CACHE_TTL_ACCOUNT_SECONDS, DB_CACHE_TTL_COMMENTS_SECONDS, DB_CACHE_TTL_FRIENDLIST_SECONDS,
@@ -20,7 +20,7 @@ use crate::{
 };
 use chrono::Utc;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
@@ -36,71 +36,10 @@ pub fn start(
     thread::spawn(move || steamapi_thread.run())
 }
 
-struct SteamApiCache {
-    summaries: HashMap<SteamID, PlayerSteamInfo>,
-    friends: HashMap<SteamID, HashSet<SteamID>>,
-    playtimes: HashMap<SteamID, Tf2PlayMinutes>,
-    steam_bans: HashMap<SteamID, SteamPlayerBan>,
-    comments: HashMap<SteamID, Vec<SteamProfileComment>>,
-}
-
-impl SteamApiCache {
-    fn new() -> Self {
-        Self {
-            summaries: HashMap::new(),
-            friends: HashMap::new(),
-            playtimes: HashMap::new(),
-            steam_bans: HashMap::new(),
-            comments: HashMap::new(),
-        }
-    }
-
-    fn get_friends(&self, steamid: SteamID) -> Option<&HashSet<SteamID>> {
-        self.friends.get(&steamid)
-    }
-
-    fn set_friends(&mut self, steamid: SteamID, friends: HashSet<SteamID>) {
-        self.friends.insert(steamid, friends);
-    }
-
-    fn get_summary(&self, steamid: SteamID) -> Option<&PlayerSteamInfo> {
-        self.summaries.get(&steamid)
-    }
-
-    fn set_summary(&mut self, summary: PlayerSteamInfo) {
-        self.summaries.insert(summary.steamid, summary);
-    }
-
-    fn get_playtime(&self, steamid: SteamID) -> Option<&Tf2PlayMinutes> {
-        self.playtimes.get(&steamid)
-    }
-
-    fn set_playtime(&mut self, steamid: SteamID, playtime: &Tf2PlayMinutes) {
-        self.playtimes.insert(steamid, playtime.clone());
-    }
-
-    fn get_steam_ban(&self, steamid: SteamID) -> Option<&SteamPlayerBan> {
-        self.steam_bans.get(&steamid)
-    }
-
-    fn set_steam_ban(&mut self, steamid: SteamID, steam_ban: SteamPlayerBan) {
-        self.steam_bans.insert(steamid, steam_ban);
-    }
-
-    fn get_comments(&self, steamid: SteamID) -> Option<&Vec<SteamProfileComment>> {
-        self.comments.get(&steamid)
-    }
-
-    fn set_comments(&mut self, steamid: SteamID, comments: Vec<SteamProfileComment>) {
-        self.comments.insert(steamid, comments);
-    }
-}
-
 pub struct SteamApiThread {
     bus: Arc<Mutex<AppBus>>,
     shared_lobby: crate::tf2::lobby::shared_lobby::SharedLobby,
     steam_api: SteamApi,
-    steam_api_cache: SteamApiCache,
     db: DbPool,
 }
 
@@ -112,7 +51,6 @@ impl SteamApiThread {
             bus: Arc::clone(bus),
             shared_lobby,
             steam_api: SteamApi::new(settings),
-            steam_api_cache: SteamApiCache::new(),
             db: db.clone(),
         }
     }
@@ -154,13 +92,6 @@ impl SteamApiThread {
 
         for player in lobby.players.iter() {
             if player.steam_info.is_none() {
-                // First check in-memory cache
-                if let Some(summary) = self.steam_api_cache.get_summary(player.steamid) {
-                    // log::info!("Fetched from in-memory cache summary of {}", player.name);
-                    self.send(SteamApiMsg::PlayerSummary(summary.clone()));
-                    continue;
-                }
-
                 // Check database
                 if let Ok(mut conn) = self.db.get() {
                     if let Ok(Some(account)) =
@@ -183,9 +114,6 @@ impl SteamApiThread {
                             avatar_full: account.avatar_full_url.clone(),
                             account_age,
                         };
-
-                        // Add to in-memory cache
-                        self.steam_api_cache.set_summary(summary.clone());
 
                         if is_outdated {
                             // Send cached data first so UI has something to show
@@ -227,8 +155,7 @@ impl SteamApiThread {
                             account_age: account_age.clone(),
                         };
 
-                        // Add to cache and then send
-                        self.steam_api_cache.set_summary(info.clone());
+                        // Send to lobby
                         self.send(SteamApiMsg::PlayerSummary(info.clone()));
 
                         // Persist to database
@@ -274,13 +201,6 @@ impl SteamApiThread {
             let steamid = player.steamid;
 
             if player.steam_info.is_some() {
-                // First check in-memory cache
-                if let Some(friends) = self.steam_api_cache.get_friends(steamid) {
-                    // log::info!("Fetched from in-memory cache friends of {}", player.name);
-                    self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
-                    continue;
-                }
-
                 // Check database
                 if let Ok(mut conn) = self.db.get() {
                     // Get friendships from database first
@@ -301,9 +221,6 @@ impl SteamApiThread {
                             .collect();
 
                         if !friends.is_empty() {
-                            // Add to in-memory cache
-                            self.steam_api_cache.set_friends(steamid, friends.clone());
-
                             // Check if we need to refresh by looking at the account's friends_fetched timestamp
                             let should_refresh = if let Ok(Some(account)) =
                                 queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
@@ -337,7 +254,6 @@ impl SteamApiThread {
                 // Not in cache or outdated, fetch from Steam API
                 log::info!("Fetching friends of {}", player.name);
                 if let Some(friends) = self.steam_api.get_friendlist(steamid) {
-                    self.steam_api_cache.set_friends(steamid, friends.clone());
                     self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
 
                     // Persist to database
@@ -395,13 +311,6 @@ impl SteamApiThread {
         for player in players {
             let steamid = player.steamid;
 
-            // First check in-memory cache
-            if let Some(playtime) = self.steam_api_cache.get_playtime(steamid) {
-                // log::info!("Fetched from in-memory cache playtime for {}", player.name);
-                self.send(SteamApiMsg::Tf2Playtime(steamid, playtime.clone()));
-                continue;
-            }
-
             // Check database
             if let Ok(mut conn) = self.db.get() {
                 // Get playtime from database first
@@ -420,9 +329,6 @@ impl SteamApiThread {
                             Tf2PlayMinutes::Unknown
                         }
                     };
-
-                    // Add to in-memory cache
-                    self.steam_api_cache.set_playtime(steamid, &playtime);
 
                     // Check if we need to refresh by looking at the account's playtimes_fetched timestamp
                     let should_refresh = if let Ok(Some(account)) =
@@ -469,7 +375,6 @@ impl SteamApiThread {
             // Not in cache or outdated, fetch from Steam API
             log::info!("Fetching playtime for {}", player.name);
             let playtime = self.steam_api.get_tf2_play_minutes(steamid);
-            self.steam_api_cache.set_playtime(steamid, &playtime);
             self.send(SteamApiMsg::Tf2Playtime(steamid, playtime.clone()));
 
             // Persist to database
@@ -550,14 +455,8 @@ impl SteamApiThread {
 
         for player in lobby.players.iter() {
             if player.steam_bans.is_none() {
-                // First check cache
-                if let Some(ban) = self.steam_api_cache.get_steam_ban(player.steamid) {
-                    // log::info!("Fetched from cache ban of {}", player.name);
-                    self.send(SteamApiMsg::SteamBans(player.steamid, ban.clone()));
-                } else {
-                    // Bulk fetch from Steam API below
-                    bans_to_fetch.push(player.steamid);
-                }
+                // Bulk fetch from Steam API below
+                bans_to_fetch.push(player.steamid);
             }
         }
 
@@ -565,8 +464,7 @@ impl SteamApiThread {
             let current_time = Utc::now().timestamp();
 
             for ban in bans {
-                // Add to cache and then send
-                self.steam_api_cache.set_steam_ban(ban.steamid, ban.clone());
+                // Send to lobby
                 self.send(SteamApiMsg::SteamBans(ban.steamid, ban.clone()));
 
                 // Persist to database
@@ -692,16 +590,6 @@ impl SteamApiThread {
 
         for player in lobby.players.iter() {
             if player.profile_comments.is_none() {
-                // First check in-memory cache
-                if let Some(comments) = self.steam_api_cache.get_comments(player.steamid) {
-                    // log::info!("Fetched from in-memory cache comments of {}", player.name);
-                    self.send(SteamApiMsg::ProfileComments(
-                        player.steamid,
-                        comments.clone(),
-                    ));
-                    continue;
-                }
-
                 // Check database
                 if let Ok(mut conn) = self.db.get() {
                     // Get comments from database first
@@ -718,9 +606,6 @@ impl SteamApiThread {
                                 comment: c.comment.clone(),
                             })
                             .collect();
-
-                        // Add to in-memory cache
-                        self.steam_api_cache.set_comments(player.steamid, comments.clone());
 
                         // Check if we need to refresh by looking at the account's comments_fetched timestamp
                         let should_refresh = if let Ok(Some(account)) = queries::get_account_by_steam_id(
@@ -772,7 +657,6 @@ impl SteamApiThread {
 
                 let comments = get_steam_profile_comments(steamid.to_u64());
                 if let Some(comments) = comments {
-                    self.steam_api_cache.set_comments(steamid, comments.clone());
                     self.send(SteamApiMsg::ProfileComments(steamid, comments.clone()));
 
                     // Persist to database
@@ -812,7 +696,6 @@ impl SteamApiThread {
 
                     // Set to empty comments to avoid fetching again
                     let comments = Vec::new();
-                    self.steam_api_cache.set_comments(steamid, comments.clone());
                     self.send(SteamApiMsg::ProfileComments(steamid, comments));
                 }
             }

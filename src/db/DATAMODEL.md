@@ -13,7 +13,7 @@
 
 This is the data model for data fetched from SteamWebAPI.
 
-**Status**: Planned (not yet implemented). Currently using in-memory caching (`SteamApiCache`).
+**Status**: Implemented. Data is stored in SQLite and cached with TTL timestamps.
 
 **Primary Keys**:
 
@@ -93,17 +93,14 @@ erDiagram
 
 ```
 
-## Migration Strategy
+## Cache Strategy
 
-When implementing the database, data will need to be migrated from the current in-memory cache (`SteamApiCache`):
+The database serves as the primary cache for Steam API data. Cache freshness is managed via TTL timestamps:
 
-- **Account data**: From `summaries: HashMap<SteamID, PlayerSteamInfo>` → `Account` table
-- **Friendship data**: From `friends: HashMap<SteamID, HashSet<SteamID>>` → `Friendship` table
-- **Comments data**: From `comments: HashMap<SteamID, Vec<SteamProfileComment>>` → `Comments` table
-- **Playtime data**: From `playtimes: HashMap<SteamID, Tf2PlayMinutes>` → `Account.tf2_time`
+- **Account data**: Cached in `account` table, refreshed based on `last_updated`
+- **Friendship data**: Cached in `friendship` table, refreshed based on `friends_fetched` timestamp
+- **Comments data**: Cached in `comments` table, refreshed based on `comments_fetched` timestamp
+- **Playtime data**: Cached in `playtime` table, refreshed based on `playtimes_fetched` timestamp
+- **Steam bans**: Cached in `bans` table, refreshed based on `steam_bans_last_fetched` timestamp
 
-Migration scripts will be created to:
-
-1. Create the database schema
-2. Migrate existing cached data (if any)
-3. Set up indexes and foreign key constraints
+TTL values are configured in `src/config.rs`.
