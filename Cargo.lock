@@ -3479,7 +3479,7 @@ dependencies = [
 
 [[package]]
 name = "tf2monitor"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "bus",
  "chrono",
