@@ -1,6 +1,4 @@
-use super::{
-    get_steam_comments::get_steam_profile_comments, SteamApi, SteamProfileComment,
-};
+use super::{SteamApi, SteamProfileComment, get_steam_comments::get_steam_profile_comments};
 use crate::config::{
     DB_CACHE_TTL_ACCOUNT_SECONDS, DB_CACHE_TTL_COMMENTS_SECONDS, DB_CACHE_TTL_FRIENDLIST_SECONDS,
     DB_CACHE_TTL_PLAYTIME_SECONDS, NUM_ACCOUNT_AGES_TO_APPROX, NUM_FRIENDS_TO_FETCH,
@@ -72,7 +70,7 @@ impl SteamApiThread {
     fn get_latest_lobby(&mut self) {
         // To fetch additional info from Steam Web Api a key is needed
         if !self.steam_api.has_key() {
-            log::warn!("Steam API key is not set, skipping Steam API fetch");
+            // log::warn!("Steam API key is not set, skipping Steam API fetch");
             return;
         }
 
@@ -184,7 +182,11 @@ impl SteamApiThread {
                             };
 
                             if let Err(e) = queries::upsert_account(&mut conn, new_account) {
-                                log::error!("Failed to persist account {}: {}", steamid.to_u64(), e);
+                                log::error!(
+                                    "Failed to persist account {}: {}",
+                                    steamid.to_u64(),
+                                    e
+                                );
                             }
                         }
                     }
@@ -226,7 +228,8 @@ impl SteamApiThread {
                             queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
                         {
                             // Only refresh if timestamp exists AND is outdated
-                            account.friends_fetched
+                            account
+                                .friends_fetched
                                 .map(|ts| current_time - ts > DB_CACHE_TTL_FRIENDLIST_SECONDS)
                                 .unwrap_or(true) // If no timestamp exists, fetch from API
                         } else {
@@ -320,13 +323,20 @@ impl SteamApiThread {
                 {
                     let playtime = match playtime_record.play_minutes {
                         Some(minutes) => {
-                            log::info!("Found playtime in database for {} ({}): {} minutes",
-                                      player.name, steamid.to_u64(), minutes);
+                            log::info!(
+                                "Found playtime in database for {} ({}): {} minutes",
+                                player.name,
+                                steamid.to_u64(),
+                                minutes
+                            );
                             Tf2PlayMinutes::PlayMinutes(minutes as u32)
                         }
                         None => {
-                            log::info!("Found Unknown playtime in database for {} ({})",
-                                      player.name, steamid.to_u64());
+                            log::info!(
+                                "Found Unknown playtime in database for {} ({})",
+                                player.name,
+                                steamid.to_u64()
+                            );
                             Tf2PlayMinutes::Unknown
                         }
                     };
@@ -336,16 +346,24 @@ impl SteamApiThread {
                         queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
                     {
                         // Only refresh if timestamp exists AND is outdated
-                        let result = account.playtimes_fetched
+                        let result = account
+                            .playtimes_fetched
                             .map(|ts| {
                                 let age = current_time - ts;
                                 let is_outdated = age > DB_CACHE_TTL_PLAYTIME_SECONDS;
-                                log::info!("Playtime timestamp for {}: age={}s, outdated={}",
-                                          player.name, age, is_outdated);
+                                log::info!(
+                                    "Playtime timestamp for {}: age={}s, outdated={}",
+                                    player.name,
+                                    age,
+                                    is_outdated
+                                );
                                 is_outdated
                             })
                             .unwrap_or_else(|| {
-                                log::info!("Playtime timestamp for {} is None, not refreshing", player.name);
+                                log::info!(
+                                    "Playtime timestamp for {} is None, not refreshing",
+                                    player.name
+                                );
                                 false
                             });
                         result
@@ -369,7 +387,10 @@ impl SteamApiThread {
                         continue;
                     }
                 } else {
-                    log::info!("No playtime found in database for {}, will fetch from API", player.name);
+                    log::info!(
+                        "No playtime found in database for {}, will fetch from API",
+                        player.name
+                    );
                 }
             }
 
@@ -393,7 +414,11 @@ impl SteamApiThread {
                         };
 
                         if let Err(e) = queries::upsert_playtime(&mut conn, new_playtime) {
-                            log::error!("Failed to persist playtime for {}: {}", steamid.to_u64(), e);
+                            log::error!(
+                                "Failed to persist playtime for {}: {}",
+                                steamid.to_u64(),
+                                e
+                            );
                         }
 
                         // Update playtimes_fetched timestamp
@@ -408,7 +433,10 @@ impl SteamApiThread {
                                 e
                             );
                         } else {
-                            log::info!("Updated playtimes_fetched timestamp for {}", steamid.to_u64());
+                            log::info!(
+                                "Updated playtimes_fetched timestamp for {}",
+                                steamid.to_u64()
+                            );
                         }
                     }
                 }
@@ -425,7 +453,11 @@ impl SteamApiThread {
                         };
 
                         if let Err(e) = queries::upsert_playtime(&mut conn, new_playtime) {
-                            log::error!("Failed to persist playtime for {}: {}", steamid.to_u64(), e);
+                            log::error!(
+                                "Failed to persist playtime for {}: {}",
+                                steamid.to_u64(),
+                                e
+                            );
                         }
 
                         // Update playtimes_fetched timestamp
@@ -440,7 +472,10 @@ impl SteamApiThread {
                                 e
                             );
                         } else {
-                            log::info!("Updated playtimes_fetched timestamp for {} (Unknown playtime)", steamid.to_u64());
+                            log::info!(
+                                "Updated playtimes_fetched timestamp for {} (Unknown playtime)",
+                                steamid.to_u64()
+                            );
                         }
                     }
                 }
@@ -483,11 +518,23 @@ impl SteamApiThread {
                     };
 
                     if let Err(e) = queries::upsert_steam_bans(&mut conn, &new_ban) {
-                        log::error!("Failed to persist steam bans for {}: {}", ban.steamid.to_u64(), e);
+                        log::error!(
+                            "Failed to persist steam bans for {}: {}",
+                            ban.steamid.to_u64(),
+                            e
+                        );
                     } else {
                         // Update the steam_bans_last_fetched timestamp for this account
-                        if let Err(e) = queries::update_steam_bans_last_fetched(&mut conn, ban.steamid.to_u64() as i64, current_time) {
-                            log::debug!("Failed to update steam_bans_last_fetched for {}: {}", ban.steamid.to_u64(), e);
+                        if let Err(e) = queries::update_steam_bans_last_fetched(
+                            &mut conn,
+                            ban.steamid.to_u64() as i64,
+                            current_time,
+                        ) {
+                            log::debug!(
+                                "Failed to update steam_bans_last_fetched for {}: {}",
+                                ban.steamid.to_u64(),
+                                e
+                            );
                         }
                     }
                 }
@@ -609,12 +656,14 @@ impl SteamApiThread {
                             .collect();
 
                         // Check if we need to refresh by looking at the account's comments_fetched timestamp
-                        let should_refresh = if let Ok(Some(account)) = queries::get_account_by_steam_id(
-                            &mut conn,
-                            player.steamid.to_u64() as i64,
-                        ) {
+                        let should_refresh = if let Ok(Some(account)) =
+                            queries::get_account_by_steam_id(
+                                &mut conn,
+                                player.steamid.to_u64() as i64,
+                            ) {
                             // Only refresh if timestamp exists AND is outdated
-                            account.comments_fetched
+                            account
+                                .comments_fetched
                                 .map(|ts| current_time - ts > DB_CACHE_TTL_COMMENTS_SECONDS)
                                 .unwrap_or(false) // If no timestamp exists, don't refresh
                         } else {
