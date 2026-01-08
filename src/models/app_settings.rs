@@ -3,7 +3,7 @@ use crate::tf2bd::models::PlayerAttribute;
 use crate::utils::BoxResult;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{self, prelude::*, ErrorKind};
+use std::io::{self, ErrorKind, prelude::*};
 use std::path::Path;
 use std::process::exit;
 
@@ -21,11 +21,21 @@ fn default_party_notifications_for() -> Vec<PlayerAttribute> {
     vec![PlayerAttribute::Cheater, PlayerAttribute::Bot]
 }
 
+#[cfg(target_os = "windows")]
 pub const DEFAULT_EXE_FILENAME: &str =
     "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf_win64.exe";
 
+#[cfg(target_os = "windows")]
 pub const DEFAULT_LOG_FILENAME: &str =
     "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf\\console.log";
+
+#[cfg(target_os = "linux")]
+pub const DEFAULT_EXE_FILENAME: &str =
+    "~/.local/share/Steam/steamapps/common/Team Fortress 2/hl2_linux";
+
+#[cfg(target_os = "linux")]
+pub const DEFAULT_LOG_FILENAME: &str =
+    "~/.local/share/Steam/steamapps/common/Team Fortress 2/tf/console.log";
 
 pub const DEFAULT_LAUNCH_OPTIONS: &str = "-usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +net_start  +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -console -g15 -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console";
 
@@ -209,20 +219,30 @@ impl AppSettings {
         let mut valid = true;
 
         if !Path::new(&self.exe_filename).exists() {
-            log::warn!("TF2 exe file '{}' does not exist. Please check the path and edit the settings.json file and try again.", self.exe_filename);
+            log::warn!(
+                "TF2 exe file '{}' does not exist. Please check the path and edit the settings.json file and try again.",
+                self.exe_filename
+            );
             valid = false;
         }
 
         if !Path::new(&self.log_filename).exists() {
-            log::warn!("Log file '{}' does not exist. Maybe path is wrong or you have not yet started TF2?", self.log_filename);
+            log::warn!(
+                "Log file '{}' does not exist. Maybe path is wrong or you have not yet started TF2?",
+                self.log_filename
+            );
         }
 
         if !self.self_steamid64.is_valid() {
-            log::warn!("SteamID for yourself is empty or not valid. You will not see a white rectangle for youself in the scoreboard.");
+            log::warn!(
+                "SteamID for yourself is empty or not valid. You will not see a white rectangle for youself in the scoreboard."
+            );
         }
 
         if self.steam_api_key.is_empty() {
-            log::warn!("Steam API key is empty. Some features will not work. Go here to crate a new key: https://steamcommunity.com/dev/apikey");
+            log::warn!(
+                "Steam API key is empty. Some features will not work. Go here to crate a new key: https://steamcommunity.com/dev/apikey"
+            );
         }
 
         if self.rcon_password.is_empty() {
@@ -273,28 +293,20 @@ fn get_exe_filename() -> String {
 
 #[cfg(target_os = "linux")]
 fn get_log_filename() -> String {
-    std::fs::canonicalize(r"~/.local/share/Steam/steamapps/common/Team Fortress 2/tf/console.log")
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string()
+    DEFAULT_LOG_FILENAME.to_string()
 }
 
 #[cfg(target_os = "linux")]
 fn get_exe_filename() -> String {
-    std::fs::canonicalize(r"~/.local/share/Steam/steamapps/common/Team Fortress 2/hl2_linux")
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string()
+    DEFAULT_EXE_FILENAME.to_string()
 }
 
 /// Get the SteamID for the current user, if possible.
 /// This is used to show the current user in the scoreboard.
 #[cfg(target_os = "windows")]
 pub fn get_current_user_steamid() -> Option<SteamID> {
-    use winreg::enums::*;
     use winreg::RegKey;
+    use winreg::enums::*;
 
     log::info!("Trying to find the SteamID for the current user using the Windows registry.");
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
