@@ -7,7 +7,7 @@ pub const RCON_DELAY: Duration = Duration::from_millis(100);
 pub const RCON_LOOP_DELAY: Duration = Duration::from_millis(2000);
 
 /// Lobby thread delay
-pub const LOBBY_LOOP_DELAY: Duration = Duration::from_millis(50);
+pub const LOBBY_LOOP_DELAY: Duration = Duration::from_millis(20);
 
 /// Steam API thread delays
 pub const STEAMAPI_LOOP_DELAY: Duration = Duration::from_millis(100);
