@@ -220,33 +220,34 @@ impl SteamApiThread {
                             })
                             .collect();
 
-                        if !friends.is_empty() {
-                            // Check if we need to refresh by looking at the account's friends_fetched timestamp
-                            let should_refresh = if let Ok(Some(account)) =
-                                queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
-                            {
-                                // Only refresh if timestamp exists AND is outdated
-                                account.friends_fetched
-                                    .map(|ts| current_time - ts > DB_CACHE_TTL_FRIENDLIST_SECONDS)
-                                    .unwrap_or(false) // If no timestamp exists, don't refresh
-                            } else {
-                                false // If no account exists, don't refresh
-                            };
+                        // Check if we need to refresh by looking at the account's friends_fetched timestamp
+                        // This check should happen even if friends list is empty (player might have 0 friends)
+                        let should_refresh = if let Ok(Some(account)) =
+                            queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
+                        {
+                            // Only refresh if timestamp exists AND is outdated
+                            account.friends_fetched
+                                .map(|ts| current_time - ts > DB_CACHE_TTL_FRIENDLIST_SECONDS)
+                                .unwrap_or(true) // If no timestamp exists, fetch from API
+                        } else {
+                            true // If no account exists, fetch from API
+                        };
 
-                            if should_refresh {
-                                // Send cached data first so UI has something to show
+                        if should_refresh {
+                            // If friends list is not empty, send cached data first so UI has something to show
+                            if !friends.is_empty() {
                                 log::info!(
                                     "Sending outdated cached friends for {}, will refresh",
                                     player.name
                                 );
                                 self.send(SteamApiMsg::FriendsList(steamid, friends));
-                                // Continue to fetch fresh data below
-                            } else {
-                                // Data is fresh or no timestamp, use cached data
-                                // log::info!("Fetched from database friends of {}", player.name);
-                                self.send(SteamApiMsg::FriendsList(steamid, friends));
-                                continue;
                             }
+                            // Continue to fetch fresh data below
+                        } else {
+                            // Data is fresh, use cached data (even if empty)
+                            // log::info!("Fetched from database friends of {}", player.name);
+                            self.send(SteamApiMsg::FriendsList(steamid, friends));
+                            continue;
                         }
                     }
                 }
