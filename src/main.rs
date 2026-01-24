@@ -32,5 +32,5 @@ fn main() -> Result<(), eframe::Error> {
     tf2bd::tf2bd_thread::start(&settings, &bus, &db);
     reputation_thread::start(&settings, &bus, &db);
 
-    gui::run(&settings, &bus)
+    gui::run(&settings, &bus, Arc::new(db))
 }

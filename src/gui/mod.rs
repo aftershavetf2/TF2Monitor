@@ -13,6 +13,7 @@ pub mod playtime;
 pub mod recently_left;
 pub mod scoreboard;
 pub mod scoreboard_team;
+pub mod db_statistics_window;
 pub mod settings_window;
 pub mod top_menu;
 pub mod ui_utils;
@@ -22,12 +23,14 @@ use self::friendship_indicators::add_friendship_indicators;
 use crate::{
     appbus::AppBus,
     config::{GUI_REPAINT_DELAY, GUI_SLEEP_DELAY},
+    db::db::DbPool,
     models::{app_settings::AppSettings, AppWin},
 };
 use background_image::get_background_image_desc;
 use chat::add_chat;
 use eframe::egui::{self};
 use kill_feed::add_kill_feed;
+use db_statistics_window::show_db_statistics_window;
 use player_details_panel::add_player_details_panel;
 use settings_window::show_settings_window;
 use std::{
@@ -37,7 +40,7 @@ use std::{
 use top_menu::add_top_menu;
 use window_status_row::add_status_row;
 
-pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), eframe::Error> {
+pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: Arc<DbPool>) -> Result<(), eframe::Error> {
     let icon_image_bytes = include_bytes!("../../images/icon.png");
     let icon_data = Arc::new(eframe::icon_data::from_png_bytes(icon_image_bytes).unwrap());
 
@@ -53,7 +56,7 @@ pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Result<(), efram
         ..Default::default()
     };
 
-    let app_data = AppWin::new(settings, bus);
+    let app_data = AppWin::new(settings, bus, db);
 
     eframe::run_native(
         "TF2 Monitor",
@@ -112,6 +115,9 @@ impl eframe::App for AppWin {
 
         // Show settings window if open
         show_settings_window(self, ctx);
+
+        // Show DB statistics window if open
+        show_db_statistics_window(self, ctx);
 
         sleep(GUI_SLEEP_DELAY);
         ctx.request_repaint_after(GUI_REPAINT_DELAY);

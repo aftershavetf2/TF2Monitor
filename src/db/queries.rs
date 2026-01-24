@@ -628,3 +628,117 @@ pub fn update_steam_bans_last_fetched(
         .execute(conn)?;
     Ok(())
 }
+
+// ============================================================================
+// Statistics queries
+// ============================================================================
+
+/// Get total number of accounts in the database
+pub fn get_total_accounts_count(
+    conn: &mut SqliteConnection,
+) -> Result<i64, diesel::result::Error> {
+    use diesel::dsl::count_star;
+
+    account::table
+        .select(count_star())
+        .first::<i64>(conn)
+}
+
+/// Get count of players with a specific flag type (counts distinct steam_ids)
+pub fn get_player_flag_count(
+    conn: &mut SqliteConnection,
+    flag_type: &str,
+) -> Result<i64, diesel::result::Error> {
+    use diesel::sql_query;
+    use diesel::sql_types::BigInt;
+    use player_flags::dsl;
+
+    // Use raw SQL to count distinct steam_ids with this flag type
+    // This ensures each player is only counted once, even if they have the flag from multiple sources
+    #[derive(QueryableByName)]
+    struct CountResult {
+        #[diesel(sql_type = BigInt)]
+        count: i64,
+    }
+
+    // Use parameterized query to prevent SQL injection
+    // Note: SQLite doesn't support parameters in COUNT(DISTINCT), so we filter first
+    let distinct_steam_ids: Vec<i64> = player_flags::table
+        .filter(dsl::flag_type.eq(flag_type))
+        .select(dsl::steam_id)
+        .distinct()
+        .load(conn)?;
+
+    Ok(distinct_steam_ids.len() as i64)
+}
+
+/// Get count of VAC banned players
+pub fn get_vac_banned_count(
+    conn: &mut SqliteConnection,
+) -> Result<i64, diesel::result::Error> {
+    use diesel::dsl::count_star;
+    use steam_bans::dsl;
+
+    steam_bans::table
+        .filter(dsl::vac_banned.eq(true))
+        .select(count_star())
+        .first::<i64>(conn)
+}
+
+/// Get count of community banned players
+pub fn get_community_banned_count(
+    conn: &mut SqliteConnection,
+) -> Result<i64, diesel::result::Error> {
+    use diesel::dsl::count_star;
+    use steam_bans::dsl;
+
+    steam_bans::table
+        .filter(dsl::community_banned.eq(true))
+        .select(count_star())
+        .first::<i64>(conn)
+}
+
+/// Get count of active friendships
+pub fn get_active_friendships_count(
+    conn: &mut SqliteConnection,
+) -> Result<i64, diesel::result::Error> {
+    use diesel::dsl::count_star;
+    use friendship::dsl;
+
+    friendship::table
+        .filter(dsl::unfriend_date.is_null())
+        .select(count_star())
+        .first::<i64>(conn)
+}
+
+/// Get count of active (non-deleted) comments
+pub fn get_active_comments_count(
+    conn: &mut SqliteConnection,
+) -> Result<i64, diesel::result::Error> {
+    use diesel::dsl::count_star;
+    use comments::dsl;
+
+    comments::table
+        .filter(dsl::deleted_date.is_null())
+        .select(count_star())
+        .first::<i64>(conn)
+}
+
+/// Get count of active (non-expired) bans
+pub fn get_active_bans_count(
+    conn: &mut SqliteConnection,
+    current_time: i64,
+) -> Result<i64, diesel::result::Error> {
+    use diesel::dsl::count_star;
+    use bans::dsl;
+
+    bans::table
+        .filter(
+            dsl::permanent
+                .eq(true)
+                .or(dsl::expires_date.is_null())
+                .or(dsl::expires_date.gt(current_time)),
+        )
+        .select(count_star())
+        .first::<i64>(conn)
+}

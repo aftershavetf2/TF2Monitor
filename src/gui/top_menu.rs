@@ -177,6 +177,13 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
                     .unwrap()
                     .send_rcon_cmd("record fix; stop");
             }
+
+            ui.separator();
+
+            if ui.button("DB Statistics").clicked() {
+                app_win.db_statistics_window_open = true;
+                ui.close();
+            }
         });
     });
 }

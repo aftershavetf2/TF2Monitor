@@ -4,6 +4,7 @@ pub mod steamid;
 use self::{app_settings::AppSettings, steamid::SteamID};
 use crate::{
     appbus::{AppBus, AppEventMsg},
+    db::db::DbPool,
     tf2::lobby::{Lobby, shared_lobby::SharedLobby},
 };
 use eframe::egui::Pos2;
@@ -31,6 +32,12 @@ pub struct AppWin {
     // Settings dialog state
     pub settings_window_open: bool,
     pub temp_settings: Option<TempSettings>,
+
+    // Database statistics window state
+    pub db_statistics_window_open: bool,
+
+    // Database connection pool
+    pub db: Arc<DbPool>,
 }
 
 /// Temporary settings used while editing in the settings dialog
@@ -47,7 +54,7 @@ pub struct TempSettings {
 }
 
 impl AppWin {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: Arc<DbPool>) -> Self {
         // Open settings window automatically if configuration is incomplete
         let settings_window_open = !settings.config_is_ok;
 
@@ -66,6 +73,9 @@ impl AppWin {
 
             settings_window_open,
             temp_settings: None,
+
+            db_statistics_window_open: false,
+            db,
         }
     }
 
