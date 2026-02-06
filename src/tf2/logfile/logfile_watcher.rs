@@ -1,5 +1,6 @@
 use super::line_parser::LogLineParser;
 use crate::appbus::AppBus;
+use crate::config::{LOGFILE_FILE_NOT_EXIST_DELAY, LOGFILE_LOOP_DELAY};
 use crate::models::app_settings::AppSettings;
 use crate::utils::BoxResult;
 use fs_err as fs;
@@ -7,7 +8,6 @@ use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
 use std::path::Path;
-use crate::config::{LOGFILE_FILE_NOT_EXIST_DELAY, LOGFILE_LOOP_DELAY};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -21,7 +21,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
         bus: Arc::clone(bus),
     };
 
-    remove_log_file(&watcher.filename);
+    //remove_log_file(&watcher.filename);
 
     thread::spawn(move || watcher.run())
 }
