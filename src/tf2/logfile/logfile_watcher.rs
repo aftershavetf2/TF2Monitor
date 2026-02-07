@@ -21,21 +21,7 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
         bus: Arc::clone(bus),
     };
 
-    //remove_log_file(&watcher.filename);
-
     thread::spawn(move || watcher.run())
-}
-
-fn remove_log_file(filename: &str) {
-    if Path::new(filename).exists() {
-        log::info!("Removing log file: {}", filename);
-        let _ = fs::remove_file(filename);
-    } else {
-        log::warn!(
-            "Log file does not exist (yet?), or wrong path? {}",
-            filename
-        );
-    }
 }
 
 pub struct LogfileWatcher {
