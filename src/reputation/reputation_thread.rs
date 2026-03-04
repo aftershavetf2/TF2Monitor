@@ -142,7 +142,7 @@ impl ReputationThread {
                     if let Ok(mut conn) = self.db.get() {
                         let current_time = Utc::now().timestamp();
 
-                        for ban in &reputation.bans {
+                        for ban in &reputation.source_bans {
                             // Parse ban_length to determine if permanent
                             let permanent = ban.ban_length.to_lowercase().contains("permanent")
                                 || ban.ban_length.to_lowercase().contains("never");
@@ -202,7 +202,7 @@ impl ReputationThread {
                             let reputation = Reputation {
                                 steamid: player.steamid,
                                 has_bad_reputation: !source_bans.is_empty(),
-                                bans: source_bans,
+                                source_bans,
                             };
 
                             self.reputation_cache.set(reputation.clone());

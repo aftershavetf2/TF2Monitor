@@ -1,7 +1,7 @@
 use super::colors::color_for_flag;
 use super::ui_utils::show_empty_value;
 use crate::{
-    tf2::lobby::{player_attribute_description, Player},
+    tf2::lobby::{Player, player_attribute_description},
     tf2bd::models::PlayerAttribute,
 };
 use eframe::egui::{Color32, Ui};
@@ -20,7 +20,7 @@ pub fn add_reputation(ui: &mut Ui, player: &Player) {
                     let tooltip = format!(
                         "SourceBans:\n{}",
                         reputation
-                            .bans
+                            .source_bans
                             .iter()
                             .map(|ban| format!("- {} for {}", ban.source, ban.reason))
                             .collect::<Vec<String>>()
