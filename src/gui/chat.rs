@@ -1,12 +1,12 @@
 use super::{
-    colors::{hex_to_rgb, CHAT_BLU_COLOR, CHAT_RED_COLOR},
+    colors::{CHAT_BLU_COLOR, CHAT_RED_COLOR, hex_to_rgb},
     markings::add_flags,
 };
 use crate::{
     models::AppWin,
     tf2::lobby::{LobbyChat, Team},
 };
-use eframe::egui::{text::LayoutJob, Color32, ScrollArea, TextFormat, TextStyle, Ui};
+use eframe::egui::{Color32, ScrollArea, TextFormat, TextStyle, Ui, text::LayoutJob};
 
 const CHAT_ROW_HEIGHT_EXTRA: f32 = 3.5;
 
@@ -53,7 +53,7 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
             player_name = &player.name;
             team = player.team;
 
-            add_flags(ui, player, false);
+            add_flags(ui, player);
         }
 
         let color = match team {

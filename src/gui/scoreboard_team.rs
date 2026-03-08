@@ -7,11 +7,11 @@ use super::{
     ui_utils::show_empty_value,
 };
 use crate::{
-    models::{steamid::SteamID, AppWin},
+    models::{AppWin, steamid::SteamID},
     tf2::lobby::{Player, Team},
 };
 use eframe::egui::{
-    text::LayoutJob, Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2,
+    Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2, text::LayoutJob,
 };
 
 const WEAPON_COLUMN_MIN_WIDTH: f32 = 100.0;
@@ -304,18 +304,6 @@ fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, pla
                 let (rect, response) = ui.allocate_at_least(size, Sense::hover());
                 ui.painter().rect_filled(rect, 3.0f32, Color32::WHITE);
                 response.on_hover_text("This is you");
-            }
-
-            if let Some(tooltip) = &player.is_newbie() {
-                let (rect, response) = ui.allocate_at_least(size, Sense::hover());
-                ui.painter().rect_filled(rect, 3.0f32, Color32::GREEN);
-                response.on_hover_text(tooltip);
-            }
-
-            if let Some(tooltip) = &player.has_steam_bans() {
-                let (rect, response) = ui.allocate_at_least(size, Sense::hover());
-                ui.painter().rect_filled(rect, 3.0f32, Color32::RED);
-                response.on_hover_text(tooltip);
             }
 
             if app_win

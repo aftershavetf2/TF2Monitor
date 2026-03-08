@@ -183,6 +183,52 @@ impl Player {
         None
     }
 
+    pub fn has_vac_bans(&self) -> Option<String> {
+        if let Some(steam_bans) = &self.steam_bans {
+            let has_any_bans = steam_bans.vac_banned;
+            if has_any_bans {
+                let mut reasons = String::new();
+
+                reasons.push_str("Player has bans: \n");
+                if steam_bans.vac_banned {
+                    reasons.push_str(
+                        format!("- VAC banned {} times\n", steam_bans.number_of_vac_bans).as_str(),
+                    );
+                    reasons.push_str(
+                        format!("- {} days since last ban\n", steam_bans.days_since_last_ban)
+                            .as_str(),
+                    );
+                }
+
+                return Some(reasons);
+            }
+        }
+
+        None
+    }
+
+    pub fn has_game_bans(&self) -> Option<String> {
+        if let Some(steam_bans) = &self.steam_bans {
+            let has_any_bans = steam_bans.number_of_game_bans > 0;
+            if has_any_bans {
+                let mut reasons = String::new();
+
+                reasons.push_str("Player has bans: \n");
+
+                if steam_bans.number_of_game_bans > 0 {
+                    reasons.push_str(
+                        format!("- Game banned {} times\n", steam_bans.number_of_game_bans)
+                            .as_str(),
+                    );
+                }
+
+                return Some(reasons);
+            }
+        }
+
+        None
+    }
+
     pub fn is_newbie(&self) -> Option<String> {
         let mut is_new_account = false;
         if let Some(steam_info) = &self.steam_info {
