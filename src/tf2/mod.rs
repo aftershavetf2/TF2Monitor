@@ -8,8 +8,8 @@ use std::sync::{Arc, Mutex};
 
 /// Start the background threads for the TF2 module
 pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) {
-    let _rcon_thread_handle = rcon::rcon_thread::start(settings, bus, db);
-    let _lobby_thread_handle = lobby::lobby_thread::start(settings, bus, db);
+    let _rcon_thread_handle = rcon::rcon_thread::start(settings, bus);
+    let _lobby_thread_handle = lobby::lobby_thread::start(settings, bus);
     let _steamapi_thread_handle = steamapi::steamapi_thread::start(settings, bus, db);
 
     let _logfile_watcher_thread_handle = logfile::logfile_watcher::start(settings, bus);

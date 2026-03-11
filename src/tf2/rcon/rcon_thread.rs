@@ -11,12 +11,8 @@ use std::{
 };
 
 /// Start the background thread for the rcon module
-pub fn start(
-    settings: &AppSettings,
-    bus: &Arc<Mutex<AppBus>>,
-    db: &DbPool,
-) -> thread::JoinHandle<()> {
-    let mut rcon_thread = RconThread::new(settings, bus, db);
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
+    let mut rcon_thread = RconThread::new(settings, bus);
 
     thread::spawn(move || rcon_thread.run())
 }
@@ -25,11 +21,10 @@ pub struct RconThread {
     bus: Arc<Mutex<AppBus>>,
     rcon_args: RConArgs,
     rcon_bus_rx: BusReader<String>,
-    db: DbPool,
 }
 
 impl RconThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let mut rcon_args = RConArgs::new();
         rcon_args.ip.clone_from(&settings.rcon_ip);
         rcon_args.port = settings.rcon_port;
@@ -41,7 +36,6 @@ impl RconThread {
             bus: Arc::clone(bus),
             rcon_args,
             rcon_bus_rx,
-            db: db.clone(),
         }
     }
 

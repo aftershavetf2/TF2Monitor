@@ -50,4 +50,3 @@ pub const DB_CACHE_TTL_ACCOUNT_SECONDS: i64 = 7 * 24 * 60 * 60; // 7 days
 pub const DB_CACHE_TTL_FRIENDLIST_SECONDS: i64 = 30 * 24 * 60 * 60; // 30 days
 pub const DB_CACHE_TTL_PLAYTIME_SECONDS: i64 = 30 * 24 * 60 * 60; // 30 days
 pub const DB_CACHE_TTL_COMMENTS_SECONDS: i64 = 30 * 24 * 60 * 60; // 30 days
-pub const DB_CACHE_TTL_REPUTATION_SECONDS: i64 = 30 * 24 * 60 * 60; // 30 days

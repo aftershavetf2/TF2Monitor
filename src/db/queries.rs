@@ -647,7 +647,6 @@ pub fn get_player_flag_count(
     conn: &mut SqliteConnection,
     flag_type: &str,
 ) -> Result<i64, diesel::result::Error> {
-    use diesel::sql_query;
     use diesel::sql_types::BigInt;
     use player_flags::dsl;
 

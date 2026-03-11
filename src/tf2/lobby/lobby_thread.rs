@@ -32,22 +32,17 @@ pub struct LobbyThread {
     shared_lobby: SharedLobby,
 
     text_translator: GoogleTranslator,
-    db: DbPool,
 }
 
 /// Start the background thread for the lobby module
-pub fn start(
-    settings: &AppSettings,
-    bus: &Arc<Mutex<AppBus>>,
-    db: &DbPool,
-) -> thread::JoinHandle<()> {
-    let mut lobby_thread = LobbyThread::new(settings, bus, db);
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
+    let mut lobby_thread = LobbyThread::new(settings, bus);
 
     thread::spawn(move || lobby_thread.run())
 }
 
 impl LobbyThread {
-    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> Self {
+    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
@@ -64,7 +59,6 @@ impl LobbyThread {
             shared_lobby,
 
             text_translator: google_translator,
-            db: db.clone(),
         }
     }
 

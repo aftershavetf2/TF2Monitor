@@ -30,21 +30,6 @@ impl SourceBanSource {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SourceBanFile {
-    pub source: SourceBanSource,
-    pub bans: Vec<SourceBan>,
-}
-
-impl SourceBanFile {
-    pub fn new(source: SourceBanSource) -> SourceBanFile {
-        SourceBanFile {
-            source,
-            bans: vec![],
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SourceBan {
     pub source: String,
     pub steamid: SteamID,
