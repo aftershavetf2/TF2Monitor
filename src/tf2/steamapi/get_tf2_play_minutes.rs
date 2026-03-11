@@ -1,8 +1,6 @@
 use crate::{
-    config::HTTP_CACHE_TTL_TF2_PLAYTIME_DAYS,
-    http_cache::get_from_cache_or_fetch,
-    models::steamid::SteamID,
-    tf2::lobby::Tf2PlayMinutes,
+    config::HTTP_CACHE_TTL_TF2_PLAYTIME_DAYS, http_cache::get_from_cache_or_fetch,
+    models::steamid::SteamID, tf2::lobby::Tf2PlayMinutes,
 };
 use serde::Deserialize;
 
@@ -25,7 +23,8 @@ struct Envelope {
 pub fn get_tf2_play_minutes(steam_api_key: &String, steamid: SteamID) -> Tf2PlayMinutes {
     let url = format!(
         "http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key={}&steamid={}&count=50&format=json",
-        steam_api_key, steamid.to_u64()
+        steam_api_key,
+        steamid.to_u64()
     );
 
     if let Some(data) = get_from_cache_or_fetch(

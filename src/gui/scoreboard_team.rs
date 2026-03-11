@@ -253,12 +253,18 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
 
                 // Player avatar and hover tooltip
                 if let Some(steam_info) = &player.steam_info {
-                    // if player.steamid.to_u64() != 76561198850780330 {
-                    //     log::info!("Player avatar: {}", steam_info.avatar);
-                    ui.image(&steam_info.avatar_thumb)
+                    let response = ui
+                        .image(&steam_info.avatar_thumb)
                         .on_hover_cursor(CursorIcon::Help)
                         .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
-                    // }
+
+                    if response.clicked() {
+                        app_win.set_selected_player(player.steamid);
+                    }
+
+                    if response.double_clicked() {
+                        app_win.open_player_details_window(player.steamid);
+                    }
                 }
 
                 // Player name prefixed with DEAD is not alive
@@ -269,13 +275,17 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                 };
 
                 // Player name and hover tooltip
-                if ui
+                let response = ui
                     .colored_label(name_color, player.name.clone())
                     .on_hover_cursor(CursorIcon::Default)
-                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
-                    .clicked()
-                {
+                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
+
+                if response.clicked() {
                     app_win.set_selected_player(player.steamid);
+                }
+
+                if response.double_clicked() {
+                    app_win.open_player_details_window(player.steamid);
                 }
             });
         });

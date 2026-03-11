@@ -1,5 +1,5 @@
 use diesel::prelude::*;
-use diesel::r2d2::{self, ConnectionManager, Pool, CustomizeConnection};
+use diesel::r2d2::{self, ConnectionManager, CustomizeConnection, Pool};
 use std::path::Path;
 
 const DATABASE_FILE: &str = "appdata.sqlite";
@@ -83,7 +83,10 @@ pub fn connect() -> Result<DbPool, Box<dyn std::error::Error>> {
         .connection_customizer(Box::new(SqliteConnectionCustomizer)) // Apply WAL mode and other settings
         .build(manager)?;
 
-    log::info!("Connected to database '{}' with WAL mode enabled", DATABASE_FILE);
+    log::info!(
+        "Connected to database '{}' with WAL mode enabled",
+        DATABASE_FILE
+    );
 
     // Set up schema (create tables if they don't exist)
     let mut conn = pool.get()?;
@@ -112,18 +115,19 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
             comments_fetched INTEGER,
             playtimes_fetched INTEGER,
             reputation_fetched INTEGER
-        )"
-    ).execute(conn)?;
+        )",
+    )
+    .execute(conn)?;
 
     // Add reputation_fetched column if it doesn't exist (for existing databases)
-    diesel::sql_query(
-        "ALTER TABLE account ADD COLUMN reputation_fetched INTEGER"
-    ).execute(conn).ok(); // Ignore error if column already exists
+    diesel::sql_query("ALTER TABLE account ADD COLUMN reputation_fetched INTEGER")
+        .execute(conn)
+        .ok(); // Ignore error if column already exists
 
     // Add steam_bans_last_fetched column if it doesn't exist (for existing databases)
-    diesel::sql_query(
-        "ALTER TABLE account ADD COLUMN steam_bans_last_fetched INTEGER"
-    ).execute(conn).ok(); // Ignore error if column already exists
+    diesel::sql_query("ALTER TABLE account ADD COLUMN steam_bans_last_fetched INTEGER")
+        .execute(conn)
+        .ok(); // Ignore error if column already exists
 
     // Create friendship table
     diesel::sql_query(
@@ -134,8 +138,9 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
             friend_date INTEGER NOT NULL,
             unfriend_date INTEGER,
             PRIMARY KEY (steam_id, friend_steam_id)
-        )"
-    ).execute(conn)?;
+        )",
+    )
+    .execute(conn)?;
 
     // Create comments table
     diesel::sql_query(
@@ -147,8 +152,9 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
             comment TEXT NOT NULL,
             created_date INTEGER NOT NULL,
             deleted_date INTEGER
-        )"
-    ).execute(conn)?;
+        )",
+    )
+    .execute(conn)?;
 
     // Create playtime table
     diesel::sql_query(
@@ -158,8 +164,9 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
             play_minutes INTEGER,
             last_updated INTEGER NOT NULL,
             PRIMARY KEY (steam_id, game)
-        )"
-    ).execute(conn)?;
+        )",
+    )
+    .execute(conn)?;
 
     // Migrate existing playtime table to make play_minutes nullable
     // SQLite doesn't support ALTER COLUMN, so we need to recreate the table if needed
@@ -176,8 +183,9 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
         }
 
         let column_info: Result<ColumnInfo, _> = diesel::sql_query(
-            "SELECT * FROM pragma_table_info('playtime') WHERE name = 'play_minutes'"
-        ).get_result(conn);
+            "SELECT * FROM pragma_table_info('playtime') WHERE name = 'play_minutes'",
+        )
+        .get_result(conn);
 
         // Check if column is NOT NULL (notnull=1)
         let needs_migration = match &column_info {
@@ -207,8 +215,9 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
                 play_minutes INTEGER,
                 last_updated INTEGER NOT NULL,
                 PRIMARY KEY (steam_id, game)
-            )"
-        ).execute(conn)?;
+            )",
+        )
+        .execute(conn)?;
 
         // Copy data, converting 0 to NULL for unknown playtime
         diesel::sql_query(
@@ -240,8 +249,9 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
             created_date INTEGER NOT NULL,
             expires_date INTEGER,
             permanent INTEGER NOT NULL
-        )"
-    ).execute(conn)?;
+        )",
+    )
+    .execute(conn)?;
 
     // Create ban_sources table
     diesel::sql_query(
@@ -251,8 +261,9 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
             parser TEXT NOT NULL,
             last_checked INTEGER,
             active INTEGER NOT NULL
-        )"
-    ).execute(conn)?;
+        )",
+    )
+    .execute(conn)?;
 
     // Create player_flags table
     diesel::sql_query(
@@ -264,8 +275,9 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
             last_seen INTEGER NOT NULL,
             notified INTEGER NOT NULL,
             PRIMARY KEY (steam_id, flag_type, source)
-        )"
-    ).execute(conn)?;
+        )",
+    )
+    .execute(conn)?;
 
     // Create steam_bans table
     // Note: steam_id is NOT a foreign key - we want to store bans for players
@@ -279,25 +291,49 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
             days_since_last_ban INTEGER NOT NULL,
             number_of_game_bans INTEGER NOT NULL,
             economy_ban TEXT NOT NULL
-        )"
-    ).execute(conn)?;
+        )",
+    )
+    .execute(conn)?;
 
     // Create indexes as specified in DATAMODEL.md
     // Note: Primary keys are automatically indexed, so we only need to create additional indexes
 
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_friendship_steam_id ON friendship(steam_id)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_friendship_friend_steam_id ON friendship(friend_steam_id)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_comments_steam_id ON comments(steam_id)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_comments_writer_steam_id ON comments(writer_steam_id)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_comments_created_date ON comments(created_date)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_playtime_steam_id ON playtime(steam_id)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_playtime_game ON playtime(game)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_bans_steam_id ON bans(steam_id)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_bans_source ON bans(source)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_ban_sources_active ON ban_sources(active)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_player_flags_steam_id ON player_flags(steam_id)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_player_flags_notified ON player_flags(notified)").execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_steam_bans_steam_id ON steam_bans(steam_id)").execute(conn)?;
+    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_friendship_steam_id ON friendship(steam_id)")
+        .execute(conn)?;
+    diesel::sql_query(
+        "CREATE INDEX IF NOT EXISTS idx_friendship_friend_steam_id ON friendship(friend_steam_id)",
+    )
+    .execute(conn)?;
+    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_comments_steam_id ON comments(steam_id)")
+        .execute(conn)?;
+    diesel::sql_query(
+        "CREATE INDEX IF NOT EXISTS idx_comments_writer_steam_id ON comments(writer_steam_id)",
+    )
+    .execute(conn)?;
+    diesel::sql_query(
+        "CREATE INDEX IF NOT EXISTS idx_comments_created_date ON comments(created_date)",
+    )
+    .execute(conn)?;
+    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_playtime_steam_id ON playtime(steam_id)")
+        .execute(conn)?;
+    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_playtime_game ON playtime(game)")
+        .execute(conn)?;
+    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_bans_steam_id ON bans(steam_id)")
+        .execute(conn)?;
+    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_bans_source ON bans(source)")
+        .execute(conn)?;
+    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_ban_sources_active ON ban_sources(active)")
+        .execute(conn)?;
+    diesel::sql_query(
+        "CREATE INDEX IF NOT EXISTS idx_player_flags_steam_id ON player_flags(steam_id)",
+    )
+    .execute(conn)?;
+    diesel::sql_query(
+        "CREATE INDEX IF NOT EXISTS idx_player_flags_notified ON player_flags(notified)",
+    )
+    .execute(conn)?;
+    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_steam_bans_steam_id ON steam_bans(steam_id)")
+        .execute(conn)?;
 
     log::info!("Database schema setup completed");
     Ok(())

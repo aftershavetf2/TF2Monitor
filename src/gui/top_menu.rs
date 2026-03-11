@@ -1,5 +1,5 @@
 use crate::{models::AppWin, tf2bd::models::PlayerAttribute};
-use eframe::egui::{containers::menu::MenuBar, Ui, ViewportCommand};
+use eframe::egui::{Ui, ViewportCommand, containers::menu::MenuBar};
 use std::process::Command;
 
 /*

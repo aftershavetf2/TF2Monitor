@@ -1,4 +1,4 @@
-use super::{get_reputation, sourcebans, Reputation};
+use super::{Reputation, get_reputation, sourcebans};
 use crate::config::{NUM_REPUTATIONS_TO_FETCH, REPUTATION_LOOP_DELAY};
 use crate::db::db::DbPool;
 use crate::db::entities::{NewBan, NewBanSource};
@@ -15,7 +15,11 @@ use std::{
     thread::{self, sleep},
 };
 
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> thread::JoinHandle<()> {
+pub fn start(
+    settings: &AppSettings,
+    bus: &Arc<Mutex<AppBus>>,
+    db: &DbPool,
+) -> thread::JoinHandle<()> {
     let mut reputation_thread = ReputationThread::new(settings, bus, db);
 
     thread::spawn(move || reputation_thread.run())

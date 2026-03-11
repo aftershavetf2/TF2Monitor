@@ -11,7 +11,11 @@ use std::{
 };
 
 /// Start the background thread for the rcon module
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> thread::JoinHandle<()> {
+pub fn start(
+    settings: &AppSettings,
+    bus: &Arc<Mutex<AppBus>>,
+    db: &DbPool,
+) -> thread::JoinHandle<()> {
     let mut rcon_thread = RconThread::new(settings, bus, db);
 
     thread::spawn(move || rcon_thread.run())

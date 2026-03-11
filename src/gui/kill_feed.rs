@@ -1,9 +1,9 @@
-use super::colors::{hex_to_rgb, CHAT_BLU_COLOR, CHAT_RED_COLOR};
+use super::colors::{CHAT_BLU_COLOR, CHAT_RED_COLOR, hex_to_rgb};
 use crate::{
     models::AppWin,
     tf2::lobby::{LobbyKill, Team},
 };
-use eframe::egui::{text::LayoutJob, Color32, ScrollArea, TextFormat, TextStyle, Ui};
+use eframe::egui::{Color32, ScrollArea, TextFormat, TextStyle, Ui, text::LayoutJob};
 
 pub fn add_kill_feed(ui: &mut Ui, app_win: &mut AppWin) {
     ui.heading("Kill Feed");

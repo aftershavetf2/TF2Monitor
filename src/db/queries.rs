@@ -4,7 +4,9 @@ use super::entities::{
     Account, Ban, BanSource, Comment, Friendship, Game, NewAccount, NewBan, NewBanSource,
     NewComment, NewFriendship, NewPlayerFlag, NewPlaytime, NewSteamBan, PlayerFlag, SteamBan,
 };
-use super::schema::{account, ban_sources, bans, comments, friendship, player_flags, playtime, steam_bans};
+use super::schema::{
+    account, ban_sources, bans, comments, friendship, player_flags, playtime, steam_bans,
+};
 
 /// Get all friendships for a given steam_id.
 ///
@@ -634,14 +636,10 @@ pub fn update_steam_bans_last_fetched(
 // ============================================================================
 
 /// Get total number of accounts in the database
-pub fn get_total_accounts_count(
-    conn: &mut SqliteConnection,
-) -> Result<i64, diesel::result::Error> {
+pub fn get_total_accounts_count(conn: &mut SqliteConnection) -> Result<i64, diesel::result::Error> {
     use diesel::dsl::count_star;
 
-    account::table
-        .select(count_star())
-        .first::<i64>(conn)
+    account::table.select(count_star()).first::<i64>(conn)
 }
 
 /// Get count of players with a specific flag type (counts distinct steam_ids)
@@ -673,9 +671,7 @@ pub fn get_player_flag_count(
 }
 
 /// Get count of VAC banned players
-pub fn get_vac_banned_count(
-    conn: &mut SqliteConnection,
-) -> Result<i64, diesel::result::Error> {
+pub fn get_vac_banned_count(conn: &mut SqliteConnection) -> Result<i64, diesel::result::Error> {
     use diesel::dsl::count_star;
     use steam_bans::dsl;
 
@@ -715,8 +711,8 @@ pub fn get_active_friendships_count(
 pub fn get_active_comments_count(
     conn: &mut SqliteConnection,
 ) -> Result<i64, diesel::result::Error> {
-    use diesel::dsl::count_star;
     use comments::dsl;
+    use diesel::dsl::count_star;
 
     comments::table
         .filter(dsl::deleted_date.is_null())
@@ -729,8 +725,8 @@ pub fn get_active_bans_count(
     conn: &mut SqliteConnection,
     current_time: i64,
 ) -> Result<i64, diesel::result::Error> {
-    use diesel::dsl::count_star;
     use bans::dsl;
+    use diesel::dsl::count_star;
 
     bans::table
         .filter(

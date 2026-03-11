@@ -3,10 +3,12 @@ use super::{
     playtime::add_playtime,
 };
 use crate::{
-    models::AppWin,
+    models::{AppWin, steamid::SteamID},
     tf2::lobby::{Player, PlayerKill},
 };
-use eframe::egui::{Color32, Image, OpenUrl, TextFormat, Ui, Vec2, text::LayoutJob};
+use eframe::egui::{
+    self, Color32, Image, OpenUrl, ScrollArea, TextFormat, Ui, Vec2, text::LayoutJob,
+};
 
 pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
     ui.heading("Player Details");
@@ -17,14 +19,49 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
         return;
     }
 
-    let steamid = steamid.unwrap();
-    let player = app_win.lobby.get_player(None, Some(steamid)).or_else(|| {
-        app_win
-            .lobby
-            .recently_left_players
-            .iter()
-            .find(|p| p.steamid == steamid)
-    });
+    ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            add_player_details_for_steamid(app_win, ui, steamid.unwrap());
+        });
+}
+
+pub fn show_player_details_windows(app_win: &mut AppWin, ctx: &egui::Context) {
+    if app_win.open_player_details_windows.is_empty() {
+        return;
+    }
+
+    let open_windows = app_win.open_player_details_windows.clone();
+    let mut still_open = Vec::with_capacity(open_windows.len());
+
+    for steamid in open_windows {
+        let mut window_open = true;
+        let window_title = player_window_title(app_win, steamid);
+
+        egui::Window::new(window_title)
+            .id(egui::Id::new(("player_details_window", steamid.to_u64())))
+            .open(&mut window_open)
+            .resizable(true)
+            .default_width(420.0)
+            .default_height(640.0)
+            .show(ctx, |ui| {
+                ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        add_player_details_for_steamid(app_win, ui, steamid);
+                    });
+            });
+
+        if window_open {
+            still_open.push(steamid);
+        }
+    }
+
+    app_win.open_player_details_windows = still_open;
+}
+
+pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: SteamID) {
+    let player = get_player_by_steamid(app_win, steamid);
 
     if player.is_none() {
         ui.label(format!(
@@ -96,6 +133,24 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
     ui.label("");
 
     add_profile_comments(player, ui);
+}
+
+fn get_player_by_steamid(app_win: &AppWin, steamid: SteamID) -> Option<&Player> {
+    app_win.lobby.get_player(None, Some(steamid)).or_else(|| {
+        app_win
+            .lobby
+            .recently_left_players
+            .iter()
+            .find(|p| p.steamid == steamid)
+    })
+}
+
+fn player_window_title(app_win: &AppWin, steamid: SteamID) -> String {
+    if let Some(player) = get_player_by_steamid(app_win, steamid) {
+        format!("Player Details - {}", player.name)
+    } else {
+        format!("Player Details - {}", steamid.to_u64())
+    }
 }
 
 fn add_player_avatar(player: &Player, ui: &mut Ui) {

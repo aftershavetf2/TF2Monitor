@@ -32,4 +32,3 @@ pub struct NewFriendship {
     pub friend_date: i64,
     pub unfriend_date: Option<i64>,
 }
-

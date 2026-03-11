@@ -2,7 +2,7 @@ use super::colors::color_for_flag;
 use crate::{
     appbus::AppEventMsg,
     models::AppWin,
-    tf2::lobby::{player_attribute_description, Player},
+    tf2::lobby::{Player, player_attribute_description},
     tf2bd::models::PlayerAttribute,
 };
 use eframe::egui::{Checkbox, Ui};

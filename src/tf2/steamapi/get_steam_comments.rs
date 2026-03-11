@@ -1,7 +1,6 @@
 use super::SteamProfileComment;
 use crate::{
-    config::HTTP_CACHE_TTL_STEAM_COMMENTS_DAYS,
-    http_cache::get_from_cache_or_fetch,
+    config::HTTP_CACHE_TTL_STEAM_COMMENTS_DAYS, http_cache::get_from_cache_or_fetch,
     models::steamid::SteamID,
 };
 use serde::Deserialize;

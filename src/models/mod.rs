@@ -23,6 +23,7 @@ pub struct AppWin {
 
     pub self_steamid: SteamID,
     pub selected_player: Option<SteamID>,
+    pub open_player_details_windows: Vec<SteamID>,
     pub spectating: bool,
 
     // When drawing the scoreboard, we remember the center positions of each player's team indicator.
@@ -67,6 +68,7 @@ impl AppWin {
             shared_lobby: bus.lock().unwrap().shared_lobby.clone(),
             self_steamid: settings.self_steamid64,
             selected_player: None,
+            open_player_details_windows: Vec::new(),
             spectating: false,
 
             friendship_positions: HashMap::new(),
@@ -101,6 +103,12 @@ impl AppWin {
     /// The selected player is who is shown in the player details panel.
     pub fn set_selected_player(&mut self, clicked_on_steamid: SteamID) {
         self.selected_player = Some(clicked_on_steamid);
+    }
+
+    pub fn open_player_details_window(&mut self, steamid: SteamID) {
+        if !self.open_player_details_windows.contains(&steamid) {
+            self.open_player_details_windows.push(steamid);
+        }
     }
 
     pub fn is_me(&self, steamid: Option<SteamID>) -> bool {

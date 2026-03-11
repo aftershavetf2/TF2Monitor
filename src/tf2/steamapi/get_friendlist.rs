@@ -1,6 +1,5 @@
 use crate::{
-    config::HTTP_CACHE_TTL_FRIENDLIST_DAYS,
-    http_cache::get_from_cache_or_fetch,
+    config::HTTP_CACHE_TTL_FRIENDLIST_DAYS, http_cache::get_from_cache_or_fetch,
     models::steamid::SteamID,
 };
 use serde::Deserialize;
@@ -28,7 +27,8 @@ struct Response {
 pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<HashSet<SteamID>> {
     let url = format!(
         "https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key={}&steamid={}&relationship=friend",
-        steam_api_key, steamid.to_u64()
+        steam_api_key,
+        steamid.to_u64()
     );
 
     if let Some(data) = get_from_cache_or_fetch(

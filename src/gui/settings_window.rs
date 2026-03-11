@@ -1,4 +1,7 @@
-use crate::models::{AppWin, TempSettings, app_settings::{DEFAULT_EXE_FILENAME, DEFAULT_LAUNCH_OPTIONS, DEFAULT_LOG_FILENAME}};
+use crate::models::{
+    AppWin, TempSettings,
+    app_settings::{DEFAULT_EXE_FILENAME, DEFAULT_LAUNCH_OPTIONS, DEFAULT_LOG_FILENAME},
+};
 use eframe::egui::{self, Grid, Ui};
 
 /// Shows the settings window as an egui Window (internal frame)
@@ -6,7 +9,7 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
     if !app_win.settings_window_open {
         return;
     }
-    
+
     // Initialize temp settings if not already done
     if app_win.temp_settings.is_none() {
         app_win.temp_settings = Some(TempSettings {
@@ -20,46 +23,48 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
             launch_options: app_win.app_settings.launch_options.clone(),
         });
     }
-    
+
     let mut window_open = app_win.settings_window_open;
-    
+
     let mut should_close = false;
     let mut should_save = false;
-    
+
     egui::Window::new("Settings")
-    .open(&mut window_open)
-    .resizable(true)
-    .default_width(500.0)
-    .show(ctx, |ui| {
-        // Show warning message if configuration is incomplete
-        if !app_win.app_settings.config_is_ok {
-            ui.colored_label(
-                ui.visuals().warn_fg_color,
-                "⚠ Configuration is incomplete. Please fill in the required fields below.",
-            );
-            ui.add_space(10.0);
-        }
-        
-        if let Some(ref mut temp) = app_win.temp_settings {
-            show_settings_content(ui, temp);
-            
-            ui.separator();
-            
-            // Buttons at the bottom - aligned to the right
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                if ui.button("Cancel").clicked() {
-                    should_close = true;
-                }
-                
-                if ui.button("Save")
-                .on_hover_text("Saves the settings to the settings.json file")
-                .clicked() {
-                    should_save = true;
-                }
-            });
-        }
-    });
-    
+        .open(&mut window_open)
+        .resizable(true)
+        .default_width(500.0)
+        .show(ctx, |ui| {
+            // Show warning message if configuration is incomplete
+            if !app_win.app_settings.config_is_ok {
+                ui.colored_label(
+                    ui.visuals().warn_fg_color,
+                    "⚠ Configuration is incomplete. Please fill in the required fields below.",
+                );
+                ui.add_space(10.0);
+            }
+
+            if let Some(ref mut temp) = app_win.temp_settings {
+                show_settings_content(ui, temp);
+
+                ui.separator();
+
+                // Buttons at the bottom - aligned to the right
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                    if ui.button("Cancel").clicked() {
+                        should_close = true;
+                    }
+
+                    if ui
+                        .button("Save")
+                        .on_hover_text("Saves the settings to the settings.json file")
+                        .clicked()
+                    {
+                        should_save = true;
+                    }
+                });
+            }
+        });
+
     // Handle button actions outside the window closure
     if should_save {
         if let Some(temp) = app_win.temp_settings.clone() {
@@ -68,12 +73,12 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
         app_win.settings_window_open = false;
         app_win.temp_settings = None;
     }
-    
+
     if should_close {
         app_win.settings_window_open = false;
         app_win.temp_settings = None;
     }
-    
+
     // Update the window open state (handles X button click)
     if !window_open {
         app_win.settings_window_open = false;
@@ -83,9 +88,9 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
 
 fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
     use crate::models::steamid::SteamID;
-    
+
     let info_label_color = egui::Color32::GRAY;
-    
+
     Grid::new("settings_grid")
     .num_columns(2)
     .spacing([15.0, 16.0])
@@ -223,7 +228,7 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
 
 fn save_settings(app_win: &mut AppWin, temp: &TempSettings) {
     use crate::models::steamid::SteamID;
-    
+
     // Parse and validate the settings
     let steamid = if let Some(id) = SteamID::from_u64_string(&temp.self_steamid64) {
         id
@@ -236,12 +241,12 @@ fn save_settings(app_win: &mut AppWin, temp: &TempSettings) {
             app_win.app_settings.self_steamid64
         }
     };
-    
+
     let rcon_port: u16 = temp.rcon_port.parse().unwrap_or_else(|_| {
         log::warn!("Invalid rcon_port, keeping old value");
         app_win.app_settings.rcon_port
     });
-    
+
     // Update app_settings
     app_win.app_settings.self_steamid64 = steamid;
     app_win.app_settings.steam_api_key = temp.steam_api_key.clone();
@@ -251,12 +256,12 @@ fn save_settings(app_win: &mut AppWin, temp: &TempSettings) {
     app_win.app_settings.log_filename = temp.log_filename.clone();
     app_win.app_settings.exe_filename = temp.exe_filename.clone();
     app_win.app_settings.launch_options = temp.launch_options.clone();
-    
+
     // Also update self_steamid in AppWin
     app_win.self_steamid = steamid;
-    
+
     // Save and broadcast
     app_win.updated_settings();
-    
+
     log::info!("Settings updated and saved");
 }

@@ -1,5 +1,5 @@
 use crate::tf2::{lobby::Player, steamapi::SteamProfileComment};
-use eframe::egui::{text::LayoutJob, Color32, OpenUrl, ScrollArea, TextFormat, TextStyle, Ui};
+use eframe::egui::{Color32, OpenUrl, ScrollArea, TextFormat, TextStyle, Ui, text::LayoutJob};
 
 use super::colors::hex_to_rgb;
 

@@ -39,4 +39,3 @@ pub struct NewComment {
     pub created_date: i64,
     pub deleted_date: Option<i64>,
 }
-

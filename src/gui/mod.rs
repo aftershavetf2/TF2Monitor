@@ -3,6 +3,7 @@ pub mod background_image;
 pub mod chat;
 pub mod colors;
 pub mod comments;
+pub mod db_statistics_window;
 pub mod friendship_indicators;
 pub mod kill_feed;
 pub mod markings;
@@ -13,7 +14,6 @@ pub mod playtime;
 pub mod recently_left;
 pub mod scoreboard;
 pub mod scoreboard_team;
-pub mod db_statistics_window;
 pub mod settings_window;
 pub mod top_menu;
 pub mod ui_utils;
@@ -24,14 +24,14 @@ use crate::{
     appbus::AppBus,
     config::{GUI_REPAINT_DELAY, GUI_SLEEP_DELAY},
     db::db::DbPool,
-    models::{app_settings::AppSettings, AppWin},
+    models::{AppWin, app_settings::AppSettings},
 };
 use background_image::get_background_image_desc;
 use chat::add_chat;
+use db_statistics_window::show_db_statistics_window;
 use eframe::egui::{self};
 use kill_feed::add_kill_feed;
-use db_statistics_window::show_db_statistics_window;
-use player_details_panel::add_player_details_panel;
+use player_details_panel::{add_player_details_panel, show_player_details_windows};
 use settings_window::show_settings_window;
 use std::{
     sync::{Arc, Mutex},
@@ -40,7 +40,11 @@ use std::{
 use top_menu::add_top_menu;
 use window_status_row::add_status_row;
 
-pub fn run(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: Arc<DbPool>) -> Result<(), eframe::Error> {
+pub fn run(
+    settings: &AppSettings,
+    bus: &Arc<Mutex<AppBus>>,
+    db: Arc<DbPool>,
+) -> Result<(), eframe::Error> {
     let icon_image_bytes = include_bytes!("../../images/icon.png");
     let icon_data = Arc::new(eframe::icon_data::from_png_bytes(icon_image_bytes).unwrap());
 
@@ -118,6 +122,9 @@ impl eframe::App for AppWin {
 
         // Show DB statistics window if open
         show_db_statistics_window(self, ctx);
+
+        // Show separate player detail windows
+        show_player_details_windows(self, ctx);
 
         sleep(GUI_SLEEP_DELAY);
         ctx.request_repaint_after(GUI_REPAINT_DELAY);

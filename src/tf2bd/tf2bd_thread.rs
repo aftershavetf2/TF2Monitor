@@ -1,4 +1,4 @@
-use super::{models::PlayerAttribute, ruleset_handler::RulesetHandler, Tf2bdMsg};
+use super::{Tf2bdMsg, models::PlayerAttribute, ruleset_handler::RulesetHandler};
 use crate::config::TF2BD_LOOP_DELAY;
 use crate::db::db::DbPool;
 use crate::db::entities::NewPlayerFlag;
@@ -21,7 +21,11 @@ const FILENAME: &str = "playerlist.json";
 
 const VOTE_PERIOD_SECONDS: u64 = 10;
 
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> thread::JoinHandle<()> {
+pub fn start(
+    settings: &AppSettings,
+    bus: &Arc<Mutex<AppBus>>,
+    db: &DbPool,
+) -> thread::JoinHandle<()> {
     let mut tf2bd_thread = Tf2bdThread::new(settings, bus, db);
 
     thread::spawn(move || tf2bd_thread.run())

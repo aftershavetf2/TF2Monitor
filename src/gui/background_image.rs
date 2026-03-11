@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use eframe::egui::{include_image, Color32, ImageSource};
+use eframe::egui::{Color32, ImageSource, include_image};
 
 pub struct ImageDescription {
     pub author: String,

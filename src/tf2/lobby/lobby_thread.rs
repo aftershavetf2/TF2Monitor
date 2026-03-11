@@ -1,5 +1,5 @@
-use super::shared_lobby::SharedLobby;
 use super::LobbyKill;
+use super::shared_lobby::SharedLobby;
 use super::{LobbyChat, Player, PlayerKill};
 use crate::config::LOBBY_LOOP_DELAY;
 use crate::db::db::DbPool;
@@ -36,7 +36,11 @@ pub struct LobbyThread {
 }
 
 /// Start the background thread for the lobby module
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> thread::JoinHandle<()> {
+pub fn start(
+    settings: &AppSettings,
+    bus: &Arc<Mutex<AppBus>>,
+    db: &DbPool,
+) -> thread::JoinHandle<()> {
     let mut lobby_thread = LobbyThread::new(settings, bus, db);
 
     thread::spawn(move || lobby_thread.run())

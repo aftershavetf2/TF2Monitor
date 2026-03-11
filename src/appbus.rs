@@ -1,12 +1,12 @@
 use crate::{
     models::app_settings::AppSettings,
     tf2::{
-        lobby::{shared_lobby::SharedLobby, Lobby, Player},
+        lobby::{Lobby, Player, shared_lobby::SharedLobby},
         logfile::LogLine,
         rcon::G15DumpPlayerOutput,
         steamapi::SteamApiMsg,
     },
-    tf2bd::{models::PlayerAttribute, Tf2bdMsg},
+    tf2bd::{Tf2bdMsg, models::PlayerAttribute},
 };
 use bus::Bus;
 
