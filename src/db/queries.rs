@@ -80,6 +80,16 @@ pub fn get_account_by_steam_id(
     Ok(result)
 }
 
+pub fn get_all_accounts(
+    conn: &mut SqliteConnection,
+) -> Result<Vec<Account>, diesel::result::Error> {
+    use account::dsl;
+
+    account::table
+        .order((dsl::name.asc(), dsl::steam_id.asc()))
+        .load::<Account>(conn)
+}
+
 /// Insert or update an account record.
 /// When updating existing records, preserves timestamp fields (friends_fetched, comments_fetched,
 /// playtimes_fetched, reputation_fetched) and only updates account info fields.
@@ -542,6 +552,16 @@ pub fn get_player_flags(
 
     player_flags::table
         .filter(dsl::steam_id.eq(steam_id))
+        .load::<PlayerFlag>(conn)
+}
+
+pub fn get_all_player_flags(
+    conn: &mut SqliteConnection,
+) -> Result<Vec<PlayerFlag>, diesel::result::Error> {
+    use player_flags::dsl;
+
+    player_flags::table
+        .order((dsl::steam_id.asc(), dsl::flag_type.asc(), dsl::source.asc()))
         .load::<PlayerFlag>(conn)
 }
 

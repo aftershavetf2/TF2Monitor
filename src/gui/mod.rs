@@ -7,6 +7,7 @@ pub mod db_statistics_window;
 pub mod friendship_indicators;
 pub mod kill_feed;
 pub mod markings;
+pub mod player_database_window;
 pub mod player_details_panel;
 pub mod player_flag_editor;
 pub mod player_tooltip;
@@ -31,6 +32,7 @@ use chat::add_chat;
 use db_statistics_window::show_db_statistics_window;
 use eframe::egui::{self};
 use kill_feed::add_kill_feed;
+use player_database_window::show_player_database_window;
 use player_details_panel::{add_player_details_panel, show_player_details_windows};
 use settings_window::show_settings_window;
 use std::{
@@ -122,6 +124,9 @@ impl eframe::App for AppWin {
 
         // Show DB statistics window if open
         show_db_statistics_window(self, ctx);
+
+        // Show player database window if open
+        show_player_database_window(self, ctx);
 
         // Show separate player detail windows
         show_player_details_windows(self, ctx);

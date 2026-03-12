@@ -184,6 +184,11 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
                 app_win.db_statistics_window_open = true;
                 ui.close();
             }
+
+            if ui.button("Player Database").clicked() {
+                app_win.player_database_window_open = true;
+                ui.close();
+            }
         });
     });
 }

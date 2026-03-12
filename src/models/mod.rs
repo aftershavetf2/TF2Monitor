@@ -6,10 +6,11 @@ use crate::{
     appbus::{AppBus, AppEventMsg},
     db::db::DbPool,
     tf2::lobby::{Lobby, shared_lobby::SharedLobby},
+    tf2bd::models::PlayerAttribute,
 };
 use eframe::egui::Pos2;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
 };
 
@@ -36,6 +37,9 @@ pub struct AppWin {
 
     // Database statistics window state
     pub db_statistics_window_open: bool,
+    pub player_database_window_open: bool,
+    pub player_database_filters: HashSet<PlayerAttribute>,
+    pub player_database_search: String,
 
     // Database connection pool
     pub db: Arc<DbPool>,
@@ -77,6 +81,9 @@ impl AppWin {
             temp_settings: None,
 
             db_statistics_window_open: false,
+            player_database_window_open: false,
+            player_database_filters: HashSet::from([PlayerAttribute::Cheater]),
+            player_database_search: String::new(),
             db,
         }
     }
