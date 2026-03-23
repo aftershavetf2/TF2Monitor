@@ -1,5 +1,5 @@
 use crate::models::steamid::SteamID;
-use sourcebans::SourceBan;
+use sourcebans::{SourceBan, SourceBanFetchResult};
 
 pub mod etf2l;
 pub mod reputation_thread;
@@ -12,13 +12,20 @@ pub struct Reputation {
     pub source_bans: Vec<SourceBan>,
 }
 
-pub fn get_reputation(steamid: SteamID) -> Reputation {
-    let source_bans = sourcebans::get_source_bans(steamid);
-    let has_bad_reputation = !source_bans.is_empty();
+pub fn get_reputation(steamid: SteamID) -> Option<Reputation> {
+    let SourceBanFetchResult {
+        bans: source_bans,
+        successful_sources,
+        ..
+    } = sourcebans::get_source_bans(steamid);
 
-    Reputation {
-        steamid,
-        has_bad_reputation,
-        source_bans,
+    if successful_sources == 0 {
+        return None;
     }
+
+    Some(Reputation {
+        steamid,
+        has_bad_reputation: !source_bans.is_empty(),
+        source_bans,
+    })
 }

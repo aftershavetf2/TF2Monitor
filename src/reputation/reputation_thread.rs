@@ -127,93 +127,98 @@ impl ReputationThread {
 
             if let Some(reputation) = self.reputation_cache.get(player.steamid) {
                 self.send(SteamApiMsg::Reputation(reputation.clone()));
-                continue;
+            } else if let Some(reputation) = self.load_reputation_from_db(player.steamid) {
+                self.reputation_cache.set(reputation.clone());
+                self.send(SteamApiMsg::Reputation(reputation));
             }
 
             if !one_fetched {
-                // Check if reputation was fetched recently (within 7 days)
                 if self.should_fetch_reputation(player.steamid) {
-                    // Fetch from internet
                     one_fetched = true;
 
-                    let reputation = get_reputation(player.steamid);
-
-                    self.reputation_cache.set(reputation.clone());
-
-                    self.send(SteamApiMsg::Reputation(reputation.clone()));
-
-                    // Persist bans to database and update reputation_fetched timestamp
-                    if let Ok(mut conn) = self.db.get() {
-                        let current_time = Utc::now().timestamp();
-
-                        for ban in &reputation.source_bans {
-                            // Parse ban_length to determine if permanent
-                            let permanent = ban.ban_length.to_lowercase().contains("permanent")
-                                || ban.ban_length.to_lowercase().contains("never");
-
-                            let new_ban = NewBan {
-                                steam_id: ban.steamid.to_u64() as i64,
-                                source: ban.source.clone(),
-                                ban_type: String::from("sourcebans"),
-                                reason: Some(ban.reason.clone()),
-                                created_date: current_time,
-                                expires_date: None, // Could parse ban_length here if needed
-                                permanent,
-                            };
-
-                            if let Err(e) = queries::insert_ban(&mut conn, new_ban) {
-                                log::debug!("Ban already exists or error: {}", e);
-                            }
-                        }
-
-                        // Update reputation_fetched timestamp
-                        if let Err(e) = queries::update_account_reputation_fetched(
-                            &mut conn,
-                            player.steamid.to_u64() as i64,
-                            current_time,
-                        ) {
-                            log::error!(
-                                "Failed to update reputation_fetched for {}: {}",
-                                player.steamid.to_u64(),
-                                e
-                            );
-                        }
-                    }
-                } else {
-                    // Load from database (reputation was fetched within 7 days)
-                    if let Ok(mut conn) = self.db.get() {
-                        if let Ok(bans) = queries::get_all_bans_for_account(
-                            &mut conn,
-                            player.steamid.to_u64() as i64,
-                        ) {
-                            // Convert database bans to SourceBans
-                            let source_bans: Vec<sourcebans::SourceBan> = bans
-                                .iter()
-                                .filter(|ban| ban.ban_type == "sourcebans")
-                                .map(|ban| sourcebans::SourceBan {
-                                    source: ban.source.clone(),
-                                    steamid: player.steamid,
-                                    when: String::new(), // Not stored in DB
-                                    ban_length: if ban.permanent {
-                                        String::from("Permanent")
-                                    } else {
-                                        String::new()
-                                    },
-                                    reason: ban.reason.clone().unwrap_or_default(),
-                                })
-                                .collect();
-
-                            let reputation = Reputation {
-                                steamid: player.steamid,
-                                has_bad_reputation: !source_bans.is_empty(),
-                                source_bans,
-                            };
-
-                            self.reputation_cache.set(reputation.clone());
-                            self.send(SteamApiMsg::Reputation(reputation));
-                        }
+                    if let Some(reputation) = get_reputation(player.steamid) {
+                        self.reputation_cache.set(reputation.clone());
+                        self.send(SteamApiMsg::Reputation(reputation.clone()));
+                        self.persist_reputation(player.steamid, &reputation);
+                    } else {
+                        log::warn!(
+                            "Skipping reputation cache update for {} because all SourceBans sources failed",
+                            player.steamid.to_u64()
+                        );
                     }
                 }
+            }
+        }
+    }
+
+    fn load_reputation_from_db(&self, steamid: SteamID) -> Option<Reputation> {
+        if let Ok(mut conn) = self.db.get() {
+            let account =
+                queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64).ok()??;
+
+            let bans = queries::get_all_bans_for_account(&mut conn, steamid.to_u64() as i64).ok()?;
+            let source_bans: Vec<sourcebans::SourceBan> = bans
+                .iter()
+                .filter(|ban| ban.ban_type == "sourcebans")
+                .map(|ban| sourcebans::SourceBan {
+                    source: ban.source.clone(),
+                    steamid,
+                    when: String::new(), // Not stored in DB
+                    ban_length: if ban.permanent {
+                        String::from("Permanent")
+                    } else {
+                        String::new()
+                    },
+                    reason: ban.reason.clone().unwrap_or_default(),
+                })
+                .collect();
+
+            if source_bans.is_empty() && account.reputation_fetched.is_none() {
+                return None;
+            }
+
+            return Some(Reputation {
+                steamid,
+                has_bad_reputation: !source_bans.is_empty(),
+                source_bans,
+            });
+        }
+
+        None
+    }
+
+    fn persist_reputation(&self, steamid: SteamID, reputation: &Reputation) {
+        if let Ok(mut conn) = self.db.get() {
+            let current_time = Utc::now().timestamp();
+
+            for ban in &reputation.source_bans {
+                // Parse ban_length to determine if permanent
+                let permanent = ban.ban_length.to_lowercase().contains("permanent")
+                    || ban.ban_length.to_lowercase().contains("never");
+
+                let new_ban = NewBan {
+                    steam_id: ban.steamid.to_u64() as i64,
+                    source: ban.source.clone(),
+                    ban_type: String::from("sourcebans"),
+                    reason: Some(ban.reason.clone()),
+                    created_date: current_time,
+                    expires_date: None,
+                    permanent,
+                };
+
+                if let Err(e) = queries::insert_ban(&mut conn, new_ban) {
+                    log::debug!("Ban already exists or error: {}", e);
+                }
+            }
+
+            if let Err(e) =
+                queries::update_account_reputation_fetched(&mut conn, steamid.to_u64() as i64, current_time)
+            {
+                log::error!(
+                    "Failed to update reputation_fetched for {}: {}",
+                    steamid.to_u64(),
+                    e
+                );
             }
         }
     }

@@ -38,6 +38,12 @@ pub struct SourceBan {
     pub reason: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct SourceBanFetchResult {
+    pub bans: Vec<SourceBan>,
+    pub successful_sources: usize,
+}
+
 // Test subject:
 // - Multiple bans: https://steamhistory.net/id/76561198398458549
 // - Multiple bans: https://steamhistory.net/id/76561199163606348
@@ -106,14 +112,14 @@ pub fn get_sources() -> Vec<SourceBanSource> {
     ]
 }
 
-pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
+pub fn get_source_bans(steamid: SteamID) -> SourceBanFetchResult {
     log::info!("SourceBans: Fetching SourceBans for {}", steamid.to_u64());
     let sources = get_sources();
 
     let mut successful_sources = 0;
     let mut failed_sources = 0;
 
-    let result = sources
+    let bans = sources
         // .par_iter()
         .iter()
         .map(|source| {
@@ -133,7 +139,7 @@ pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
     log::info!(
         "SourceBans: Completed fetch for {} - {} bans found from {}/{} sources ({} failed)",
         steamid.to_u64(),
-        result.len(),
+        bans.len(),
         successful_sources,
         sources.len(),
         failed_sources
@@ -147,7 +153,10 @@ pub fn get_source_bans(steamid: SteamID) -> Vec<SourceBan> {
         );
     }
 
-    result
+    SourceBanFetchResult {
+        bans,
+        successful_sources,
+    }
 }
 
 fn get_source_ban(source: &SourceBanSource, steamid: SteamID) -> Option<Vec<SourceBan>> {
