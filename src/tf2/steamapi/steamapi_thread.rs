@@ -207,7 +207,7 @@ impl SteamApiThread {
                 if let Ok(mut conn) = self.db.get() {
                     // Get friendships from database first
                     if let Ok(friendships) =
-                        queries::get_friendships(&mut conn, steamid.to_u64() as i64, true)
+                        queries::get_friendships(&mut conn, steamid.to_u64() as i64, false)
                     {
                         // Convert to HashSet<SteamID>
                         let friends: HashSet<SteamID> = friendships
@@ -258,7 +258,26 @@ impl SteamApiThread {
                 // Not in cache or outdated, fetch from Steam API
                 log::info!("Fetching friends of {}", player.name);
                 if let Some(friends) = self.steam_api.get_friendlist(steamid) {
-                    self.send(SteamApiMsg::FriendsList(steamid, friends.clone()));
+                    let mut display_friends = friends.clone();
+
+                    // Preserve known friendships in the UI even if the live profile no longer
+                    // exposes them, so players cannot hide old relationships by clearing their
+                    // friend list after we have already observed it.
+                    if let Ok(mut conn) = self.db.get() {
+                        if let Ok(friendships) =
+                            queries::get_friendships(&mut conn, steamid.to_u64() as i64, false)
+                        {
+                            display_friends.extend(friendships.iter().filter_map(|f| {
+                                if f.steam_id == steamid.to_u64() as i64 {
+                                    Some(SteamID::from_u64(f.friend_steam_id as u64))
+                                } else {
+                                    Some(SteamID::from_u64(f.steam_id as u64))
+                                }
+                            }));
+                        }
+                    }
+
+                    self.send(SteamApiMsg::FriendsList(steamid, display_friends));
 
                     // Persist to database
                     if let Ok(mut conn) = self.db.get() {
