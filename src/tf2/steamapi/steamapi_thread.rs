@@ -661,22 +661,28 @@ impl SteamApiThread {
                                 &mut conn,
                                 player.steamid.to_u64() as i64,
                             ) {
-                            // Only refresh if timestamp exists AND is outdated
+                            // No timestamp means we have never fetched comments for this profile,
+                            // even if the database currently has zero cached rows.
                             account
                                 .comments_fetched
                                 .map(|ts| current_time - ts > DB_CACHE_TTL_COMMENTS_SECONDS)
-                                .unwrap_or(false) // If no timestamp exists, don't refresh
+                                .unwrap_or(true)
                         } else {
-                            false // If no account exists, don't refresh
+                            true
                         };
 
                         if should_refresh {
-                            // Send cached data first so UI has something to show
-                            log::info!(
-                                "Sending outdated cached comments for {}, will refresh",
-                                player.name
-                            );
-                            self.send(SteamApiMsg::ProfileComments(player.steamid, comments));
+                            // Only send cached comments if we actually have some.
+                            // An empty DB result is not a real cache hit and should not mark
+                            // the player as "done", otherwise only the first few queued
+                            // profiles ever get a live fetch.
+                            if !comments.is_empty() {
+                                log::info!(
+                                    "Sending outdated cached comments for {}, will refresh",
+                                    player.name
+                                );
+                                self.send(SteamApiMsg::ProfileComments(player.steamid, comments));
+                            }
                             // Mark for refresh
                             comments_to_fetch.push(player.steamid);
                             continue;
@@ -699,10 +705,6 @@ impl SteamApiThread {
             .take(NUM_PROFILE_COMMENTS_TO_FETCH)
         {
             if let Some(player) = lobby.get_player(None, Some(steamid)) {
-                if player.steam_info.is_none() {
-                    continue;
-                }
-
                 log::info!("Fetching profile comments for {}", player.name);
 
                 let comments = get_steam_profile_comments(steamid.to_u64());
