@@ -1,7 +1,8 @@
 use crate::{
     models::app_settings::AppSettings,
+    models::steamid::SteamID,
     tf2::{
-        lobby::{Lobby, Player, shared_lobby::SharedLobby},
+        lobby::{Lobby, shared_lobby::SharedLobby},
         logfile::LogLine,
         rcon::G15DumpPlayerOutput,
         steamapi::SteamApiMsg,
@@ -62,6 +63,11 @@ impl AppBus {
 #[derive(Debug, Clone)]
 pub enum AppEventMsg {
     /// Sets or removes a flag(Cheater, Exploiter, etc) for a SteamID
-    SetPlayerFlag(Player, PlayerAttribute, bool),
+    SetPlayerFlag {
+        steamid: SteamID,
+        name: String,
+        flag: PlayerAttribute,
+        enable: bool,
+    },
     UpdatedSettings(AppSettings),
 }

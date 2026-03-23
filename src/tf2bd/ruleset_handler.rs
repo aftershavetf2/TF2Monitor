@@ -1,7 +1,7 @@
 use chrono::Local;
 
 use super::models::{PlayerAttribute, PlayerInfo, PlayerLastSeen, TF2BDPlayerList};
-use crate::{models::steamid::SteamID, tf2::lobby::Player};
+use crate::models::steamid::SteamID;
 use std::collections::HashMap;
 
 pub struct RulesetHandler {
@@ -30,29 +30,35 @@ impl RulesetHandler {
         self.player_rules.get(steamid)
     }
 
-    pub fn set_player_flags(&mut self, player: Player, flag: PlayerAttribute, enable: bool) {
-        if let Some(player_info) = self.player_rules.get_mut(&player.steamid) {
+    pub fn set_player_flags(
+        &mut self,
+        steamid: SteamID,
+        player_name: Option<&str>,
+        flag: PlayerAttribute,
+        enable: bool,
+    ) {
+        if let Some(player_info) = self.player_rules.get_mut(&steamid) {
             player_info.attributes.retain(|x| *x != flag);
             if enable {
                 player_info.attributes.push(flag);
             }
 
             if player_info.attributes.is_empty() {
-                self.player_rules.remove(&player.steamid);
+                self.player_rules.remove(&steamid);
             }
         } else if enable {
             let last_seen = PlayerLastSeen {
-                player_name: Some(player.name.clone()),
+                player_name: player_name.map(str::to_string),
                 time: Local::now().timestamp(),
             };
 
             let player_info = PlayerInfo {
-                steamid32: player.steamid.to_steam_id32(),
+                steamid32: steamid.to_steam_id32(),
                 last_seen: Some(last_seen),
                 attributes: vec![flag],
             };
 
-            self.player_rules.insert(player.steamid, player_info);
+            self.player_rules.insert(steamid, player_info);
         }
 
         self.save();

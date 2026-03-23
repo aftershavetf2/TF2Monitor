@@ -78,11 +78,12 @@ fn add_flag(
                 .lock()
                 .unwrap()
                 .app_event_bus
-                .broadcast(AppEventMsg::SetPlayerFlag(
-                    player.clone(),
-                    player_attribute,
+                .broadcast(AppEventMsg::SetPlayerFlag {
+                    steamid: player.steamid,
+                    name: player.name.clone(),
+                    flag: player_attribute,
                     enable,
-                ));
+                });
         }
     });
 }

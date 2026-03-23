@@ -156,7 +156,8 @@ impl ReputationThread {
             let account =
                 queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64).ok()??;
 
-            let bans = queries::get_all_bans_for_account(&mut conn, steamid.to_u64() as i64).ok()?;
+            let bans =
+                queries::get_all_bans_for_account(&mut conn, steamid.to_u64() as i64).ok()?;
             let source_bans: Vec<sourcebans::SourceBan> = bans
                 .iter()
                 .filter(|ban| ban.ban_type == "sourcebans")
@@ -211,9 +212,11 @@ impl ReputationThread {
                 }
             }
 
-            if let Err(e) =
-                queries::update_account_reputation_fetched(&mut conn, steamid.to_u64() as i64, current_time)
-            {
+            if let Err(e) = queries::update_account_reputation_fetched(
+                &mut conn,
+                steamid.to_u64() as i64,
+                current_time,
+            ) {
                 log::error!(
                     "Failed to update reputation_fetched for {}: {}",
                     steamid.to_u64(),

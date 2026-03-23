@@ -110,29 +110,42 @@ impl Tf2bdThread {
     fn process_app_event_bus(&mut self) {
         while let Ok(app_event) = self.app_event_bus_rx.try_recv() {
             match app_event {
-                AppEventMsg::SetPlayerFlag(player, flag, enable) => {
-                    self.set_player_flag(player, flag, enable)
-                }
+                AppEventMsg::SetPlayerFlag {
+                    steamid,
+                    name,
+                    flag,
+                    enable,
+                } => self.set_player_flag(steamid, &name, flag, enable),
                 AppEventMsg::UpdatedSettings(settings) => self.app_settings = settings,
             }
         }
     }
 
-    fn set_player_flag(&mut self, player: Player, player_attribute: PlayerAttribute, enable: bool) {
+    fn set_player_flag(
+        &mut self,
+        steamid: SteamID,
+        player_name: &str,
+        player_attribute: PlayerAttribute,
+        enable: bool,
+    ) {
         log::info!(
-            "Setting player attribute {:?} for {}({}) to {}",
+            "Setting player attribute {:?} for {} ({}) to {}",
             player_attribute,
-            player.name,
-            player.steamid.to_u64(),
+            player_name,
+            steamid.to_u64(),
             enable
         );
 
         // Send out the updated marking
-        let data = self.ruleset_handler.get_player_marking(&player.steamid);
-        self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.cloned()));
+        let data = self.ruleset_handler.get_player_marking(&steamid);
+        self.send(Tf2bdMsg::Tf2bdPlayerMarking(steamid, data.cloned()));
 
-        self.ruleset_handler
-            .set_player_flags(player.clone(), player_attribute, enable);
+        self.ruleset_handler.set_player_flags(
+            steamid,
+            Some(player_name),
+            player_attribute,
+            enable,
+        );
 
         // Persist to database
         if let Ok(mut conn) = self.db.get() {
@@ -143,7 +156,7 @@ impl Tf2bdThread {
             if enable {
                 // Add or update the flag
                 let new_flag = NewPlayerFlag {
-                    steam_id: player.steamid.to_u64() as i64,
+                    steam_id: steamid.to_u64() as i64,
                     flag_type,
                     source,
                     first_seen: current_time,
@@ -154,7 +167,7 @@ impl Tf2bdThread {
                 if let Err(e) = queries::upsert_player_flag(&mut conn, new_flag) {
                     log::error!(
                         "Failed to persist player flag for {}: {}",
-                        player.steamid.to_u64(),
+                        steamid.to_u64(),
                         e
                     );
                 }
@@ -162,13 +175,13 @@ impl Tf2bdThread {
                 // Remove the flag
                 if let Err(e) = queries::remove_player_flag(
                     &mut conn,
-                    player.steamid.to_u64() as i64,
+                    steamid.to_u64() as i64,
                     &flag_type,
                     &source,
                 ) {
                     log::error!(
                         "Failed to remove player flag for {}: {}",
-                        player.steamid.to_u64(),
+                        steamid.to_u64(),
                         e
                     );
                 }
