@@ -76,11 +76,17 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
     let flags_by_steamid = group_flags_by_steamid(&player_flags);
 
     ui.heading("Filters");
+
+    ui.add_space(8.0);
+
     ui.add(
         TextEdit::singleline(&mut app_win.player_database_search)
             .hint_text("Filter by name or SteamID64")
             .desired_width(280.0),
     );
+
+    ui.add_space(15.0);
+
     ui.horizontal_wrapped(|ui| {
         for player_attribute in PLAYER_DATABASE_FILTERS {
             let mut enabled = app_win.player_database_filters.contains(&player_attribute);
@@ -107,7 +113,8 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
         .filter(|account| account_matches_filters(account, &flags_by_steamid, app_win))
         .collect();
 
-    ui.separator();
+    ui.add(egui::Separator::default().spacing(30.0));
+
     ui.label(format!(
         "Showing {} of {} players",
         filtered_accounts.len(),
