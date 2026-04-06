@@ -72,13 +72,15 @@ pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: St
     }
     let player = player.unwrap();
 
-    add_player_community_links(player, ui);
+    ui.label("");
+    add_player_kick_buttons(app_win, player, ui);
+    ui.label("");
 
     ui.horizontal(|ui| {
         add_player_avatar(player, ui);
 
         ui.vertical(|ui| {
-            ui.heading(format!("{} ({})", player.name, player.id));
+            ui.heading(player.name.as_str());
 
             if let Some(steam_info) = &player.steam_info {
                 if steam_info.public_profile {
@@ -116,7 +118,7 @@ pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: St
 
     ui.label("");
 
-    add_player_kick_buttons(app_win, player, ui);
+    add_player_community_links(player, ui);
 
     ui.label("");
 
@@ -194,18 +196,23 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
         }
     }
 
-    // ui.heading("More info:");
+    ui.heading("More info:");
     ui.horizontal(|ui| {
-        // ui.label("View on");
-        make_link(ui, player.steamid.steam_community_url(), "Steam");
-        make_link(ui, player.steamid.steam_history_url(), "SteamHistory");
-        make_link(ui, player.steamid.steam_rep_url(), "SteamRep");
-        make_link(ui, player.steamid.steam_id_url(), "SteamID");
-        make_link(ui, player.steamid.rep_tf_url(), "Rep.TF");
+        ui.scope(|ui| {
+            ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89661D);
+
+            // ui.label("View on");
+            make_link(ui, player.steamid.steam_community_url(), "Steam");
+            make_link(ui, player.steamid.steam_history_url(), "SteamHistory");
+            // make_link(ui, player.steamid.steam_rep_url(), "SteamRep");
+            // make_link(ui, player.steamid.steam_id_url(), "SteamID");
+            make_link(ui, player.steamid.rep_tf_url(), "Rep.TF");
+        });
     });
 }
 
 fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
+    ui.heading("Kick Player:");
     ui.horizontal_wrapped(|ui| {
         ui.scope(|ui| {
             ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89161D);

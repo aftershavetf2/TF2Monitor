@@ -8,6 +8,7 @@ use crate::{
 use eframe::egui::{Checkbox, Ui};
 
 pub fn add_player_flag_editor(app_win: &AppWin, ui: &mut Ui, player: &Player) {
+    ui.heading("Flags:");
     ui.horizontal_wrapped(|ui| {
         let player_attributes_to_show = vec![
             PlayerAttribute::Cool,
