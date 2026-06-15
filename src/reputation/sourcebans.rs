@@ -52,41 +52,41 @@ pub struct SourceBanFetchResult {
 pub fn get_sources() -> Vec<SourceBanSource> {
     // TODO: Add more sources from https://steamhistory.net/sources
     vec![
-        SourceBanSource::new(
-            "UGC-Gaming.net",
-            "https://sb.ugc-gaming.net/index.php?p=banlist&advSearch={}&advType=steamid",
-            SourceBanParser::Ul,
-        ),
-        SourceBanSource::new(
-            "blackwonder.tf",
-            "https://bans.blackwonder.tf/index.php?p=banlist&advSearch={}&advType=steamid",
-            SourceBanParser::Ul,
-        ),
+        // SourceBanSource::new(
+        //     "UGC-Gaming.net",
+        //     "https://sb.ugc-gaming.net/index.php?p=banlist&advSearch={}&advType=steamid",
+        //     SourceBanParser::Ul,
+        // ),
+        // SourceBanSource::new(
+        //     "blackwonder.tf",
+        //     "https://bans.blackwonder.tf/index.php?p=banlist&advSearch={}&advType=steamid",
+        //     SourceBanParser::Ul,
+        // ),
         SourceBanSource::new(
             "flux.tf",
             "https://bans.flux.tf/index.php?p=banlist&advSearch={}&advType=steamid",
             SourceBanParser::Table,
         ),
-        SourceBanSource::new(
-            "dpg.tf",
-            "https://bans.dpg.tf/index.php?p=banlist&advSearch={}&advType=steamid",
-            SourceBanParser::Table,
-        ),
-        SourceBanSource::new(
-            "skial.com",
-            "https://www.skial.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
-            SourceBanParser::Table,
-        ),
+        // SourceBanSource::new(
+        //     "dpg.tf",
+        //     "https://bans.dpg.tf/index.php?p=banlist&advSearch={}&advType=steamid",
+        //     SourceBanParser::Table,
+        // ),
+        // SourceBanSource::new(
+        //     "skial.com",
+        //     "https://www.skial.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
+        //     SourceBanParser::Table,
+        // ),
         SourceBanSource::new(
             "scrap.tf",
             "https://bans.scrap.tf/index.php?p=banlist&advSearch={}&advType=steamid",
             SourceBanParser::Table,
         ),
-        SourceBanSource::new(
-            "LazyPurple.com",
-            "https://lazypurple.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
-            SourceBanParser::Table,
-        ),
+        // SourceBanSource::new(
+        //     "LazyPurple.com",
+        //     "https://lazypurple.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
+        //     SourceBanParser::Table,
+        // ),
         SourceBanSource::new(
             "SG-Gaming.net",
             "https://sg-gaming.net/bans/index.php?p=banlist&advSearch={}&advType=steamid",
@@ -102,7 +102,6 @@ pub fn get_sources() -> Vec<SourceBanSource> {
             "https://firepoweredgaming.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
             SourceBanParser::Table,
         ),
-        // The following source bans are not working because they are behind CloudFlare.
         // SourceBanSource::new(
         //     "panda-community.com",
         //     "https://bans.panda-community.com/index.php?p=banlist&advSearch={}&advType=steamid",
@@ -186,7 +185,7 @@ fn get_source_ban(source: &SourceBanSource, steamid: SteamID) -> Option<Vec<Sour
         //     eprintln!("In release builds, this error is only logged and the program continues.\n");
         //     std::process::exit(1);
         // } else {
-        log::error!("SourceBans: {}", error_msg);
+        log::warn!("SourceBans: {}", error_msg);
         // }
 
         return None;
