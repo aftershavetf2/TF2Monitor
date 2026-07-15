@@ -20,9 +20,9 @@ impl CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for SqliteConnec
             .execute(conn)
             .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
 
-        // Set busy timeout to 5 seconds (5000ms)
+        // Set busy timeout to 15 seconds (15000ms)
         // SQLite will retry for this duration instead of immediately failing with "database is locked"
-        sql_query("PRAGMA busy_timeout = 5000")
+        sql_query("PRAGMA busy_timeout = 15000")
             .execute(conn)
             .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
 
