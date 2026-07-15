@@ -15,7 +15,7 @@ pub fn get_from_cache_or_fetch(
     url: &str,
 ) -> Option<String> {
     if !CACHE_ENABLED {
-        log::info!("http_cache: Cache is not enabled, fetching URL: {}", url);
+        log::debug!("http_cache: Cache is not enabled, fetching URL: {}", url);
         return get_html(url);
     }
 
@@ -30,7 +30,7 @@ pub fn get_from_cache_or_fetch(
 
     // If the file exists, it's not too old, return its content
     if path.exists() {
-        log::info!(
+        log::debug!(
             "http_cache: Data found in cache, returning cached data for URL: {}",
             url
         );
@@ -39,7 +39,7 @@ pub fn get_from_cache_or_fetch(
     }
 
     // Fetch the URL contents and save it to the cache
-    log::info!("http_cache: Data not in cache, fetching URL: {}", url);
+    log::debug!("http_cache: Data not in cache, fetching URL: {}", url);
     let html = get_html(url)?;
 
     match write(&path, &html) {
