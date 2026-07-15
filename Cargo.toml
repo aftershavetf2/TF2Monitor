@@ -1,6 +1,6 @@
 [package]
 name = "tf2monitor"
-version = "0.1.10"
+version = "0.1.12"
 edition = "2024"
 
 [dependencies]
@@ -31,10 +31,7 @@ eframe = { version = "0.33.3", default-features = false, features = [
     "wayland",       # Linux Wayland support (modern Linux display server)
 ] }
 
-egui_extras = { version = "0.33.3", default-features = false, features = [
-    "http",
-    "image",
-] }
+egui_extras = { version = "0.33.3", features = ["all_loaders"] }
 
 image = { version = "0.25.10", default-features = false, features = ["jpeg"] }
 
