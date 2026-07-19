@@ -11,7 +11,8 @@ use crate::{
     tf2::lobby::{Player, Team},
 };
 use eframe::egui::{
-    Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, Vec2, text::LayoutJob,
+    self, Align, Color32, CursorIcon, Grid, Key::V, Layout, Sense, SizeHint, TextFormat, Ui, Vec2,
+    text::LayoutJob,
 };
 
 const WEAPON_COLUMN_MIN_WIDTH: f32 = 100.0;

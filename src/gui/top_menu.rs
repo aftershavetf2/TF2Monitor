@@ -1,5 +1,8 @@
-use crate::{models::AppWin, tf2bd::models::PlayerAttribute};
-use eframe::egui::{Ui, ViewportCommand, containers::menu::MenuBar};
+use crate::{
+    db::schema::ban_sources::url, models::AppWin, tf2bd::models::PlayerAttribute,
+    utils::print_image_data,
+};
+use eframe::egui::{TextBuffer, Ui, ViewportCommand, containers::menu::MenuBar};
 use std::process::Command;
 
 /*
@@ -188,6 +191,35 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             if ui.button("Player Database").clicked() {
                 app_win.player_database_window_open = true;
                 ui.close();
+            }
+
+            ui.separator();
+
+            if ui.button("Dump Debug Info")
+                .on_hover_text_at_pointer("Dumps debug info to the console window, right now it's just the player avatars")
+                .clicked() {
+
+                    app_win.get_latest_lobby();
+
+                    let lobby = &app_win.lobby;
+                    let players = &lobby.players;
+
+                    log::info!("Dumping debug info for {} players", players.len());
+
+                    for player in players {
+                        if let Some(steam_info) = &player.steam_info {
+                            let other_url = &steam_info.avatar_thumb;
+                            // let other_url = "https://old.reddit.com/r/funnyvideos/";
+
+                            print_image_data(other_url);
+                        } else {
+                            log::info!(
+                                "Player {} has no steam info, skipping avatar dump",
+                                player.name
+                            );
+                        }
+                    }
+                    ui.close();
             }
         });
     });

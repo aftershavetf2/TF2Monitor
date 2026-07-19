@@ -140,12 +140,8 @@ impl Tf2bdThread {
         let data = self.ruleset_handler.get_player_marking(&steamid);
         self.send(Tf2bdMsg::Tf2bdPlayerMarking(steamid, data.cloned()));
 
-        self.ruleset_handler.set_player_flags(
-            steamid,
-            Some(player_name),
-            player_attribute,
-            enable,
-        );
+        self.ruleset_handler
+            .set_player_flags(steamid, Some(player_name), player_attribute, enable);
 
         // Persist to database
         if let Ok(mut conn) = self.db.get() {

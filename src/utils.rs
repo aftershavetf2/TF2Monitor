@@ -1,6 +1,7 @@
 use chrono::{DateTime, Local, TimeZone};
 use date_component::date_component;
 use std::error::Error;
+use std::fmt::Write;
 
 // From https://stevedonovan.github.io/rust-gentle-intro/6-error-handling.html
 // Thanks Steve.
@@ -77,4 +78,71 @@ pub fn unix_time_i64_to_local_datetime(unix_time: Option<i64>) -> Option<DateTim
     } else {
         None
     }
+}
+
+pub fn hexdump(data: &[u8]) -> String {
+    const BYTES_PER_LINE: usize = 16;
+
+    let mut output = String::new();
+
+    for (line_index, chunk) in data.chunks(BYTES_PER_LINE).enumerate() {
+        let offset = line_index * BYTES_PER_LINE;
+
+        write!(&mut output, "{offset:08x}  ").unwrap();
+
+        for index in 0..BYTES_PER_LINE {
+            match chunk.get(index) {
+                Some(byte) => write!(&mut output, "{byte:02x} ").unwrap(),
+                None => output.push_str("   "),
+            }
+
+            if index == 7 {
+                output.push(' ');
+            }
+        }
+
+        output.push('|');
+
+        for &byte in chunk {
+            let character = if byte.is_ascii_graphic() || byte == b' ' {
+                byte as char
+            } else {
+                '.'
+            };
+
+            output.push(character);
+        }
+
+        output.push_str("|\n");
+    }
+
+    output
+}
+
+pub fn print_image_data(url: &str) {
+    // Manually load the image from the URL and print the first 128 chars
+    let bytes = reqwest::blocking::get(url)
+        .and_then(|resp| resp.bytes())
+        .unwrap_or_else(|_| {
+            log::error!(
+                "try_print_image_data: Failed to fetch image data for URL {}",
+                url
+            );
+            Vec::new().into()
+        });
+
+    // Trim the bytes to the first 128 characters for debugging
+    let bytes = if bytes.len() > 128 {
+        &bytes[..128]
+    } else {
+        &bytes
+    };
+
+    let hexdump = hexdump(bytes);
+
+    log::info!(
+        "try_print_image_data: Image preview for URL {}:\n{}",
+        url,
+        hexdump
+    );
 }
