@@ -213,33 +213,32 @@ impl LobbyThread {
         while let Ok(cmd) = self.logfile_bus_rx.try_recv() {
             match cmd {
                 LogLine::Kill {
-                    when,
                     killer,
                     victim,
                     weapon,
                     crit,
-                } => self.kill(when, killer, victim, weapon, crit),
-                LogLine::Suicide { when, name } => self.suicide(when, name),
-                LogLine::LobbyCreated { when } => self.new_lobby(when),
-                LogLine::LobbyDestroyed { when: _when } => {}
+                } => self.kill(killer, victim, weapon, crit),
+                LogLine::Suicide { name } => self.suicide(name),
+                LogLine::LobbyCreated => self.new_lobby(),
+                LogLine::LobbyDestroyed => {}
                 LogLine::Chat {
-                    when,
                     name,
                     message,
                     dead,
                     team,
-                } => self.chat(when, name, message, dead, team),
+                } => self.chat(name, message, dead, team),
             }
         }
     }
 
-    fn new_lobby(&mut self, when: DateTime<Local>) {
+    fn new_lobby(&mut self) {
         log::info!("*** Creating new lobby ***");
 
         let mut lobby = self.shared_lobby.get();
+        let now = Local::now();
 
         for player in lobby.players.iter_mut() {
-            player.last_seen = when;
+            player.last_seen = now;
         }
 
         let mut players_to_move = std::mem::take(&mut lobby.players);
@@ -265,14 +264,7 @@ impl LobbyThread {
         self.shared_lobby.set(lobby);
     }
 
-    fn kill(
-        &mut self,
-        when: DateTime<Local>,
-        killer_name: String,
-        victim_name: String,
-        weapon: String,
-        crit: bool,
-    ) {
+    fn kill(&mut self, killer_name: String, victim_name: String, weapon: String, crit: bool) {
         let mut lobby = self.shared_lobby.get();
 
         let mut killer_steamid = None;
@@ -307,7 +299,7 @@ impl LobbyThread {
         // Add the kill to the feed
         if let (Some(killer_steamid), Some(victim_steamid)) = (killer_steamid, victim_steamid) {
             lobby.kill_feed.push(LobbyKill {
-                when,
+                when: Local::now(),
                 killer: killer_steamid,
                 victim: victim_steamid,
                 weapon,
@@ -324,7 +316,7 @@ impl LobbyThread {
         self.shared_lobby.set(lobby);
     }
 
-    fn suicide(&mut self, _when: DateTime<Local>, name: String) {
+    fn suicide(&mut self, name: String) {
         let mut lobby = self.shared_lobby.get();
 
         if let Some(player) = lobby.get_player_mut(Some(name.as_str()), None) {
@@ -336,14 +328,7 @@ impl LobbyThread {
         self.shared_lobby.set(lobby);
     }
 
-    fn chat(
-        &mut self,
-        when: DateTime<Local>,
-        name: String,
-        message: String,
-        dead: bool,
-        team: bool,
-    ) {
+    fn chat(&mut self, name: String, message: String, dead: bool, team: bool) {
         let mut lobby = self.shared_lobby.get();
 
         let (steamid, chat_msg_id) = {
@@ -357,7 +342,7 @@ impl LobbyThread {
 
         lobby.chat.push(LobbyChat {
             chat_msg_id,
-            when,
+            when: Local::now(),
             steamid,
             player_name: name,
             message: message.trim().to_string(),
