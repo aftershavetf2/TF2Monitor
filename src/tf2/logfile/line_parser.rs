@@ -25,9 +25,10 @@ impl LogLineParser {
     }
 
     pub fn parse_line(&self, line: &str) -> Option<LogLine> {
-        if self.timestamped_line_rx.is_match(line) {
-            return None;
-        }
+        let line = match self.timestamped_line_rx.find(line) {
+            Some(timestamp) => &line[timestamp.end()..],
+            None => line,
+        };
 
         let logobj = self.parse_killed_line(line);
         if logobj.is_some() {
@@ -269,12 +270,17 @@ mod tests {
     }
 
     #[test]
-    fn test_lines_with_timestamp_are_ignored() {
+    fn test_lines_with_timestamp_are_stripped() {
         let parser = LogLineParser::default();
 
         let line = "05/08/2024 - 13:30:42: Player1 suicided.";
-        let result = parser.parse_line(line);
-        assert_eq!(result, None);
+        let result = parser.parse_line(line).unwrap();
+        assert_eq!(
+            result,
+            LogLine::Suicide {
+                name: "Player1".to_string()
+            }
+        );
     }
 
     #[test]
