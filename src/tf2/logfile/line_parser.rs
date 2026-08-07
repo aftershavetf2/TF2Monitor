@@ -6,6 +6,7 @@ pub struct LogLineParser {
     killed_rx: Regex,
     suicided_rx: Regex,
     chat_rx: Regex,
+    differing_lobby_rx: Regex,
 }
 
 impl Default for LogLineParser {
@@ -21,6 +22,10 @@ impl LogLineParser {
             killed_rx: Regex::new(r"^(.+?) killed (.+) with (.+?)(\.|\. \(crit\))$").unwrap(),
             suicided_rx: Regex::new(r"^(.+?) suicided.$").unwrap(),
             chat_rx: Regex::new(r"^(.+?) :  (.+)$").unwrap(),
+
+            //         // Differing lobby received. Lobby: [A:1:3982432273:50775]/Match117694416/Lobby713780413559521 CurrentlyAssigned: [A:1:3982432273:50775]/Match117693976/Lobby713780413559521
+
+            differing_lobby_rx: Regex::new(r"^Differing lobby received\. Lobby: \[A:1:\d+:\d+\]/Match\d+/Lobby\d+ CurrentlyAssigned: \[A:1:\d+:\d+\]/Match\d+/Lobby\d+$").unwrap(),
         }
     }
 
@@ -93,6 +98,10 @@ impl LogLineParser {
 
         if line == "Lobby destroyed" {
             return Some(LogLine::LobbyDestroyed);
+        }
+
+        if let Some(_caps) = self.differing_lobby_rx.captures(line) {
+            return Some(LogLine::LobbyCreated);
         }
 
         None
@@ -307,5 +316,15 @@ mod tests {
                 team: false
             }
         );
+    }
+
+    // Differing lobby received. Lobby: [A:1:3982432273:50775]/Match117694416/Lobby713780413559521 CurrentlyAssigned: [A:1:3982432273:50775]/Match117693976/Lobby713780413559521
+    #[test]
+    fn test_new_lobby() {
+        let parser = LogLineParser::default();
+
+        let line = "Differing lobby received. Lobby: [A:1:3982432273:50775]/Match117694416/Lobby713780413559521 CurrentlyAssigned: [A:1:3982432273:50775]/Match117693976/Lobby713780413559521";
+        let result = parser.parse_line(line).unwrap();
+        assert_eq!(result, LogLine::LobbyCreated);
     }
 }

@@ -20,6 +20,7 @@ pub struct Lobby {
     pub chat: Vec<LobbyChat>,
     pub kill_feed: Vec<LobbyKill>,
     pub friendships: Friendships,
+    pub creation_date: DateTime<Local>,
 
     /// Players who no longer show up in the status command output
     /// or in tf_lobby_debug output. Players are kept in here for 1 minute.
@@ -30,7 +31,6 @@ pub struct Lobby {
 
 #[derive(Default, Debug, Clone)]
 pub struct LobbyKill {
-    pub when: DateTime<Local>,
     pub killer: SteamID,
     pub victim: SteamID,
     pub weapon: String,
@@ -41,7 +41,6 @@ pub struct LobbyKill {
 pub struct LobbyChat {
     pub chat_msg_id: i64,
 
-    pub when: DateTime<Local>,
     pub steamid: SteamID,
 
     /// The name of the player who sent the message,
@@ -255,6 +254,14 @@ impl Player {
             _ => None,
         }
     }
+
+    pub fn clear_stats(&mut self) {
+        self.kills = 0;
+        self.deaths = 0;
+        self.crit_kills = 0;
+        self.crit_deaths = 0;
+        self.kills_with.clear();
+    }
 }
 
 impl PlayerSteamInfo {
@@ -290,6 +297,7 @@ impl Lobby {
             chat: Vec::new(),
             kill_feed: Vec::new(),
             friendships: Friendships::default(),
+            creation_date: Local::now(),
             recently_left_players: Vec::new(),
         }
     }

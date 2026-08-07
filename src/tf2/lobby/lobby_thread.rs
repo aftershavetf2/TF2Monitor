@@ -237,8 +237,15 @@ impl LobbyThread {
         let mut lobby = self.shared_lobby.get();
         let now = Local::now();
 
+        lobby.creation_date = now;
+
         for player in lobby.players.iter_mut() {
             player.last_seen = now;
+            player.clear_stats();
+        }
+
+        for player in lobby.recently_left_players.iter_mut() {
+            player.clear_stats();
         }
 
         let mut players_to_move = std::mem::take(&mut lobby.players);
@@ -299,7 +306,6 @@ impl LobbyThread {
         // Add the kill to the feed
         if let (Some(killer_steamid), Some(victim_steamid)) = (killer_steamid, victim_steamid) {
             lobby.kill_feed.push(LobbyKill {
-                when: Local::now(),
                 killer: killer_steamid,
                 victim: victim_steamid,
                 weapon,
@@ -342,7 +348,6 @@ impl LobbyThread {
 
         lobby.chat.push(LobbyChat {
             chat_msg_id,
-            when: Local::now(),
             steamid,
             player_name: name,
             message: message.trim().to_string(),
