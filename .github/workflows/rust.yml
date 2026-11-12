@@ -1,10 +1,6 @@
 name: Rust (Windows)
 
 on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
   workflow_dispatch: # Manual trigger
   release:
     types: [created] # Trigger on manually created release
