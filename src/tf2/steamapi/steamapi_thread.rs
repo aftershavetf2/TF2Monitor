@@ -669,6 +669,7 @@ impl SteamApiThread {
                             .iter()
                             .map(|c| SteamProfileComment {
                                 name: c.writer_name.clone(),
+                                avatar_thumb: c.writer_avatar_thumb.clone(),
                                 steamid: SteamID::from_u64(c.writer_steam_id as u64),
                                 comment: c.comment.clone(),
                             })
@@ -690,12 +691,15 @@ impl SteamApiThread {
                             true
                         };
 
+                        // Populate thumbnails for comments cached before avatar support.
+                        let missing_avatars = comments.iter().any(|c| c.avatar_thumb.is_empty());
+                        let should_refresh = should_refresh || missing_avatars;
                         if should_refresh {
                             // Only send cached comments if we actually have some.
                             // An empty DB result is not a real cache hit and should not mark
                             // the player as "done", otherwise only the first few queued
                             // profiles ever get a live fetch.
-                            if !comments.is_empty() {
+                            if !comments.is_empty() && !missing_avatars {
                                 log::info!(
                                     "Sending outdated cached comments for {}, will refresh",
                                     player.name
@@ -739,6 +743,7 @@ impl SteamApiThread {
                                 steam_id: steamid.to_u64() as i64,
                                 writer_steam_id: comment.steamid.to_u64() as i64,
                                 writer_name: comment.name.clone(),
+                                writer_avatar_thumb: comment.avatar_thumb.clone(),
                                 comment: comment.comment.clone(),
                                 created_date: current_time,
                                 deleted_date: None,

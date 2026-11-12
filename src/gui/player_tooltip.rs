@@ -13,7 +13,7 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
             .max_width(100.0)
             .corner_radius(3.0);
 
-        ui.add(image);
+        super::theme::image(ui, image);
 
         ui.label(format!(
             "Account created: {}",

@@ -3,7 +3,7 @@ use eframe::egui::{Color32, Pos2, Stroke, Ui};
 
 pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
     let indicator_color = Color32::WHITE;
-    let stroke = Stroke::new(0.6f32, indicator_color);
+    let stroke = Stroke::new(0.6f32 + 1.0 / ui.ctx().pixels_per_point(), indicator_color);
 
     let me = app_win.self_steamid;
     let my_friends = app_win.lobby.friendships.get_friends(me);

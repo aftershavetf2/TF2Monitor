@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-use eframe::egui;
 use eframe::egui::Color32;
 
 use crate::tf2bd::models::PlayerAttribute;
@@ -33,23 +32,9 @@ pub const TEAM_RED_COLOR: Color32 = RED;
 pub const CHAT_BLU_COLOR: Color32 = hex_to_rgb(0x99CCFF);
 pub const CHAT_RED_COLOR: Color32 = hex_to_rgb(0xFF4040);
 
-pub const PANEL_FILL: Color32 = hex_to_rgb(0x36312B);
+pub const PANEL_FILL: Color32 = super::theme::PANEL;
 // pub const WIDGET_FILL: Color32 = DARK_BROWN_GRAY;
-pub const TEXT_COLOR: Color32 = hex_to_rgb(0xEBE2CA);
-
-pub fn set_style(ctx: &egui::Context) {
-    let mut style = egui::Visuals::dark().clone();
-
-    style.dark_mode = true;
-
-    style.panel_fill = PANEL_FILL;
-    style.override_text_color = Some(TEXT_COLOR);
-    // // style.widgets.inactive.bg_fill = Color32::BLACK;
-    // style.widgets.inactive.weak_bg_fill = hexrgb(0x756B5E);
-    // style.widgets.inactive.bg_fill = hexrgb(0x756B5E);
-
-    ctx.set_visuals(style);
-}
+pub const TEXT_COLOR: Color32 = Color32::from_gray(230);
 
 /// Returns the (text color, background color) for a given PlayerAttribute.
 pub fn color_for_flag(player_attribute: PlayerAttribute) -> (Color32, Color32) {

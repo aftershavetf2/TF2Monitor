@@ -165,6 +165,14 @@ pub fn insert_comment(
     conn: &mut SqliteConnection,
     new_comment: NewComment,
 ) -> Result<(), diesel::result::Error> {
+    // Backfill older cached comments by this author when a thumbnail becomes available.
+    if !new_comment.writer_avatar_thumb.is_empty() {
+        diesel::update(
+            comments::table.filter(comments::writer_steam_id.eq(new_comment.writer_steam_id)),
+        )
+        .set(comments::writer_avatar_thumb.eq(&new_comment.writer_avatar_thumb))
+        .execute(conn)?;
+    }
     diesel::insert_into(comments::table)
         .values(&new_comment)
         .on_conflict_do_nothing()

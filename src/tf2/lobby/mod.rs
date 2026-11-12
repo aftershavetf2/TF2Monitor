@@ -33,6 +33,8 @@ pub struct Lobby {
 pub struct LobbyKill {
     pub killer: SteamID,
     pub victim: SteamID,
+    pub killer_name: String,
+    pub victim_name: String,
     pub weapon: String,
     pub crit: bool,
 }

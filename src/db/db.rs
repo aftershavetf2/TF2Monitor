@@ -156,6 +156,8 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
     )
     .execute(conn)?;
 
+    migrate_comment_avatars(conn)?;
+
     // Create playtime table
     diesel::sql_query(
         "CREATE TABLE IF NOT EXISTS playtime (
@@ -337,4 +339,79 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
 
     log::info!("Database schema setup completed");
     Ok(())
+}
+
+/// Add thumbnail storage without discarding comments from existing installations.
+fn migrate_comment_avatars(conn: &mut SqliteConnection) -> QueryResult<()> {
+    #[derive(QueryableByName)]
+    struct Column {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+    }
+    let columns = diesel::sql_query("PRAGMA table_info(comments)").load::<Column>(conn)?;
+    if !columns
+        .iter()
+        .any(|column| column.name == "writer_avatar_thumb")
+    {
+        diesel::sql_query(
+            "ALTER TABLE comments ADD COLUMN writer_avatar_thumb TEXT NOT NULL DEFAULT ''",
+        )
+        .execute(conn)?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod comment_avatar_tests {
+    use super::*;
+    use crate::db::{entities::NewComment, queries};
+
+    #[test]
+    fn avatar_migration_preserves_comments_and_backfills_cached_authors() {
+        let mut conn = SqliteConnection::establish(":memory:").unwrap();
+        diesel::sql_query(
+            "CREATE TABLE comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            steam_id INTEGER NOT NULL, writer_steam_id INTEGER NOT NULL,
+            writer_name TEXT NOT NULL, comment TEXT NOT NULL,
+            created_date INTEGER NOT NULL, deleted_date INTEGER
+        )",
+        )
+        .execute(&mut conn)
+        .unwrap();
+        diesel::sql_query(
+            "INSERT INTO comments (steam_id, writer_steam_id, writer_name, comment, created_date)
+            VALUES (1, 2, 'Author', 'Cached comment', 100)",
+        )
+        .execute(&mut conn)
+        .unwrap();
+        migrate_comment_avatars(&mut conn).unwrap();
+        migrate_comment_avatars(&mut conn).unwrap();
+        let cached = queries::get_active_comments_for_account(&mut conn, 1).unwrap();
+        assert_eq!(cached.len(), 1);
+        assert_eq!(cached[0].comment, "Cached comment");
+        assert!(cached[0].writer_avatar_thumb.is_empty());
+
+        queries::insert_comment(
+            &mut conn,
+            NewComment {
+                steam_id: 3,
+                writer_steam_id: 2,
+                writer_name: "Author".into(),
+                writer_avatar_thumb: "https://example.com/avatar.jpg".into(),
+                comment: "New comment".into(),
+                created_date: 200,
+                deleted_date: None,
+            },
+        )
+        .unwrap();
+        let cached = queries::get_active_comments_for_account(&mut conn, 1).unwrap();
+        assert_eq!(cached.len(), 1);
+        assert_eq!(
+            cached[0].writer_avatar_thumb,
+            "https://example.com/avatar.jpg"
+        );
+        let fresh = queries::get_active_comments_for_account(&mut conn, 3).unwrap();
+        assert_eq!(fresh[0].writer_avatar_thumb, cached[0].writer_avatar_thumb);
+    }
 }

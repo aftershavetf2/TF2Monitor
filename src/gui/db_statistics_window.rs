@@ -11,6 +11,7 @@ pub fn show_db_statistics_window(app_win: &mut AppWin, ctx: &egui::Context) {
     let mut window_open = app_win.db_statistics_window_open;
 
     egui::Window::new("Database Statistics")
+        .frame(super::theme::modal_frame(ctx))
         .open(&mut window_open)
         .resizable(true)
         .default_width(400.0)

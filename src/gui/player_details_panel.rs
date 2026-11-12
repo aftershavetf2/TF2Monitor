@@ -39,6 +39,7 @@ pub fn show_player_details_windows(app_win: &mut AppWin, ctx: &egui::Context) {
         let window_title = player_window_title(app_win, steamid);
 
         egui::Window::new(window_title)
+            .frame(super::theme::modal_frame(ctx))
             .id(egui::Id::new(("player_details_window", steamid.to_u64())))
             .open(&mut window_open)
             .resizable(true)
@@ -161,7 +162,7 @@ fn add_player_avatar(player: &Player, ui: &mut Ui) {
             .fit_to_exact_size(Vec2::new(100.0, 100.0))
             .corner_radius(3.0);
 
-        ui.add(image);
+        super::theme::image(ui, image);
     } else {
         ui.label("Loading...");
     }
@@ -179,7 +180,13 @@ fn add_player_kills(player: &Player, ui: &mut Ui) {
 
     let names = kills
         .iter()
-        .map(|k| format!("{}{}", k.weapon, if k.crit { " (crit)" } else { "" }))
+        .map(|k| {
+            format!(
+                "{}{}",
+                k.weapon.replace('_', " "),
+                if k.crit { " (crit)" } else { "" }
+            )
+        })
         .collect::<Vec<String>>()
         .join(", ");
 
@@ -196,7 +203,7 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
         }
     }
 
-    ui.heading("More info:");
+    ui.heading("More Info:");
     ui.horizontal(|ui| {
         ui.scope(|ui| {
             ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89661D);
@@ -275,7 +282,7 @@ fn add_player_sourcebans(player: &Player, ui: &mut Ui) {
                     &ban.source,
                     5.0,
                     TextFormat {
-                        color: Color32::GRAY,
+                        color: super::theme::muted_text(),
                         ..Default::default()
                     },
                 );

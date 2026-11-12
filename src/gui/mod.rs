@@ -7,6 +7,8 @@ pub mod db_statistics_window;
 pub mod friendship_indicators;
 pub mod kill_feed;
 pub mod markings;
+pub mod menu_item;
+pub mod player_class_symbol;
 pub mod player_database_window;
 pub mod player_details_panel;
 pub mod player_flag_editor;
@@ -16,6 +18,9 @@ pub mod recently_left;
 pub mod scoreboard;
 pub mod scoreboard_team;
 pub mod settings_window;
+pub mod shortcut;
+pub mod theme;
+pub mod title_bar;
 pub mod top_menu;
 pub mod ui_utils;
 pub mod window_status_row;
@@ -39,7 +44,6 @@ use std::{
     sync::{Arc, Mutex},
     thread::sleep,
 };
-use top_menu::add_top_menu;
 use window_status_row::add_status_row;
 
 pub fn run(
@@ -53,6 +57,7 @@ pub fn run(
     let viewport = egui::ViewportBuilder::default()
         .with_inner_size([1280.0, 768.0])
         .with_min_inner_size([800.0, 600.0])
+        .with_decorations(false)
         .with_icon(icon_data);
 
     let options = eframe::NativeOptions {
@@ -68,6 +73,7 @@ pub fn run(
         "TF2 Monitor",
         options,
         Box::new(|cc| {
+            theme::install(&cc.egui_ctx);
             // This gives us image support:
             egui_extras::install_image_loaders(&cc.egui_ctx);
 
@@ -81,26 +87,30 @@ pub fn run(
 
 impl eframe::App for AppWin {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui_extras::install_image_loaders(ctx);
-        colors::set_style(ctx);
-
         self.get_latest_lobby();
 
         self.friendship_positions.clear();
 
-        egui::TopBottomPanel::top("menu").show(ctx, |ui| {
-            add_top_menu(ui, self);
-        });
+        top_menu::handle_shortcuts(ctx, self);
+        title_bar::show(ctx, self);
 
-        egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
-            let image_desc = get_background_image_desc();
+        let status = egui::TopBottomPanel::bottom("status")
+            .show_separator_line(false)
+            .show(ctx, |ui| {
+                let image_desc = get_background_image_desc();
 
-            add_status_row(self, ui, &image_desc);
-        });
+                add_status_row(self, ui, &image_desc);
+            });
 
-        egui::SidePanel::right("right_panel").show(ctx, |ui| {
-            add_player_details_panel(self, ui);
-        });
+        theme::panel_separator(ctx, &status.response, theme::PanelEdge::Top);
+
+        let details = egui::SidePanel::right("right_panel")
+            .show_separator_line(false)
+            .show(ctx, |ui| {
+                add_player_details_panel(self, ui);
+            });
+
+        theme::panel_separator(ctx, &details.response, theme::PanelEdge::Left);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // draw_background_image(ui);
@@ -131,6 +141,8 @@ impl eframe::App for AppWin {
         // Show separate player detail windows
         show_player_details_windows(self, ctx);
 
+        title_bar::resize_edges(ctx);
+
         sleep(GUI_SLEEP_DELAY);
         ctx.request_repaint_after(GUI_REPAINT_DELAY);
     }
@@ -139,3 +151,6 @@ impl eframe::App for AppWin {
         // eframe automatically saves persisted data from ctx.data_mut()
     }
 }
+
+#[cfg(test)]
+mod tests;

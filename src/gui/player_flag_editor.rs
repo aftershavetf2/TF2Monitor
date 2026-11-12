@@ -5,7 +5,7 @@ use crate::{
     tf2::lobby::{Player, player_attribute_description},
     tf2bd::models::PlayerAttribute,
 };
-use eframe::egui::{Checkbox, Ui};
+use eframe::egui::{Checkbox, Color32, RichText, Ui};
 
 pub fn add_player_flag_editor(app_win: &AppWin, ui: &mut Ui, player: &Player) {
     ui.heading("Flags:");
@@ -69,7 +69,7 @@ fn add_flag(
         //     .color = fgcolor;
 
         let (_text, tooltip) = player_attribute_description(player_attribute);
-        let checkbox = Checkbox::new(&mut enable, tooltip);
+        let checkbox = Checkbox::new(&mut enable, RichText::new(tooltip).color(Color32::WHITE));
 
         let response = ui.add(checkbox);
 

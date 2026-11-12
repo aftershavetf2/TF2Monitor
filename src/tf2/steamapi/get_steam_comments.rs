@@ -72,6 +72,18 @@ fn parse_comments(html: &str) -> Vec<SteamProfileComment> {
             .unwrap()
             .trim()
             .to_string();
+        let avatar_thumb = comment
+            .select(&scraper::Selector::parse(".commentthread_comment_avatar img").unwrap())
+            .next()
+            .and_then(|image| image.value().attr("src"))
+            .map(|url| {
+                if url.starts_with("//") {
+                    format!("https:{url}")
+                } else {
+                    url.to_owned()
+                }
+            })
+            .unwrap_or_default();
         let comment = comment
             .select(&scraper::Selector::parse("div.commentthread_comment_text").unwrap())
             .next()
@@ -83,10 +95,42 @@ fn parse_comments(html: &str) -> Vec<SteamProfileComment> {
 
         comments.push(SteamProfileComment {
             name: author,
+            avatar_thumb,
             steamid: SteamID::from_steam_id32(&author_steamid32),
             comment,
         });
     }
 
     comments
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_comment_author_thumbnail_and_handles_missing_images() {
+        let comments = parse_comments(
+            r#"
+            <div class="commentthread_comment">
+                <div class="commentthread_comment_avatar"><a><img src="//avatars.steamstatic.com/example.jpg"></a></div>
+                <a class="commentthread_author_link" data-miniprofile="123">Example Player</a>
+                <div class="commentthread_comment_text">Hello &amp; welcome!</div>
+            </div>
+            <div class="commentthread_comment">
+                <a class="commentthread_author_link" data-miniprofile="456">Another Player</a>
+                <div class="commentthread_comment_text">No avatar</div>
+            </div>
+        "#,
+        );
+        assert_eq!(comments.len(), 2);
+        assert_eq!(comments[0].name, "Example Player");
+        assert_eq!(
+            comments[0].avatar_thumb,
+            "https://avatars.steamstatic.com/example.jpg"
+        );
+        assert_eq!(comments[0].comment, "Hello & welcome!");
+        assert!(comments[1].avatar_thumb.is_empty());
+        assert_eq!(comments[1].comment, "No avatar");
+    }
 }

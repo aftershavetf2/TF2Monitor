@@ -34,3 +34,6 @@ fn main() -> Result<(), eframe::Error> {
 
     gui::run(&settings, &bus, Arc::new(db))
 }
+
+// -novid +fps_max 300 -console -usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +net_start  +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -console -g15 -nojoy -nosteamcontroller -nohltv -particles 1
+//

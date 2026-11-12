@@ -19,6 +19,10 @@ pub struct Comment {
     /// Name of writer of the comment (max 32 visible characters, UTF-8)
     pub writer_name: String,
 
+    /// Thumbnail URL of the comment author; empty for older cached comments.
+    #[serde(default)]
+    pub writer_avatar_thumb: String,
+
     /// Comment text
     pub comment: String,
 
@@ -35,6 +39,9 @@ pub struct NewComment {
     pub steam_id: i64,
     pub writer_steam_id: i64,
     pub writer_name: String,
+
+    /// Thumbnail URL of the comment author; empty for older cached comments.
+    pub writer_avatar_thumb: String,
     pub comment: String,
     pub created_date: i64,
     pub deleted_date: Option<i64>,

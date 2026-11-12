@@ -1,3 +1,4 @@
+use super::markings::add_new_player_value;
 use crate::{
     tf2::lobby::{
         AccountAge::{Approx, Loaded, Loading, Private, Unknown},
@@ -13,8 +14,12 @@ pub fn add_account_age(player: &Player, ui: &mut Ui) {
             ui.spinner();
         }
         Loaded(when) => {
-            ui.label(duration_as_string(when))
-                .on_hover_text(format!("Account created: {}", when.format("%Y-%m-%d")));
+            add_new_player_value(
+                ui,
+                duration_as_string(when),
+                (chrono::Local::now() - when).num_days() < 365,
+            )
+            .on_hover_text(format!("Account created: {}", when.format("%Y-%m-%d")));
         }
         Private => {
             ui.label("Private").on_hover_text(
@@ -22,8 +27,12 @@ pub fn add_account_age(player: &Player, ui: &mut Ui) {
             );
         }
         Approx(when) => {
-            ui.label(format!("~{}", duration_as_string(when)))
-                .on_hover_text("Approximated by looking at neighboring SteamIDs");
+            add_new_player_value(
+                ui,
+                format!("~{}", duration_as_string(when)),
+                (chrono::Local::now() - when).num_days() < 365,
+            )
+            .on_hover_text("Approximated by looking at neighboring SteamIDs");
         }
         Unknown => {
             ui.label("Unknown")

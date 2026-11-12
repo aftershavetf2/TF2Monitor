@@ -2,6 +2,7 @@ pub mod lobby;
 pub mod logfile;
 pub mod rcon;
 pub mod steamapi;
+pub mod weapon_classes;
 
 use crate::{appbus::AppBus, db::db::DbPool, models::app_settings::AppSettings};
 use std::sync::{Arc, Mutex};

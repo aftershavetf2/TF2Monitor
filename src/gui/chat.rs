@@ -1,5 +1,5 @@
 use super::{
-    colors::{CHAT_BLU_COLOR, CHAT_RED_COLOR, hex_to_rgb},
+    colors::{CHAT_BLU_COLOR, CHAT_RED_COLOR},
     markings::add_flags,
 };
 use crate::{
@@ -8,34 +8,22 @@ use crate::{
 };
 use eframe::egui::{Color32, ScrollArea, TextFormat, TextStyle, Ui, text::LayoutJob};
 
-const CHAT_ROW_HEIGHT_EXTRA: f32 = 3.5;
-
 pub fn add_chat(ui: &mut Ui, app_win: &mut AppWin) {
     ui.heading("Chat");
 
-    let text_style = TextStyle::Body;
-    let text_height = ui.text_style_height(&text_style);
-    // Account for flag buttons (like "CHEATER", "BOT") that may be added to rows
-    // Button height is typically larger than text height
-    let button_height = ui.spacing().interact_size.y;
-    // Use the larger of the two to ensure rows don't change height when flags are added
-    // Add extra height for better spacing
-    let row_height = text_height.max(button_height) + CHAT_ROW_HEIGHT_EXTRA;
-    let num_rows = app_win.lobby.chat.len();
-
     ui.push_id("chat", |ui| {
+        ui.spacing_mut().item_spacing.y = 2.0;
+        ui.spacing_mut().interact_size.y = ui.text_style_height(&TextStyle::Body);
+        ui.spacing_mut().button_padding.y = 1.0;
+
+        // Entries can wrap or contain badges, so use their actual heights.
         ScrollArea::vertical()
             .stick_to_bottom(true)
             .auto_shrink(false)
-            .show_rows(ui, row_height, num_rows, |ui, row_range| {
-                ui.scope(|ui| {
-                    ui.style_mut().visuals.panel_fill = hex_to_rgb(0xffffff);
-
-                    for row in row_range {
-                        let row = &app_win.lobby.chat[row].clone();
-                        add_chat_row(ui, app_win, row);
-                    }
-                });
+            .show(ui, |ui| {
+                for row in &app_win.lobby.chat.clone() {
+                    add_chat_row(ui, app_win, row);
+                }
             });
     });
 }
@@ -59,19 +47,10 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
         let color = match team {
             Team::Blue => CHAT_BLU_COLOR,
             Team::Red => CHAT_RED_COLOR,
-            _ => Color32::GRAY,
+            _ => super::theme::muted_text(),
         };
 
         let mut job = LayoutJob::default();
-
-        job.append(
-            "💬 ",
-            0.0,
-            TextFormat {
-                color: Color32::WHITE,
-                ..Default::default()
-            },
-        );
 
         // Prefix player name with *DEAD* and (TEAM) if needed
         if chat_row.dead {

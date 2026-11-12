@@ -52,7 +52,10 @@ pub fn add_scoreboard(app_win: &mut AppWin, ui: &mut Ui) {
                 .map(|p| p.name.clone())
                 .collect::<Vec<String>>()
                 .join(", ");
-            ui.colored_label(Color32::GRAY, format!("Unknown team: {}", player_names));
+            ui.colored_label(
+                super::theme::muted_text(),
+                format!("Unknown team: {}", player_names),
+            );
         }
     }
 

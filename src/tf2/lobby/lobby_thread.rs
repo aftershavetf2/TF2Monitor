@@ -8,7 +8,7 @@ use crate::tf2::rcon::{G15DumpPlayerOutput, G15PlayerData};
 use crate::tf2::steamapi::SteamApiMsg;
 use crate::tf2bd::Tf2bdMsg;
 use crate::{
-    appbus::AppBus,
+    appbus::{AppBus, AppEventMsg},
     models::{app_settings::AppSettings, steamid::SteamID},
     tf2::logfile::LogLine,
 };
@@ -29,9 +29,11 @@ pub struct LobbyThread {
     steamapi_bus_rx: BusReader<SteamApiMsg>,
     tf2bd_bus_rx: BusReader<Tf2bdMsg>,
     g15_bus_rx: BusReader<G15DumpPlayerOutput>,
+    app_event_bus_rx: BusReader<AppEventMsg>,
     shared_lobby: SharedLobby,
 
     text_translator: GoogleTranslator,
+    translate_chat_enabled: bool,
 }
 
 /// Start the background thread for the lobby module
@@ -42,11 +44,12 @@ pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHa
 }
 
 impl LobbyThread {
-    pub fn new(_settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
         let g15_bus_rx = bus.lock().unwrap().g15_report_bus.add_rx();
+        let app_event_bus_rx = bus.lock().unwrap().app_event_bus.add_rx();
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
 
         let google_translator = GoogleTranslator::default();
@@ -56,9 +59,11 @@ impl LobbyThread {
             steamapi_bus_rx,
             tf2bd_bus_rx,
             g15_bus_rx,
+            app_event_bus_rx,
             shared_lobby,
 
             text_translator: google_translator,
+            translate_chat_enabled: settings.translate_chat,
         }
     }
 
@@ -72,18 +77,29 @@ impl LobbyThread {
             lobby.update_friendships();
 
             self.shared_lobby.set(lobby);
-            self.translate_chat();
+            if self.translate_chat_enabled {
+                self.translate_chat();
+            }
 
             sleep(LOBBY_LOOP_DELAY);
         }
     }
 
     fn process_bus(&mut self) {
+        self.process_app_events();
         self.purge_old_players();
         self.process_g15_bus();
         self.process_logfile_bus();
         self.process_steamapi_bus();
         self.process_tf2bd_bus();
+    }
+
+    fn process_app_events(&mut self) {
+        while let Ok(msg) = self.app_event_bus_rx.try_recv() {
+            if let AppEventMsg::UpdatedSettings(settings) = msg {
+                self.translate_chat_enabled = settings.translate_chat;
+            }
+        }
     }
 
     fn process_g15_bus(&mut self) {
@@ -308,6 +324,8 @@ impl LobbyThread {
             lobby.kill_feed.push(LobbyKill {
                 killer: killer_steamid,
                 victim: victim_steamid,
+                killer_name,
+                victim_name,
                 weapon,
                 crit,
             });
@@ -439,5 +457,40 @@ impl LobbyThread {
         }
 
         self.shared_lobby.set(lobby);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chat_translation_follows_saved_settings_and_live_updates() {
+        let mut settings = AppSettings::default();
+        assert!(!settings.translate_chat);
+        let mut saved = serde_json::to_value(&settings).unwrap();
+        saved.as_object_mut().unwrap().remove("translate_chat");
+        assert!(
+            !serde_json::from_value::<AppSettings>(saved)
+                .unwrap()
+                .translate_chat
+        );
+
+        settings.translate_chat = true;
+        let saved = serde_json::to_string(&settings).unwrap();
+        let mut settings: AppSettings = serde_json::from_str(&saved).unwrap();
+        let bus = Arc::new(Mutex::new(AppBus::new(settings.self_steamid64)));
+        let mut lobby_thread = LobbyThread::new(&settings, &bus);
+        assert!(lobby_thread.translate_chat_enabled);
+
+        for enabled in [false, true, false] {
+            settings.translate_chat = enabled;
+            bus.lock()
+                .unwrap()
+                .app_event_bus
+                .broadcast(AppEventMsg::UpdatedSettings(settings.clone()));
+            lobby_thread.process_app_events();
+            assert_eq!(lobby_thread.translate_chat_enabled, enabled);
+        }
     }
 }

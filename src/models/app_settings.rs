@@ -76,6 +76,9 @@ pub struct AppSettings {
     #[serde(default = "get_true")]
     pub show_weapons: bool,
 
+    #[serde(default)]
+    pub translate_chat: bool,
+
     // Auto actions
     #[serde(default = "bool::default")]
     pub kick_cheaters: bool,
@@ -115,6 +118,7 @@ impl Default for AppSettings {
             show_health: false,
             show_ping: false,
             show_weapons: true,
+            translate_chat: false,
 
             kick_cheaters: false,
             kick_bots: true,

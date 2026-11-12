@@ -1,4 +1,4 @@
-use super::colors::{CHAT_BLU_COLOR, CHAT_RED_COLOR, hex_to_rgb};
+use super::colors::{CHAT_BLU_COLOR, CHAT_RED_COLOR};
 use crate::{
     models::AppWin,
     tf2::lobby::{LobbyKill, Team},
@@ -8,28 +8,21 @@ use eframe::egui::{Color32, ScrollArea, TextFormat, TextStyle, Ui, text::LayoutJ
 pub fn add_kill_feed(ui: &mut Ui, app_win: &mut AppWin) {
     ui.heading("Kill Feed");
 
-    let text_style = TextStyle::Body;
-    let text_height = ui.text_style_height(&text_style);
-    // Account for potential additional content that may make rows taller
-    // Use button height as a safe minimum to prevent row height changes
-    let button_height = ui.spacing().interact_size.y;
-    // Use the larger of the two to ensure consistent row heights
-    let row_height = text_height.max(button_height);
-    let num_rows = app_win.lobby.kill_feed.len();
+    ui.push_id("kill_feed", |ui| {
+        ui.spacing_mut().item_spacing.y = 2.0;
+        ui.spacing_mut().interact_size.y = ui.text_style_height(&TextStyle::Body);
+        ui.spacing_mut().button_padding.y = 1.0;
 
-    ScrollArea::vertical()
-        .stick_to_bottom(true)
-        .auto_shrink(false)
-        .show_rows(ui, row_height, num_rows, |ui, row_range| {
-            ui.scope(|ui| {
-                ui.style_mut().visuals.panel_fill = hex_to_rgb(0xffffff);
-
-                for row in row_range {
-                    let row = &app_win.lobby.kill_feed[row].clone();
+        // Entries can wrap or contain badges, so use their actual heights.
+        ScrollArea::vertical()
+            .stick_to_bottom(true)
+            .auto_shrink(false)
+            .show(ui, |ui| {
+                for row in &app_win.lobby.kill_feed.clone() {
                     add_kill_row(ui, app_win, row);
                 }
             });
-        });
+    });
 }
 
 fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
@@ -39,22 +32,22 @@ fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
 
         let (killer_name, killer_team) = match killer {
             Some(player) => (&player.name, player.team),
-            None => (&format!("{}", &kill_row.killer.to_u64()), Team::Unknown),
+            None => (&kill_row.killer_name, Team::Unknown),
         };
         let (victim_name, victim_team) = match victim {
             Some(player) => (&player.name, player.team),
-            None => (&format!("{}", &kill_row.victim.to_u64()), Team::Unknown),
+            None => (&kill_row.victim_name, Team::Unknown),
         };
 
         let mut killer_color = match killer_team {
             Team::Blue => CHAT_BLU_COLOR,
             Team::Red => CHAT_RED_COLOR,
-            _ => Color32::GRAY,
+            _ => super::theme::muted_text(),
         };
         let mut victim_color = match victim_team {
             Team::Blue => CHAT_BLU_COLOR,
             Team::Red => CHAT_RED_COLOR,
-            _ => Color32::GRAY,
+            _ => super::theme::muted_text(),
         };
 
         // If the killer or the victim is Me, use white color
@@ -66,17 +59,6 @@ fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
         }
 
         let mut job = LayoutJob::default();
-
-        // Uniceode skulls: "☠💀🕱"
-
-        job.append(
-            "💀 ",
-            0.0,
-            TextFormat {
-                color: Color32::WHITE,
-                ..Default::default()
-            },
-        );
 
         // Killer name in team color
         job.append(
@@ -92,7 +74,7 @@ fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
             " killed ",
             0.0,
             TextFormat {
-                color: Color32::GRAY,
+                color: super::theme::muted_text(),
                 ..Default::default()
             },
         );
@@ -111,13 +93,13 @@ fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
             " with ",
             0.0,
             TextFormat {
-                color: Color32::GRAY,
+                color: super::theme::muted_text(),
                 ..Default::default()
             },
         );
 
         job.append(
-            &kill_row.weapon,
+            &kill_row.weapon.replace('_', " "),
             0.0,
             TextFormat {
                 color: Color32::LIGHT_GRAY,
@@ -131,7 +113,7 @@ fn add_kill_row(ui: &mut Ui, app_win: &mut AppWin, kill_row: &LobbyKill) {
                 " (crit)",
                 0.0,
                 TextFormat {
-                    color: Color32::GRAY,
+                    color: super::theme::muted_text(),
                     ..Default::default()
                 },
             );

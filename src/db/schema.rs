@@ -46,6 +46,7 @@ diesel::table! {
         steam_id -> BigInt,
         writer_steam_id -> BigInt,
         writer_name -> Text,
+        writer_avatar_thumb -> Text,
         comment -> Text,
         created_date -> BigInt,
         deleted_date -> Nullable<BigInt>,

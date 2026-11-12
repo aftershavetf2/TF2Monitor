@@ -26,6 +26,7 @@ pub fn show_player_database_window(app_win: &mut AppWin, ctx: &egui::Context) {
     let mut window_open = app_win.player_database_window_open;
 
     egui::Window::new("Player Database")
+        .frame(super::theme::modal_frame(ctx))
         .open(&mut window_open)
         .resizable(true)
         .default_width(980.0)

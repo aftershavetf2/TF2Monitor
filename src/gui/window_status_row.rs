@@ -14,7 +14,11 @@ pub fn add_status_row(app_win: &AppWin, ui: &mut Ui, _image_desc: &ImageDescript
         // ui.label("Status: Online");
 
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            ui.label("Zoom with ctrl +/-");
+            ui.label(if cfg!(target_os = "macos") {
+                "Zoom with Cmd +/-"
+            } else {
+                "Zoom with Ctrl +/-"
+            });
             // add_image_creds(ui, image_desc);
         });
     });
