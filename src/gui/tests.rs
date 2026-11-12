@@ -99,18 +99,42 @@ fn title_drag_and_double_click_use_native_commands() {
     let pos = rects[0].center() - egui::vec2(120.0, 0.0);
     let (output, _) = title_frame(&ctx, pointer(pos, true), false);
     assert!(
+        !commands(&output)
+            .iter()
+            .any(|c| matches!(c, ViewportCommand::StartDrag))
+    );
+    let (output, _) = title_frame(
+        &ctx,
+        vec![Event::PointerMoved(pos + egui::vec2(20.0, 0.0))],
+        false,
+    );
+    assert!(
         commands(&output)
             .iter()
             .any(|c| matches!(c, ViewportCommand::StartDrag))
     );
-    title_frame(&ctx, pointer(pos, false), false);
-    title_frame(&ctx, pointer(pos, true), false);
-    let (output, _) = title_frame(&ctx, pointer(pos, false), false);
-    assert!(
-        commands(&output)
-            .iter()
-            .any(|c| matches!(c, ViewportCommand::Maximized(true)))
-    );
+    for maximized in [false, true] {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        title_frame(&ctx, vec![], maximized);
+        for click in 0..2 {
+            let (pressed, _) = title_frame(&ctx, pointer(pos, true), maximized);
+            let (released, _) = title_frame(&ctx, pointer(pos, false), maximized);
+            for output in [&pressed, &released] {
+                assert!(
+                    !commands(output)
+                        .iter()
+                        .any(|c| matches!(c, ViewportCommand::StartDrag))
+                );
+            }
+            assert_eq!(
+                commands(&released).iter().any(
+                    |c| matches!(c, ViewportCommand::Maximized(value) if *value != maximized)
+                ),
+                click == 1,
+            );
+        }
+    }
 }
 
 #[test]

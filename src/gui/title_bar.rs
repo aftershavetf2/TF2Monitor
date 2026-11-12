@@ -47,10 +47,12 @@ pub fn contents(ui: &mut egui::Ui, title: &str) -> [egui::Response; 3] {
         ui.painter()
             .galley(center - text.size() / 2.0, text, ui.visuals().text_color());
     }
-    if response.double_clicked() {
+    if response.double_clicked_by(egui::PointerButton::Primary) {
         ui.ctx()
             .send_viewport_cmd(ViewportCommand::Maximized(!maximized));
-    } else if response.is_pointer_button_down_on() && ui.input(|i| i.pointer.primary_pressed()) {
+    } else if response.drag_started_by(egui::PointerButton::Primary) {
+        // Wait for movement so the native drag loop does not consume clicks
+        // before egui can recognize a double-click.
         ui.ctx().send_viewport_cmd(ViewportCommand::StartDrag);
     }
     // Updating the native title also keeps task switchers and accessibility in sync.
