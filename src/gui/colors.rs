@@ -26,11 +26,12 @@ pub const PINK_WHITE: Color32 = hex_to_rgb(0xf5e7de);
 pub const LIGHT_BROWN: Color32 = hex_to_rgb(0xc1a18a);
 pub const LIGHT_BEIGE: Color32 = hex_to_rgb(0xdabdab);
 
-pub const TEAM_BLU_COLOR: Color32 = BLUE;
-pub const TEAM_RED_COLOR: Color32 = RED;
+// Player-name colors used by the in-game scoreboard.
+pub const TEAM_BLU_COLOR: Color32 = hex_to_rgb(0x99CCFF);
+pub const TEAM_RED_COLOR: Color32 = hex_to_rgb(0xFF4040);
 
-pub const CHAT_BLU_COLOR: Color32 = hex_to_rgb(0x99CCFF);
-pub const CHAT_RED_COLOR: Color32 = hex_to_rgb(0xFF4040);
+pub const CHAT_BLU_COLOR: Color32 = TEAM_BLU_COLOR;
+pub const CHAT_RED_COLOR: Color32 = TEAM_RED_COLOR;
 
 pub const PANEL_FILL: Color32 = super::theme::PANEL;
 // pub const WIDGET_FILL: Color32 = DARK_BROWN_GRAY;

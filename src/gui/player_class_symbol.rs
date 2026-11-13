@@ -36,8 +36,13 @@ pub fn add_player_class_symbol(ui: &mut Ui, player: &Player) -> Response {
             ),
             None => ("?", FontId::proportional(20.0)),
         };
-        ui.painter()
-            .text(rect.center(), Align2::CENTER_CENTER, symbol, font, Color32::WHITE);
+        ui.painter().text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            symbol,
+            font,
+            Color32::WHITE,
+        );
     }
     response.on_hover_text(tooltip)
 }

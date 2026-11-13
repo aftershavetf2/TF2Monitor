@@ -77,11 +77,11 @@ pub fn get_sources() -> Vec<SourceBanSource> {
         //     "https://www.skial.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",
         //     SourceBanParser::Table,
         // ),
-        SourceBanSource::new(
-            "scrap.tf",
-            "https://bans.scrap.tf/index.php?p=banlist&advSearch={}&advType=steamid",
-            SourceBanParser::Table,
-        ),
+        // SourceBanSource::new(
+        //     "scrap.tf",
+        //     "https://bans.scrap.tf/index.php?p=banlist&advSearch={}&advType=steamid",
+        //     SourceBanParser::Table,
+        // ),
         // SourceBanSource::new(
         //     "LazyPurple.com",
         //     "https://lazypurple.com/sourcebans/index.php?p=banlist&advSearch={}&advType=steamid",

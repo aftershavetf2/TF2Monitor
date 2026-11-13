@@ -1,11 +1,15 @@
 use super::{
-    account_age::add_account_age, markings::add_reputation,
-    player_class_symbol::add_player_class_symbol, player_tooltip::add_player_tooltip,
-    playtime::add_playtime, ui_utils::show_empty_value,
+    account_age::add_account_age,
+    colors::{TEAM_BLU_COLOR, TEAM_RED_COLOR},
+    markings::add_reputation,
+    player_class_symbol::add_player_class_symbol,
+    player_tooltip::add_player_tooltip,
+    playtime::add_playtime,
+    ui_utils::show_empty_value,
 };
 use crate::{
     models::{AppWin, steamid::SteamID},
-    tf2::lobby::Player,
+    tf2::lobby::{Player, Team},
 };
 use eframe::egui::{
     self, Align, Color32, CursorIcon, Grid, Layout, Sense, TextFormat, Ui, text::LayoutJob,
@@ -356,16 +360,6 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
     ui.horizontal(|ui| {
         ui.push_id(player.steamid.to_u64(), |ui| {
             ui.scope(|ui| {
-                // let color = match player.team {
-                //     Team::Invaders => TEAM_BLU_COLOR,
-                //     Team::Defendes => TEAM_RED_COLOR,
-                //     _ => super::theme::muted_text(),
-                // };
-                // let color = Color32::WHITE;
-
-                // ui.visuals_mut().override_text_color = Some(color);
-                // ui.style_mut().visuals.override_text_color = Some(color);
-
                 // Mark selected player and friends of selected player
                 if let Some(steamid) = app_win.selected_player {
                     if steamid == player.steamid
@@ -396,11 +390,11 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                     }
                 }
 
-                // Player name prefixed with DEAD is not alive
-                let name_color = if player.alive {
-                    Color32::WHITE
-                } else {
-                    super::theme::muted_text()
+                let name_color = match player.team {
+                    Team::Blue => TEAM_BLU_COLOR,
+                    Team::Red => TEAM_RED_COLOR,
+                    _ if player.alive => Color32::WHITE,
+                    _ => super::theme::muted_text(),
                 };
 
                 // Player name and hover tooltip
@@ -443,7 +437,6 @@ fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, pla
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tf2::lobby::Team;
     use crate::{appbus::AppBus, models::app_settings::AppSettings};
     use diesel::{
         SqliteConnection,

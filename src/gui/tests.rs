@@ -128,9 +128,9 @@ fn title_drag_and_double_click_use_native_commands() {
                 );
             }
             assert_eq!(
-                commands(&released).iter().any(
-                    |c| matches!(c, ViewportCommand::Maximized(value) if *value != maximized)
-                ),
+                commands(&released)
+                    .iter()
+                    .any(|c| matches!(c, ViewportCommand::Maximized(value) if *value != maximized)),
                 click == 1,
             );
         }

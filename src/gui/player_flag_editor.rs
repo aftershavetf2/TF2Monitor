@@ -41,6 +41,7 @@ fn add_flag(
 ) {
     ui.scope(|ui| {
         ui.set_max_width(140.0);
+        ui.spacing_mut().icon_width = 18.0;
 
         let (fgcolor, bgcolor) = color_for_flag(player_attribute);
 
