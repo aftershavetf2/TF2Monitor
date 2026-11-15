@@ -1,8 +1,5 @@
 use super::SteamProfileComment;
-use crate::{
-    config::HTTP_CACHE_TTL_STEAM_COMMENTS_DAYS, http_cache::get_from_cache_or_fetch,
-    models::steamid::SteamID,
-};
+use crate::models::steamid::SteamID;
 use serde::Deserialize;
 use std::error::Error;
 
@@ -34,18 +31,8 @@ fn get_data(steam_id: u64) -> Result<Reply, Box<dyn Error>> {
         steam_id
     );
 
-    if let Some(data) = get_from_cache_or_fetch(
-        "Steam Profile Comments",
-        &steam_id.to_string(),
-        HTTP_CACHE_TTL_STEAM_COMMENTS_DAYS,
-        &url,
-    ) {
-        if let Ok(reply) = serde_json::from_str::<Reply>(&data) {
-            return Ok(reply);
-        }
-    }
-    // Failed to parse the response, return None
-    Err("Failed to parse the response".into())
+    let data = reqwest::blocking::get(&url)?.text()?;
+    Ok(serde_json::from_str::<Reply>(&data)?)
 }
 
 fn parse_comments(html: &str) -> Vec<SteamProfileComment> {
@@ -84,14 +71,11 @@ fn parse_comments(html: &str) -> Vec<SteamProfileComment> {
                 }
             })
             .unwrap_or_default();
-        let comment = comment
+        let body = comment
             .select(&scraper::Selector::parse("div.commentthread_comment_text").unwrap())
             .next()
-            .unwrap()
-            .text()
-            .collect::<String>()
-            .trim()
-            .to_string();
+            .unwrap();
+        let comment = comment_text(body);
 
         comments.push(SteamProfileComment {
             name: author,
@@ -104,9 +88,73 @@ fn parse_comments(html: &str) -> Vec<SteamProfileComment> {
     comments
 }
 
+/// Keep Steam's explicit line breaks and the spacing used by Unicode drawings.
+fn comment_text(body: scraper::ElementRef<'_>) -> String {
+    use scraper::node::Node;
+
+    let mut nodes = body
+        .descendants()
+        .filter(|node| match node.value() {
+            Node::Text(_) => true,
+            Node::Element(element) => element.name() == "br",
+            _ => false,
+        })
+        .peekable();
+    let mut text = String::new();
+    let mut first = true;
+    while let Some(node) = nodes.next() {
+        match node.value() {
+            Node::Text(value) => {
+                let mut value: &str = value;
+                // Steam pads the body with source newlines and tabs. Remove only
+                // that padding, preserving spaces, NBSPs and explicit <br> lines.
+                if first {
+                    value = value.trim_start_matches(['\r', '\n', '\t']);
+                }
+                if nodes.peek().is_none() {
+                    value = value.trim_end_matches(['\r', '\n', '\t']);
+                }
+                text.push_str(value);
+            }
+            Node::Element(_) => text.push('\n'),
+            _ => unreachable!(),
+        }
+        first = false;
+    }
+    text
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn parse_body(body: &str) -> String {
+        let html = format!(
+            r#"<div class="commentthread_comment">
+                <a class="commentthread_author_link" data-miniprofile="123">Artist</a>
+                <div class="commentthread_comment_text">{body}</div>
+            </div>"#
+        );
+        parse_comments(&html).remove(0).comment
+    }
+
+    #[test]
+    fn preserves_unicode_art_line_breaks_and_spacing() {
+        assert_eq!(
+            parse_body("\n\t\t  ░█  <br> ╔══╗<br/> ╚══╝  \t\t"),
+            "  ░█  \n ╔══╗\n ╚══╝  "
+        );
+    }
+
+    #[test]
+    fn preserves_blank_lines_and_decodes_nested_text_and_entities() {
+        assert_eq!(
+            parse_body("\n\t<br><br>A <b>&amp;</b> B&nbsp; C<br><br>\t\n"),
+            "\n\nA & B\u{a0} C\n\n"
+        );
+        assert_eq!(parse_body("  spaced  "), "  spaced  ");
+        assert_eq!(parse_body(""), "");
+    }
 
     #[test]
     fn parses_comment_author_thumbnail_and_handles_missing_images() {

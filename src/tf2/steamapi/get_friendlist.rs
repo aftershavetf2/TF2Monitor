@@ -1,7 +1,4 @@
-use crate::{
-    config::HTTP_CACHE_TTL_FRIENDLIST_DAYS, http_cache::get_from_cache_or_fetch,
-    models::steamid::SteamID,
-};
+use crate::models::steamid::SteamID;
 use serde::Deserialize;
 use std::collections::HashSet;
 
@@ -31,12 +28,7 @@ pub fn get_friendlist(steam_api_key: &String, steamid: SteamID) -> Option<HashSe
         steamid.to_u64()
     );
 
-    if let Some(data) = get_from_cache_or_fetch(
-        "Steam Friendlist",
-        &steamid.to_u64().to_string(),
-        HTTP_CACHE_TTL_FRIENDLIST_DAYS,
-        &url,
-    ) {
+    if let Ok(data) = reqwest::blocking::get(&url).and_then(|response| response.text()) {
         if let Ok(reply) = serde_json::from_str::<Response>(&data) {
             let friends = reply.friendslist.friends;
             let players: HashSet<SteamID> = friends

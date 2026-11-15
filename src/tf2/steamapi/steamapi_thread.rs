@@ -692,7 +692,9 @@ impl SteamApiThread {
 
                         // Populate thumbnails for comments cached before avatar support.
                         let missing_avatars = comments.iter().any(|c| c.avatar_thumb.is_empty());
-                        let should_refresh = should_refresh || missing_avatars;
+                        let should_refresh = DB_CACHE_TTL_COMMENTS_SECONDS <= 0
+                            || should_refresh
+                            || missing_avatars;
                         if should_refresh {
                             // Only send cached comments if we actually have some.
                             // An empty DB result is not a real cache hit and should not mark

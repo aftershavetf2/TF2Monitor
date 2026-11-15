@@ -3,7 +3,6 @@ mod ban_data;
 mod config;
 mod db;
 mod gui;
-mod http_cache;
 mod models;
 mod reputation;
 mod tf2;

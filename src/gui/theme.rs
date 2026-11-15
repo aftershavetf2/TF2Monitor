@@ -7,6 +7,9 @@ use eframe::egui::{
 
 const INTER_REGULAR: &[u8] = include_bytes!("../../assets/fonts/inter/Inter-Regular.ttf");
 const INTER_SEMIBOLD: &[u8] = include_bytes!("../../assets/fonts/inter/Inter-SemiBold.ttf");
+const NOTO_SANS_SYMBOLS_2: &[u8] =
+    include_bytes!("../../assets/fonts/noto-sans-symbols-2/NotoSansSymbols2-Regular.ttf");
+const NOTO_EMOJI: &[u8] = include_bytes!("../../assets/fonts/noto-emoji/NotoEmoji[wght].ttf");
 const JETBRAINS_MONO_MEDIUM: &[u8] =
     include_bytes!("../../assets/fonts/jetbrains-mono/JetBrainsMono-Medium.ttf");
 
@@ -75,12 +78,22 @@ pub(crate) fn install(ctx: &egui::Context) {
     );
     for (name, data) in [
         ("Inter", INTER_REGULAR),
+        ("Noto Sans Symbols 2", NOTO_SANS_SYMBOLS_2),
+        ("Noto Emoji", NOTO_EMOJI),
         ("Inter Semibold", INTER_SEMIBOLD),
         ("JetBrains Mono Medium", JETBRAINS_MONO_MEDIUM),
     ] {
         fonts
             .font_data
             .insert(name.into(), Arc::new(FontData::from_static(data)));
+    }
+    // Put symbols and emoji after Inter (inserted below), and after Hack
+    // in the monospace family, ahead of egui's older fallback fonts.
+    for (family, index) in [(FontFamily::Proportional, 0), (FontFamily::Monospace, 1)] {
+        fonts.families.entry(family).or_default().splice(
+            index..index,
+            ["Noto Sans Symbols 2".into(), "Noto Emoji".into()],
+        );
     }
     let proportional = fonts.families.entry(FontFamily::Proportional).or_default();
     proportional.insert(0, "Inter".into());
@@ -302,4 +315,34 @@ pub fn image(ui: &mut egui::Ui, image: egui::Image<'_>) -> egui::Response {
         egui::StrokeKind::Inside,
     );
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fallback_fonts_cover_braille_with_uniform_width_and_common_emoji() {
+        let ctx = egui::Context::default();
+        install(&ctx);
+        let _ = ctx.run(Default::default(), |ctx| {
+            ctx.fonts_mut(|fonts| {
+                for font in [FontId::proportional(13.0), heading_font(), shortcut_font()] {
+                    let width = fonts.glyph_width(&font, '\u{2800}');
+                    assert!(width > 0.0);
+                    for codepoint in 0x2800..=0x28ff {
+                        let glyph = char::from_u32(codepoint).unwrap();
+                        assert!(fonts.has_glyph(&font, glyph), "Missing U+{codepoint:04X}");
+                        assert!(
+                            (fonts.glyph_width(&font, glyph) - width).abs() < 0.01,
+                            "Uneven braille width at U+{codepoint:04X} in {font:?}"
+                        );
+                    }
+                    assert!(fonts.has_glyphs(&font, "😀🔥👍💖⭐"));
+                    let galley = fonts.layout_no_wrap("⠀⠀⣠⣿⠿⠛\n⠀⣾⡿⠁ 😀🔥".into(), font, TEXT);
+                    assert_eq!(galley.rows.len(), 2);
+                }
+            });
+        });
+    }
 }

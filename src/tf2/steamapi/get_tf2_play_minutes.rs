@@ -1,7 +1,4 @@
-use crate::{
-    config::HTTP_CACHE_TTL_TF2_PLAYTIME_DAYS, http_cache::get_from_cache_or_fetch,
-    models::steamid::SteamID, tf2::lobby::Tf2PlayMinutes,
-};
+use crate::{models::steamid::SteamID, tf2::lobby::Tf2PlayMinutes};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -27,12 +24,7 @@ pub fn get_tf2_play_minutes(steam_api_key: &String, steamid: SteamID) -> Tf2Play
         steamid.to_u64()
     );
 
-    if let Some(data) = get_from_cache_or_fetch(
-        "Steam Profile TF2Hours",
-        &steamid.to_u64().to_string(),
-        HTTP_CACHE_TTL_TF2_PLAYTIME_DAYS,
-        &url,
-    ) {
+    if let Ok(data) = reqwest::blocking::get(&url).and_then(|response| response.text()) {
         if let Ok(reply) = serde_json::from_str::<Envelope>(&data) {
             match reply
                 .response
