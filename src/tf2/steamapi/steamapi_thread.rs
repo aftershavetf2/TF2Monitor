@@ -177,7 +177,6 @@ impl SteamApiThread {
                                 friends_fetched: None,
                                 comments_fetched: None,
                                 playtimes_fetched: None,
-                                reputation_fetched: None,
                                 steam_bans_last_fetched: None,
                             };
 

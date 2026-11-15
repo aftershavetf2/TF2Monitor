@@ -75,7 +75,20 @@ Right now only one `playerlist.json` file is supported.
 
 ## SourceBans Integration
 
-The app integrates with SourceBans to fetch ban information for players. Players with bans from SourceBans will have their reputation marked accordingly.
+The legacy SourceBans scraper and its cached data have been removed. On first startup after upgrading, the app removes `bans`, `ban_sources`, and `account.reputation_fetched` from `appdata.sqlite` and compacts the database. Steam VAC/game bans and player markings are preserved.
+
+Community ban data is now downloaded from GitHub Releases in [tf2-ban-data](https://github.com/aftershavetf2/tf2-ban-data) and stored in `data/ban-data/bans.sqlite`, relative to the working directory (like `appdata.sqlite`). The app discovers the latest release through the public GitHub API, then downloads its manifest and changed community files from that fixed release. No GitHub login is needed.
+
+- Automatic background checks run at most once every 24 hours while the app is running. The last attempt is saved across restarts, including failed checks.
+- **Tools → Check for New Ban Data** checks immediately. Manual attempts reset the same 24-hour interval; checks cannot overlap.
+- The Tools menu displays progress, errors, and the last attempted and successful check times.
+- Downloads are verified against the manifest's compressed and uncompressed sizes and SHA-256 hashes before import. Each community is replaced in a transaction; failures preserve its previous snapshot.
+- Only changed JSON content is downloaded. Temporary gzip files in `data/ban-data/staging/` are deleted after processing.
+- Player lookups work offline against the local database. Successful imports refresh reputations for current players.
+- Player details include active, expired, and removed bans. The SB badge indicates any recorded ban, including expired and removed bans. It includes a warning triangle after the SB text when any ban reason contains `SMAC`, `aimbot`, `exploit`, or `crash` (case-insensitive substring matching); a community ban does not automatically mark a player as a cheater. Export dates have day precision and expiry is evaluated by UTC date.
+- Incomplete community histories and partially downloaded datasets are shown as incomplete. An empty result means no matches in available data.
+
+Run `cargo test` for automated checks. The opt-in `cargo test live_release_import -- --ignored --nocapture` test downloads the public release into a temporary database and verifies that a repeated check skips unchanged files.
 
 # What about VAC?
 
@@ -101,7 +114,7 @@ All it does is:
 
 This application does not collect any personal information about you. It does not contain any analytics or anything like that.
 
-It does fetch information from Steam Community and various community server sites, to fetch player account information and SourceBans about the SteamID's found in your current TF2 session..
+It fetches player account information from Steam Community and community ban snapshots from GitHub Releases. Community ban lookups for your current TF2 session run locally.
 
 The full source code is available for anyone to inspect.
 

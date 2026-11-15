@@ -70,6 +70,14 @@ pub fn connect() -> Result<DbPool, Box<dyn std::error::Error>> {
         );
     }
 
+    // Migrate with a single connection before starting the pool or workers.
+    {
+        let mut conn = SqliteConnection::establish(DATABASE_FILE)?;
+        diesel::sql_query("PRAGMA busy_timeout = 15000").execute(&mut conn)?;
+        remove_legacy_sourcebans(&mut conn)?;
+        setup_schema(&mut conn)?;
+    }
+
     // Connect to SQLite database
     // SQLite will create the file if it doesn't exist
     let database_url = DATABASE_FILE;
@@ -88,11 +96,62 @@ pub fn connect() -> Result<DbPool, Box<dyn std::error::Error>> {
         DATABASE_FILE
     );
 
-    // Set up schema (create tables if they don't exist)
-    let mut conn = pool.get()?;
-    setup_schema(&mut conn)?;
-
     Ok(pool)
+}
+
+/// Remove the obsolete cache and reclaim its pages once, outside a transaction.
+/// A pending marker survives interruption between committing cleanup and VACUUM.
+fn remove_legacy_sourcebans(conn: &mut SqliteConnection) -> QueryResult<()> {
+    #[derive(QueryableByName)]
+    struct Value {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        value: i64,
+    }
+    diesel::sql_query(
+        "CREATE TABLE IF NOT EXISTS app_migrations (
+            name TEXT PRIMARY KEY NOT NULL,
+            completed INTEGER NOT NULL
+        )",
+    )
+    .execute(conn)?;
+    let completed = diesel::sql_query(
+        "SELECT completed AS value FROM app_migrations WHERE name = 'remove_legacy_sourcebans'",
+    )
+    .get_result::<Value>(conn)
+    .optional()?;
+    if completed.as_ref().is_some_and(|row| row.value == 1) {
+        return Ok(());
+    }
+    let legacy = diesel::sql_query(
+        "SELECT (EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table'
+            AND name IN ('bans', 'ban_sources')) OR
+            EXISTS(SELECT 1 FROM pragma_table_info('account') WHERE name = 'reputation_fetched')) AS value",
+    ).get_result::<Value>(conn)?.value != 0;
+    conn.transaction::<_, diesel::result::Error, _>(|conn| {
+        diesel::sql_query("DROP TABLE IF EXISTS bans").execute(conn)?;
+        diesel::sql_query("DROP TABLE IF EXISTS ban_sources").execute(conn)?;
+        let column = diesel::sql_query(
+            "SELECT count(*) AS value FROM pragma_table_info('account') WHERE name = 'reputation_fetched'",
+        ).get_result::<Value>(conn)?;
+        if column.value != 0 {
+            diesel::sql_query("ALTER TABLE account DROP COLUMN reputation_fetched").execute(conn)?;
+        }
+        diesel::sql_query(
+            "INSERT OR IGNORE INTO app_migrations (name, completed) VALUES ('remove_legacy_sourcebans', 0)",
+        ).execute(conn)?;
+        Ok(())
+    })?;
+    if legacy || completed.is_some() {
+        log::info!("Compacting database after legacy SourceBans cleanup...");
+        diesel::sql_query("VACUUM").execute(conn)?;
+        // Return the WAL's reclaimed pages to disk as well.
+        diesel::sql_query("PRAGMA wal_checkpoint(TRUNCATE)").execute(conn)?;
+    }
+    diesel::sql_query(
+        "UPDATE app_migrations SET completed = 1 WHERE name = 'remove_legacy_sourcebans'",
+    )
+    .execute(conn)?;
+    Ok(())
 }
 
 /// Sets up the database schema by creating all necessary tables and indexes.
@@ -113,16 +172,10 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
             last_updated INTEGER NOT NULL,
             friends_fetched INTEGER,
             comments_fetched INTEGER,
-            playtimes_fetched INTEGER,
-            reputation_fetched INTEGER
+            playtimes_fetched INTEGER
         )",
     )
     .execute(conn)?;
-
-    // Add reputation_fetched column if it doesn't exist (for existing databases)
-    diesel::sql_query("ALTER TABLE account ADD COLUMN reputation_fetched INTEGER")
-        .execute(conn)
-        .ok(); // Ignore error if column already exists
 
     // Add steam_bans_last_fetched column if it doesn't exist (for existing databases)
     diesel::sql_query("ALTER TABLE account ADD COLUMN steam_bans_last_fetched INTEGER")
@@ -240,33 +293,6 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
         log::error!("Playtime table migration failed: {}", e);
     }
 
-    // Create bans table
-    diesel::sql_query(
-        "CREATE TABLE IF NOT EXISTS bans (
-            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            steam_id INTEGER NOT NULL,
-            source TEXT NOT NULL,
-            ban_type TEXT NOT NULL,
-            reason TEXT,
-            created_date INTEGER NOT NULL,
-            expires_date INTEGER,
-            permanent INTEGER NOT NULL
-        )",
-    )
-    .execute(conn)?;
-
-    // Create ban_sources table
-    diesel::sql_query(
-        "CREATE TABLE IF NOT EXISTS ban_sources (
-            name TEXT PRIMARY KEY NOT NULL,
-            url TEXT NOT NULL,
-            parser TEXT NOT NULL,
-            last_checked INTEGER,
-            active INTEGER NOT NULL
-        )",
-    )
-    .execute(conn)?;
-
     // Create player_flags table
     diesel::sql_query(
         "CREATE TABLE IF NOT EXISTS player_flags (
@@ -319,12 +345,6 @@ fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::E
     diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_playtime_steam_id ON playtime(steam_id)")
         .execute(conn)?;
     diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_playtime_game ON playtime(game)")
-        .execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_bans_steam_id ON bans(steam_id)")
-        .execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_bans_source ON bans(source)")
-        .execute(conn)?;
-    diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_ban_sources_active ON ban_sources(active)")
         .execute(conn)?;
     diesel::sql_query(
         "CREATE INDEX IF NOT EXISTS idx_player_flags_steam_id ON player_flags(steam_id)",
@@ -413,5 +433,131 @@ mod comment_avatar_tests {
         );
         let fresh = queries::get_active_comments_for_account(&mut conn, 3).unwrap();
         assert_eq!(fresh[0].writer_avatar_thumb, cached[0].writer_avatar_thumb);
+    }
+}
+
+#[cfg(test)]
+mod legacy_sourcebans_tests {
+    use super::*;
+    use diesel::connection::SimpleConnection;
+
+    #[derive(Debug, PartialEq, QueryableByName)]
+    struct Value {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        value: i64,
+    }
+
+    fn value(conn: &mut SqliteConnection, sql: &str) -> i64 {
+        diesel::sql_query(sql)
+            .get_result::<Value>(conn)
+            .unwrap()
+            .value
+    }
+
+    #[test]
+    fn cleanup_preserves_other_data_compacts_and_only_runs_once() {
+        let path =
+            std::env::temp_dir().join(format!("tf2monitor-cleanup-{}.sqlite", std::process::id()));
+        let mut conn = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
+        conn.batch_execute(
+            "PRAGMA journal_mode = WAL;
+             CREATE TABLE account (steam_id INTEGER PRIMARY KEY, name TEXT, reputation_fetched INTEGER);
+             INSERT INTO account VALUES (1, 'Player', 100);
+             CREATE TABLE bans (payload BLOB);
+             INSERT INTO bans VALUES (zeroblob(1048576));
+             CREATE TABLE ban_sources (name TEXT);
+             INSERT INTO ban_sources VALUES ('legacy');
+             CREATE TABLE steam_bans (steam_id INTEGER PRIMARY KEY);
+             INSERT INTO steam_bans VALUES (1);
+             CREATE TABLE player_flags (steam_id INTEGER PRIMARY KEY);
+             INSERT INTO player_flags VALUES (1);"
+        ).unwrap();
+        let before = value(
+            &mut conn,
+            "SELECT page_count AS value FROM pragma_page_count",
+        );
+        remove_legacy_sourcebans(&mut conn).unwrap();
+        let after = value(
+            &mut conn,
+            "SELECT page_count AS value FROM pragma_page_count",
+        );
+        assert!(after < before);
+        assert_eq!(
+            value(
+                &mut conn,
+                "SELECT count(*) AS value FROM sqlite_master WHERE name IN ('bans', 'ban_sources')"
+            ),
+            0
+        );
+        assert_eq!(
+            value(
+                &mut conn,
+                "SELECT count(*) AS value FROM pragma_table_info('account') WHERE name = 'reputation_fetched'"
+            ),
+            0
+        );
+        assert_eq!(
+            value(
+                &mut conn,
+                "SELECT count(*) AS value FROM account WHERE steam_id = 1 AND name = 'Player'"
+            ),
+            1
+        );
+        assert_eq!(
+            value(&mut conn, "SELECT count(*) AS value FROM steam_bans"),
+            1
+        );
+        assert_eq!(
+            value(&mut conn, "SELECT count(*) AS value FROM player_flags"),
+            1
+        );
+        // Free pages added after migration must survive the second call (no VACUUM).
+        conn.batch_execute("CREATE TABLE scratch (payload BLOB); INSERT INTO scratch VALUES (zeroblob(1048576)); DROP TABLE scratch;").unwrap();
+        let free = value(
+            &mut conn,
+            "SELECT freelist_count AS value FROM pragma_freelist_count",
+        );
+        assert!(free > 0);
+        remove_legacy_sourcebans(&mut conn).unwrap();
+        assert_eq!(
+            value(
+                &mut conn,
+                "SELECT freelist_count AS value FROM pragma_freelist_count"
+            ),
+            free
+        );
+        assert_eq!(
+            value(
+                &mut conn,
+                "SELECT count(*) AS value FROM pragma_integrity_check WHERE integrity_check != 'ok'"
+            ),
+            0
+        );
+        drop(conn);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn cleanup_retries_pending_compaction_and_supports_fresh_databases() {
+        let mut conn = SqliteConnection::establish(":memory:").unwrap();
+        remove_legacy_sourcebans(&mut conn).unwrap();
+        setup_schema(&mut conn).unwrap();
+        assert_eq!(
+            value(
+                &mut conn,
+                "SELECT count(*) AS value FROM pragma_table_info('account') WHERE name = 'reputation_fetched'"
+            ),
+            0
+        );
+        conn.batch_execute("UPDATE app_migrations SET completed = 0;")
+            .unwrap();
+        remove_legacy_sourcebans(&mut conn).unwrap();
+        assert_eq!(
+            value(
+                &mut conn,
+                "SELECT completed AS value FROM app_migrations WHERE name = 'remove_legacy_sourcebans'"
+            ),
+            1
+        );
     }
 }

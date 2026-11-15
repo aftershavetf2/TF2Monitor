@@ -6,3 +6,5 @@
 playerlist - Copy.json
 .http-cache
 *.sqlite*
+
+/data/ban-data/

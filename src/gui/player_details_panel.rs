@@ -6,9 +6,7 @@ use crate::{
     models::{AppWin, steamid::SteamID},
     tf2::lobby::{Player, PlayerKill},
 };
-use eframe::egui::{
-    self, Color32, Image, OpenUrl, ScrollArea, TextFormat, Ui, Vec2, text::LayoutJob,
-};
+use eframe::egui::{self, Image, OpenUrl, ScrollArea, Ui, Vec2};
 
 pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
     ui.heading("Player Details");
@@ -257,56 +255,16 @@ fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
 }
 
 fn add_player_sourcebans(player: &Player, ui: &mut Ui) {
-    let mut has_bans = false;
-
     ui.heading("SourceBans");
-
-    if let Some(reputation) = &player.reputation {
-        if reputation.has_bad_reputation && !reputation.source_bans.is_empty() {
-            // Sort the bans by when descending, but treat the date as a string
-            let mut bans = reputation.source_bans.clone();
-            bans.sort_by_key(|ban| ban.source.clone());
-
-            for ban in &bans {
-                let mut job = LayoutJob::default();
-
-                job.append(
-                    "- ",
-                    10.0,
-                    TextFormat {
-                        color: Color32::WHITE,
-                        ..Default::default()
-                    },
-                );
-                job.append(
-                    &ban.source,
-                    5.0,
-                    TextFormat {
-                        color: super::theme::muted_text(),
-                        ..Default::default()
-                    },
-                );
-                job.append(
-                    format!("\"{}\"", ban.reason).as_str(),
-                    5.0,
-                    TextFormat {
-                        color: Color32::WHITE,
-                        ..Default::default()
-                    },
-                );
-
-                ui.label(job);
-
-                has_bans = true;
-            }
-        }
+    let Some(reputation) = &player.reputation else {
+        ui.label("Community ban data is not available yet");
+        return;
+    };
+    if reputation.source_bans.is_empty() {
+        ui.label("No bans found in available data");
     }
-
-    if !has_bans {
-        if player.reputation.is_none() {
-            ui.label("Loading SourceBans...");
-        } else {
-            ui.label("No bans found");
-        }
+    let today = chrono::Utc::now().date_naive();
+    for ban in &reputation.source_bans {
+        super::markings::add_sourceban_row(ui, ban, today);
     }
 }

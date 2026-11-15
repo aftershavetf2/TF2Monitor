@@ -12,6 +12,16 @@
 - Releases
 - Functionality to start TF2 from app
 
+## Community ban data
+
+- [x] Download and import releases from `aftershavetf2/tf2-ban-data`.
+- [x] Automatically check for updates at most once every 24 hours, including after failed attempts.
+- [x] Persist the last check attempt across restarts, separately from the last successful update.
+- [x] Add a menu action to check immediately, bypassing the 24-hour interval.
+- [x] Manual checks also update the last-attempt timestamp; prevent overlapping checks.
+- [x] Check in the background and keep the current local data available during checks and failures.
+- [x] Download only communities whose content hashes have changed, including after a manual check.
+
 ## TF2BD lists
 
 - Editor for the playerlist.json file

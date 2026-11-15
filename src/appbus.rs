@@ -12,6 +12,7 @@ use crate::{
 use bus::Bus;
 
 pub struct AppBus {
+    pub ban_data: crate::ban_data::Control,
     pub logfile_bus: Bus<LogLine>,
     pub rcon_bus: Bus<String>,
     pub g15_report_bus: Bus<G15DumpPlayerOutput>,
@@ -39,6 +40,7 @@ impl AppBus {
     pub fn new(self_steamid: crate::models::steamid::SteamID) -> Self {
         let initial_lobby = Lobby::new(self_steamid);
         Self {
+            ban_data: crate::ban_data::Control::default(),
             logfile_bus: Bus::new(10000),
             rcon_bus: Bus::new(100),
             g15_report_bus: Bus::new(100),

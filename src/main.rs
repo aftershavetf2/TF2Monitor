@@ -1,4 +1,5 @@
 mod appbus;
+mod ban_data;
 mod config;
 mod db;
 mod gui;
@@ -12,7 +13,6 @@ mod utils;
 use appbus::AppBus;
 use eframe::Result;
 use models::app_settings::AppSettings;
-use reputation::reputation_thread;
 use std::sync::{Arc, Mutex};
 
 fn main() -> Result<(), eframe::Error> {
@@ -30,7 +30,9 @@ fn main() -> Result<(), eframe::Error> {
 
     tf2::start(&settings, &bus, &db);
     tf2bd::tf2bd_thread::start(&settings, &bus, &db);
-    reputation_thread::start(&settings, &bus, &db);
+    if let Err(error) = ban_data::start(&bus) {
+        log::error!("Could not start community ban data: {error}");
+    }
 
     gui::run(&settings, &bus, Arc::new(db))
 }

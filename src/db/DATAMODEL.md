@@ -101,6 +101,12 @@ The database serves as the primary cache for Steam API data. Cache freshness is 
 - **Friendship data**: Cached in `friendship` table, refreshed based on `friends_fetched` timestamp
 - **Comments data**: Cached in `comments` table, refreshed based on `comments_fetched` timestamp
 - **Playtime data**: Cached in `playtime` table, refreshed based on `playtimes_fetched` timestamp
-- **Steam bans**: Cached in `bans` table, refreshed based on `steam_bans_last_fetched` timestamp
+- **Steam bans**: Cached in `steam_bans` table, refreshed based on `steam_bans_last_fetched` timestamp
 
 TTL values are configured in `src/config.rs`.
+
+## Legacy SourceBans cleanup
+
+The startup migration removes `bans`, `ban_sources`, and `account.reputation_fetched`.
+It runs before the connection pool starts and uses `VACUUM` once to reclaim space.
+Completion is recorded in `app_migrations`; interrupted compaction is retried on startup.

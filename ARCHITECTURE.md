@@ -18,7 +18,9 @@ The following larger parts are in TF2Monitor:
 
 - **TF2BD**: Listens to Lobby data and enriches it with the usual TF2BD markings such as Cheater, Toxic etc. Stores those markings in a `playerlist.json` file in the project root.
 
-- **Reputation**: Listens to Lobby data and enriches it with reputation information from SourceBans. Fetches ban information for players and determines if they have a bad reputation.
+- **Ban data**: Downloads manifest and verified community snapshots from a fixed `tf2-ban-data` GitHub release, at most once per 24 hours automatically. Stores snapshots and update state in `data/ban-data/bans.sqlite`; the Tools menu can request a manual check.
+
+- **Reputation**: Independently queries the local ban database for lobby players and broadcasts reputation updates. Refreshes after imports and UTC date changes; any recorded ban drives the SB badge, including expired and removed bans. Tooltips and player details show the status so users can assess the history themselves.
 
 - **UI**: Listens to new Lobby data and presents it. Sends user commands such as votekick, player markings to other parts of the application. Built with `egui` and `eframe`.
 
@@ -101,21 +103,21 @@ sequenceDiagram
 
 ## Enrich Lobby data with Reputation data
 
-This flow enriches player data with SourceBans reputation information.
+The legacy SourceBans flow has been removed. On startup, before the connection pool
+is created, a migration removes the old cache tables and account timestamp, then
+compacts the database once. Steam bans and player flags remain in the main database.
 
-```mermaid
-sequenceDiagram
-    participant Lobby
-    participant Reputation
-    participant SourceBans
+`src/ban_data/models.rs` defines and validates the versioned manifest and export records.
+`storage.rs` owns the separate SQLite schema, indexed SteamID lookups, transactional
+community replacement, expected coverage, and durable check timestamps. `updater.rs`
+discovers a release, downloads changed files into staging, verifies gzip/JSON hashes
+and sizes, and imports each community. Existing data remains readable through WAL.
 
-    loop Periodically
-        Lobby->>Reputation: Lobby data
-        Reputation->>SourceBans: Request ban information
-        SourceBans->>Reputation: Ban data
-        Reputation->>Lobby: Player reputation data
-    end
-```
+`ban_data::Control`, shared through AppBus, provides update status and a single pending
+manual request. The updater runs separately from local reputation lookups. Manual
+requests bypass the daily interval but are ignored while a check is queued or running.
+The last attempt is persisted before network access, so failures also respect the interval.
+The reputation worker invalidates its current-player results after imports and date changes.
 
 ## UI Components
 

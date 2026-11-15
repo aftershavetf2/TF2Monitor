@@ -13,9 +13,6 @@ pub const LOBBY_LOOP_DELAY: Duration = Duration::from_millis(20);
 pub const STEAMAPI_LOOP_DELAY: Duration = Duration::from_millis(100);
 pub const STEAMAPI_RETRY_DELAY: Duration = Duration::from_millis(5000);
 
-/// Reputation thread delay
-pub const REPUTATION_LOOP_DELAY: Duration = Duration::from_millis(100);
-
 /// Logfile watcher delays
 pub const LOGFILE_LOOP_DELAY: Duration = Duration::from_millis(1000);
 pub const LOGFILE_FILE_NOT_EXIST_DELAY: Duration = Duration::from_millis(10 * 1000);
@@ -33,9 +30,6 @@ pub const NUM_FRIENDS_TO_FETCH: usize = 4;
 pub const NUM_ACCOUNT_AGES_TO_APPROX: usize = 1;
 pub const NUM_PROFILE_COMMENTS_TO_FETCH: usize = 2;
 
-/// Reputation thread batch size - how many players to process per loop iteration
-pub const NUM_REPUTATIONS_TO_FETCH: usize = 3;
-
 /// HTTP cache configuration
 pub const HTTP_CACHE_BASE_DIR: &str = ".http-cache";
 
@@ -43,7 +37,6 @@ pub const HTTP_CACHE_BASE_DIR: &str = ".http-cache";
 pub const HTTP_CACHE_TTL_TF2_PLAYTIME_DAYS: i32 = 30;
 pub const HTTP_CACHE_TTL_FRIENDLIST_DAYS: i32 = 30;
 pub const HTTP_CACHE_TTL_STEAM_COMMENTS_DAYS: i32 = 30;
-pub const HTTP_CACHE_TTL_SOURCEBANS_DAYS: i32 = 30;
 
 /// Database cache TTL (Time To Live) in seconds - how long cached data should be used before refreshing
 pub const DB_CACHE_TTL_ACCOUNT_SECONDS: i64 = 7 * 24 * 60 * 60; // 7 days

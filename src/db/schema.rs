@@ -12,31 +12,7 @@ diesel::table! {
         friends_fetched -> Nullable<BigInt>,
         comments_fetched -> Nullable<BigInt>,
         playtimes_fetched -> Nullable<BigInt>,
-        reputation_fetched -> Nullable<BigInt>,
         steam_bans_last_fetched -> Nullable<BigInt>,
-    }
-}
-
-diesel::table! {
-    bans (id) {
-        id -> BigInt,
-        steam_id -> BigInt,
-        source -> Text,
-        ban_type -> Text,
-        reason -> Nullable<Text>,
-        created_date -> BigInt,
-        expires_date -> Nullable<BigInt>,
-        permanent -> Bool,
-    }
-}
-
-diesel::table! {
-    ban_sources (name) {
-        name -> Text,
-        url -> Text,
-        parser -> Text,
-        last_checked -> Nullable<BigInt>,
-        active -> Bool,
     }
 }
 
@@ -95,7 +71,6 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(bans -> account (steam_id));
 diesel::joinable!(comments -> account (steam_id));
 diesel::joinable!(friendship -> account (steam_id));
 diesel::joinable!(player_flags -> account (steam_id));
@@ -104,8 +79,6 @@ diesel::joinable!(playtime -> account (steam_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     account,
-    bans,
-    ban_sources,
     comments,
     friendship,
     player_flags,
