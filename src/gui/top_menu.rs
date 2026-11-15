@@ -52,6 +52,8 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
 
         theme::menu_header(ui, "View", |ui| {
             theme::menu_contents(ui);
+            super::tabs::add_menu_section(&mut app_win.active_tab, ui);
+            ui.separator();
             if menu_item::checkbox(ui, &mut app_win.app_settings.show_crits, "Show Crits")
                 .changed()
             {
@@ -283,6 +285,7 @@ fn start_tf2(app_win: &AppWin) {
 /// App shortcuts are ignored while a text field or modal owns keyboard input.
 pub fn handle_shortcuts(ctx: &eframe::egui::Context, app: &mut AppWin) {
     use eframe::egui::Key;
+    super::tabs::handle_shortcuts(&mut app.active_tab, ctx);
     if super::shortcut::consume_command(ctx, Key::Comma) {
         app.settings_window_open = true;
     }

@@ -20,9 +20,7 @@ fn row(ui: &mut Ui, label: &str, selected: Option<bool>, keys: &[&str]) -> Respo
         egui::vec2(width, if keys.is_empty() { 27.0 } else { 30.0 }),
         Sense::click(),
     );
-    let visuals = ui
-        .style()
-        .interact_selectable(&response, selected == Some(true));
+    let visuals = ui.style().interact(&response);
     ui.painter().rect_filled(rect, 4.0, visuals.weak_bg_fill);
     let color = if ui.is_enabled() {
         visuals.fg_stroke.color
