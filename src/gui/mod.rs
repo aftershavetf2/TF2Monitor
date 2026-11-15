@@ -9,6 +9,7 @@ pub mod game_tab;
 pub mod kill_feed;
 pub mod markings;
 pub mod menu_item;
+pub mod overview_tab;
 pub mod player_class_symbol;
 pub mod player_database_window;
 pub mod player_details_panel;
@@ -116,6 +117,7 @@ impl eframe::App for AppWin {
             ui.separator();
             match self.active_tab {
                 tabs::Tab::Game => game_tab::show(self, ui),
+                tabs::Tab::Overview => overview_tab::show(self, ui),
             }
         });
 

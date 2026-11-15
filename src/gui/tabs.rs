@@ -4,14 +4,16 @@ use eframe::egui::Ui;
 pub enum Tab {
     #[default]
     Game,
+    Overview,
 }
 
 impl Tab {
-    const ALL: &[Self] = &[Self::Game];
+    const ALL: &[Self] = &[Self::Game, Self::Overview];
 
     fn label(self) -> &'static str {
         match self {
             Self::Game => "Game",
+            Self::Overview => "Overview",
         }
     }
 }
