@@ -5,6 +5,7 @@ use self::{app_settings::AppSettings, steamid::SteamID};
 use crate::{
     appbus::{AppBus, AppEventMsg},
     db::db::DbPool,
+    gui::tabs::Tab,
     tf2::lobby::{Lobby, shared_lobby::SharedLobby},
     tf2bd::models::PlayerAttribute,
 };
@@ -18,6 +19,7 @@ pub struct AppWin {
     pub bus: Arc<Mutex<AppBus>>,
 
     pub app_settings: AppSettings,
+    pub active_tab: Tab,
 
     pub lobby: Lobby,
     pub shared_lobby: SharedLobby,
@@ -67,6 +69,7 @@ impl AppWin {
             bus: Arc::clone(bus),
 
             app_settings: settings.clone(),
+            active_tab: Tab::default(),
 
             lobby: Lobby::new(settings.self_steamid64),
             shared_lobby: bus.lock().unwrap().shared_lobby.clone(),

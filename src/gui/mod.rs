@@ -5,6 +5,7 @@ pub mod colors;
 pub mod comments;
 pub mod db_statistics_window;
 pub mod friendship_indicators;
+pub mod game_tab;
 pub mod kill_feed;
 pub mod markings;
 pub mod menu_item;
@@ -19,13 +20,13 @@ pub mod scoreboard;
 pub mod scoreboard_team;
 pub mod settings_window;
 pub mod shortcut;
+pub mod tabs;
 pub mod theme;
 pub mod title_bar;
 pub mod top_menu;
 pub mod ui_utils;
 pub mod window_status_row;
 
-use self::friendship_indicators::add_friendship_indicators;
 use crate::{
     appbus::AppBus,
     config::{GUI_REPAINT_DELAY, GUI_SLEEP_DELAY},
@@ -33,10 +34,8 @@ use crate::{
     models::{AppWin, app_settings::AppSettings},
 };
 use background_image::get_background_image_desc;
-use chat::add_chat;
 use db_statistics_window::show_db_statistics_window;
 use eframe::egui::{self};
-use kill_feed::add_kill_feed;
 use player_database_window::show_player_database_window;
 use player_details_panel::{add_player_details_panel, show_player_details_windows};
 use settings_window::show_settings_window;
@@ -113,19 +112,10 @@ impl eframe::App for AppWin {
         theme::panel_separator(ctx, &details.response, theme::PanelEdge::Left);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // draw_background_image(ui);
-
-            scoreboard::add_scoreboard(self, ui);
-
+            tabs::add_tab_bar(&mut self.active_tab, ui);
             ui.separator();
-
-            ui.columns(2, |ui| {
-                add_chat(&mut ui[0], self);
-                add_kill_feed(&mut ui[1], self);
-            });
-
-            if self.app_settings.show_friendship_indicators {
-                add_friendship_indicators(self, ui);
+            match self.active_tab {
+                tabs::Tab::Game => game_tab::show(self, ui),
             }
         });
 
