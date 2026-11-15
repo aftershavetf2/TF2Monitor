@@ -9,6 +9,9 @@ use eframe::egui::{
 };
 
 const CARD_SIZE: Vec2 = vec2(184.0, 54.0);
+// Bound the extra work in exceptionally dense friendship graphs. The cursor
+// rotates through candidates so every connection is still considered over time.
+const AVOIDANCE_BUDGET: usize = 8192;
 
 struct Node {
     steamid: SteamID,
@@ -21,6 +24,7 @@ pub struct OverviewState {
     edges: Vec<(usize, usize)>,
     view: Rect,
     lobby_id: String,
+    avoidance_cursor: usize,
 }
 
 impl Default for OverviewState {
@@ -30,6 +34,7 @@ impl Default for OverviewState {
             edges: Vec::new(),
             view: Rect::NOTHING,
             lobby_id: String::new(),
+            avoidance_cursor: 0,
         }
     }
 }
@@ -101,6 +106,7 @@ impl OverviewState {
             })
             .collect();
         self.edges = edges;
+        self.avoidance_cursor = 0;
         // Settle the initial arrangement before fitting the camera.
         for _ in 0..180 {
             self.step(1.0 / 60.0, None);
@@ -134,9 +140,9 @@ impl OverviewState {
                 let overlap = CARD_SIZE + Vec2::splat(22.0) - delta.abs();
                 if overlap.x > 0.0 && overlap.y > 0.0 {
                     force += if overlap.x < overlap.y {
-                        vec2(if delta.x >= 0.0 { 1.0 } else { -1.0 }, 0.0) * overlap.x * 25.0
+                        vec2(if delta.x >= 0.0 { 1.0 } else { -1.0 }, 0.0) * overlap.x * 80.0
                     } else {
-                        vec2(0.0, if delta.y >= 0.0 { 1.0 } else { -1.0 }) * overlap.y * 25.0
+                        vec2(0.0, if delta.y >= 0.0 { 1.0 } else { -1.0 }) * overlap.y * 80.0
                     };
                 }
                 forces[a] -= force;
@@ -149,6 +155,14 @@ impl OverviewState {
             forces[a] += force;
             forces[b] -= force;
         }
+        let mut avoidance = vec![Vec2::ZERO; self.nodes.len()];
+        self.add_avoidance_forces(&mut avoidance);
+        for (force, penalty) in forces.iter_mut().zip(avoidance) {
+            // Keep collision separation stronger than accumulated crossing
+            // penalties in dense/non-planar groups where crossings are inevitable.
+            *force += penalty * (600.0 / penalty.length().max(600.0));
+        }
+        self.avoidance_cursor = self.avoidance_cursor.wrapping_add(AVOIDANCE_BUDGET);
         let mut moving = false;
         for (index, node) in self.nodes.iter_mut().enumerate() {
             if dragged == Some(index) {
@@ -169,6 +183,133 @@ impl OverviewState {
         }
         moving
     }
+
+    fn add_avoidance_forces(&self, forces: &mut [Vec2]) {
+        let edge_count = self.edges.len();
+        let node_count = self.nodes.len();
+        let card_checks = edge_count * node_count;
+        for offset in 0..card_checks.min(AVOIDANCE_BUDGET) {
+            let candidate = (self.avoidance_cursor.wrapping_add(offset)) % card_checks;
+            let (a, b) = self.edges[candidate / node_count];
+            let obstacle = candidate % node_count;
+            if obstacle == a || obstacle == b {
+                continue;
+            }
+            let start = self.nodes[a].position;
+            let delta = self.nodes[b].position - start;
+            if delta.length_sq() < 1.0 {
+                continue;
+            }
+            let center = self.nodes[obstacle].position;
+            let bounds = Rect::from_center_size(center, CARD_SIZE).expand(14.0);
+            let Some((entry, exit)) = segment_rect_interval(start, start + delta, bounds) else {
+                continue;
+            };
+            let t = ((center - start).dot(delta) / delta.length_sq()).clamp(entry, exit);
+            let closest = start + delta * t;
+            let normal = vec2(-delta.y, delta.x).normalized();
+            let distance = (center - closest).dot(normal);
+            // Projection of the rectangular card onto the line's normal.
+            let clearance = normal.abs().dot(CARD_SIZE * 0.5) + 16.0;
+            let side = if distance < 0.0 { -1.0 } else { 1.0 };
+            let force = normal * side * ((clearance - distance.abs()) * 16.0).clamp(0.0, 1800.0);
+            forces[obstacle] += force;
+            forces[a] -= force * (1.0 - t);
+            forces[b] -= force * t;
+        }
+
+        let pair_checks = edge_count * edge_count;
+        for offset in 0..pair_checks.min(AVOIDANCE_BUDGET) {
+            let candidate = (self.avoidance_cursor.wrapping_add(offset)) % pair_checks;
+            let first = candidate / edge_count;
+            let second = candidate % edge_count;
+            if first >= second {
+                continue;
+            }
+            let (a, b) = self.edges[first];
+            let (c, d) = self.edges[second];
+            if a == c || a == d || b == c || b == d {
+                continue;
+            }
+            let [pa, pb, pc, pd] = [a, b, c, d].map(|index| self.nodes[index].position);
+            if !Rect::from_two_pos(pa, pb).intersects(Rect::from_two_pos(pc, pd)) {
+                continue;
+            }
+            let Some((t, u)) = crossing(pa, pb, pc, pd) else {
+                continue;
+            };
+            let ab_normal = vec2(-(pb - pa).y, (pb - pa).x).normalized();
+            let cd_normal = vec2(-(pd - pc).y, (pd - pc).x).normalized();
+            // Move the endpoint closest to the other line across it. Moving
+            // whole edges apart can leave a symmetric X locked in place.
+            let candidates = [
+                (a, b, c, d, u, cd_normal),
+                (b, a, c, d, u, cd_normal),
+                (c, d, a, b, t, ab_normal),
+                (d, c, a, b, t, ab_normal),
+            ];
+            let &(node, partner, other_a, other_b, along, normal) = candidates
+                .iter()
+                .min_by(|left, right| {
+                    let distance = |entry: &(usize, usize, usize, usize, f32, Vec2)| {
+                        ((self.nodes[entry.0].position - self.nodes[entry.2].position).dot(entry.5))
+                            .abs()
+                    };
+                    distance(left).total_cmp(&distance(right))
+                })
+                .unwrap();
+            let origin = self.nodes[other_a].position;
+            let distance = (self.nodes[node].position - origin).dot(normal).abs();
+            let side = if (self.nodes[partner].position - origin).dot(normal) < 0.0 {
+                -1.0
+            } else {
+                1.0
+            };
+            let force = normal * side * ((distance + 60.0) * 40.0).min(6000.0);
+            forces[node] += force;
+            forces[other_a] -= force * (1.0 - along);
+            forces[other_b] -= force * along;
+        }
+    }
+}
+
+fn segment_rect_interval(start: Pos2, end: Pos2, rect: Rect) -> Option<(f32, f32)> {
+    let delta = end - start;
+    let mut entry = 0.0_f32;
+    let mut exit = 1.0_f32;
+    for (origin, direction, min, max) in [
+        (start.x, delta.x, rect.min.x, rect.max.x),
+        (start.y, delta.y, rect.min.y, rect.max.y),
+    ] {
+        if direction.abs() < 0.0001 {
+            if origin < min || origin > max {
+                return None;
+            }
+        } else {
+            let a = (min - origin) / direction;
+            let b = (max - origin) / direction;
+            entry = entry.max(a.min(b));
+            exit = exit.min(a.max(b));
+            if entry > exit {
+                return None;
+            }
+        }
+    }
+    Some((entry, exit))
+}
+
+/// Interior intersection of two segments; touching/shared endpoints are allowed.
+fn crossing(a: Pos2, b: Pos2, c: Pos2, d: Pos2) -> Option<(f32, f32)> {
+    let cross = |u: Vec2, v: Vec2| u.x * v.y - u.y * v.x;
+    let ab = b - a;
+    let cd = d - c;
+    let denominator = cross(ab, cd);
+    if denominator.abs() < 0.001 {
+        return None;
+    }
+    let t = cross(c - a, cd) / denominator;
+    let u = cross(c - a, ab) / denominator;
+    (t > 0.0 && t < 1.0 && u > 0.0 && u < 1.0).then_some((t, u))
 }
 
 pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
@@ -410,6 +551,118 @@ mod tests {
                         .intersects(Rect::from_center_size(other.position, CARD_SIZE))
                 );
             }
+        }
+    }
+
+    fn positioned_graph(positions: &[Pos2], edges: Vec<(usize, usize)>) -> OverviewState {
+        OverviewState {
+            nodes: positions
+                .iter()
+                .enumerate()
+                .map(|(id, &position)| Node {
+                    steamid: SteamID::from_u64(id as u64),
+                    position,
+                    velocity: Vec2::ZERO,
+                })
+                .collect(),
+            edges,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn layout_untangles_crossing_edges_and_clears_obstructing_cards() {
+        let mut crossed = positioned_graph(
+            &[
+                egui::pos2(-220.0, -140.0),
+                egui::pos2(220.0, 140.0),
+                egui::pos2(-220.0, 140.0),
+                egui::pos2(220.0, -140.0),
+            ],
+            vec![(0, 1), (2, 3)],
+        );
+        assert!(
+            crossing(
+                crossed.nodes[0].position,
+                crossed.nodes[1].position,
+                crossed.nodes[2].position,
+                crossed.nodes[3].position
+            )
+            .is_some()
+        );
+        let mut blocked = positioned_graph(
+            &[egui::pos2(-260.0, 0.0), egui::pos2(260.0, 0.0), Pos2::ZERO],
+            vec![(0, 1)],
+        );
+        for _ in 0..900 {
+            crossed.step(1.0 / 60.0, None);
+            blocked.step(1.0 / 60.0, None);
+        }
+        assert!(
+            crossing(
+                crossed.nodes[0].position,
+                crossed.nodes[1].position,
+                crossed.nodes[2].position,
+                crossed.nodes[3].position
+            )
+            .is_none()
+        );
+        assert!(
+            segment_rect_interval(
+                blocked.nodes[0].position,
+                blocked.nodes[1].position,
+                Rect::from_center_size(blocked.nodes[2].position, CARD_SIZE)
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn incident_edges_do_not_penalize_their_own_cards_or_shared_endpoints() {
+        let state = positioned_graph(
+            &[
+                Pos2::ZERO,
+                egui::pos2(300.0, -100.0),
+                egui::pos2(300.0, 100.0),
+            ],
+            vec![(0, 1), (0, 2)],
+        );
+        let mut forces = vec![Vec2::ZERO; 3];
+        state.add_avoidance_forces(&mut forces);
+        assert!(forces.iter().all(|force| *force == Vec2::ZERO));
+    }
+
+    #[test]
+    fn avoidance_cost_for_sparse_and_dense_servers() {
+        for (count, dense) in [(32, false), (32, true), (64, true)] {
+            let positions: Vec<_> = (0..count)
+                .map(|index| {
+                    let angle = index as f32 * std::f32::consts::TAU / count as f32;
+                    Pos2::ZERO + vec2(angle.cos(), angle.sin()) * 700.0
+                })
+                .collect();
+            let edges = (0..count)
+                .flat_map(|a| {
+                    (a + 1..count)
+                        .filter(move |&b| dense || b - a <= 2)
+                        .map(move |b| (a, b))
+                })
+                .collect();
+            let mut state = positioned_graph(&positions, edges);
+            let mut forces = vec![Vec2::ZERO; count];
+            let start = std::time::Instant::now();
+            for _ in 0..300 {
+                forces.fill(Vec2::ZERO);
+                state.add_avoidance_forces(&mut forces);
+                state.avoidance_cursor += AVOIDANCE_BUDGET;
+                std::hint::black_box(&forces);
+            }
+            eprintln!(
+                "{count} players, {} edges: {:.3} ms/avoidance update",
+                state.edges.len(),
+                start.elapsed().as_secs_f64() * 1000.0 / 300.0
+            );
+            assert!(forces.iter().all(|force| force.is_finite()));
         }
     }
 
