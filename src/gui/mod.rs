@@ -30,7 +30,7 @@ pub mod window_status_row;
 
 use crate::{
     appbus::AppBus,
-    config::{GUI_REPAINT_DELAY, GUI_SLEEP_DELAY},
+    config::{GUI_REPAINT_DELAY},
     db::db::DbPool,
     models::{AppWin, app_settings::AppSettings},
 };
@@ -133,7 +133,6 @@ impl eframe::App for AppWin {
 
         title_bar::resize_edges(ctx);
 
-        sleep(GUI_SLEEP_DELAY);
         ctx.request_repaint_after(GUI_REPAINT_DELAY);
     }
 
