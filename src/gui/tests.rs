@@ -48,7 +48,7 @@ fn title_frame(
     maximized: bool,
 ) -> (egui::FullOutput, [Rect; 3]) {
     let mut buttons = [Rect::NOTHING; 3];
-    let output = run_ui(&ctx, input(events, 1.0, maximized, false), |root_ui| {
+    let output = run_ui(ctx, input(events, 1.0, maximized, false), |root_ui| {
         egui::Panel::top("test_title")
             .frame(egui::Frame::new().inner_margin(egui::Margin {
                 left: 8,
@@ -297,7 +297,7 @@ fn menus_open_on_click_switch_on_hover_and_close_on_escape_or_outside() {
             egui::Panel::top("menus").show(root_ui, |ui| {
                 theme::menu_bar().ui(ui, |ui| {
                     for (index, label) in ["File", "View"].iter().enumerate() {
-                        heads[index] = theme::menu_header(ui, *label, |ui| {
+                        heads[index] = theme::menu_header(ui, label, |ui| {
                             visible[index] = true;
                             theme::menu_contents(ui);
                             menu_item::command(ui, "Command");

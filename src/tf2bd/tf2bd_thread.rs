@@ -1,6 +1,6 @@
 use super::{Tf2bdMsg, models::PlayerAttribute, ruleset_handler::RulesetHandler};
 use crate::config::TF2BD_LOOP_DELAY;
-use crate::db::db::DbPool;
+use crate::db::connection::DbPool;
 use crate::db::entities::NewPlayerFlag;
 use crate::db::queries;
 use crate::{
@@ -195,31 +195,31 @@ impl Tf2bdThread {
             self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.clone()));
 
             // Persist flags from ruleset to database
-            if let Some(player_info) = &data {
-                if let Ok(mut conn) = self.db.get() {
-                    let current_time = Utc::now().timestamp();
+            if let Some(player_info) = &data
+                && let Ok(mut conn) = self.db.get()
+            {
+                let current_time = Utc::now().timestamp();
 
-                    for attribute in &player_info.attributes {
-                        let flag_type = format!("{:?}", attribute);
-                        // Get the source from file_info if available, otherwise use filename
-                        let source = FILENAME.to_string();
+                for attribute in &player_info.attributes {
+                    let flag_type = format!("{:?}", attribute);
+                    // Get the source from file_info if available, otherwise use filename
+                    let source = FILENAME.to_string();
 
-                        let new_flag = NewPlayerFlag {
-                            steam_id: player.steamid.to_u64() as i64,
-                            flag_type,
-                            source,
-                            first_seen: current_time,
-                            last_seen: current_time,
-                            notified: false,
-                        };
+                    let new_flag = NewPlayerFlag {
+                        steam_id: player.steamid.to_u64() as i64,
+                        flag_type,
+                        source,
+                        first_seen: current_time,
+                        last_seen: current_time,
+                        notified: false,
+                    };
 
-                        if let Err(e) = queries::upsert_player_flag(&mut conn, new_flag) {
-                            log::debug!(
-                                "Failed to persist player flag for {}: {}",
-                                player.steamid.to_u64(),
-                                e
-                            );
-                        }
+                    if let Err(e) = queries::upsert_player_flag(&mut conn, new_flag) {
+                        log::debug!(
+                            "Failed to persist player flag for {}: {}",
+                            player.steamid.to_u64(),
+                            e
+                        );
                     }
                 }
             }
@@ -258,19 +258,17 @@ impl Tf2bdThread {
         let me = lobby.get_me()?;
         let team = me.team;
 
-        if self.app_settings.kick_bots {
-            if let Some(bot_to_kick) = self.find_player_in_team(&lobby, team, PlayerAttribute::Bot)
-            {
-                return Some(bot_to_kick);
-            }
+        if self.app_settings.kick_bots
+            && let Some(bot_to_kick) = self.find_player_in_team(&lobby, team, PlayerAttribute::Bot)
+        {
+            return Some(bot_to_kick);
         }
 
-        if self.app_settings.kick_cheaters {
-            if let Some(cheater_to_kick) =
+        if self.app_settings.kick_cheaters
+            && let Some(cheater_to_kick) =
                 self.find_player_in_team(&lobby, team, PlayerAttribute::Cheater)
-            {
-                return Some(cheater_to_kick);
-            }
+        {
+            return Some(cheater_to_kick);
         }
 
         None
@@ -296,10 +294,10 @@ impl Tf2bdThread {
             return false;
         }
 
-        if let Some(player_info) = &player.player_info {
-            if player_info.attributes.contains(&player_attribute) {
-                return true;
-            }
+        if let Some(player_info) = &player.player_info
+            && player_info.attributes.contains(&player_attribute)
+        {
+            return true;
         }
 
         false

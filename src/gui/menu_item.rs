@@ -94,10 +94,11 @@ pub fn submenu<R>(ui: &mut Ui, label: &str, contents: impl FnOnce(&mut Ui) -> R)
         egui::pos2(response.rect.right() - 17.0, response.rect.center().y),
         egui::Vec2::splat(14.0),
     );
-    ui.painter().add(egui::containers::menu::SubMenuButton::arrow_shape(
-        arrow_rect,
-        ui.style().interact(&response).fg_stroke.color,
-    ));
+    ui.painter()
+        .add(egui::containers::menu::SubMenuButton::arrow_shape(
+            arrow_rect,
+            ui.style().interact(&response).fg_stroke.color,
+        ));
     egui::containers::menu::SubMenu::new().show(ui, &response, contents);
 }
 

@@ -41,6 +41,7 @@ impl SteamID {
         format!("[U:1:{}]", self.0 - MIN_STEAMID64)
     }
 
+    #[cfg(test)]
     pub fn to_steam_id(self) -> String {
         let y = self.0 % 2;
         let z = (self.0 - 76561197960265728) / 2;
@@ -63,14 +64,6 @@ impl SteamID {
     pub fn steam_community_url(&self) -> String {
         format!("https://steamcommunity.com/profiles/{}", self.0)
         // format!("steam://url/SteamIDPage/{}", self.0)
-    }
-
-    pub fn steam_rep_url(&self) -> String {
-        format!("https://steamrep.com/search?q={}", self.0)
-    }
-
-    pub fn steam_id_url(&self) -> String {
-        format!("https://steamid.uk/profile/{}", self.0)
     }
 
     pub fn rep_tf_url(&self) -> String {

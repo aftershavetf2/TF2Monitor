@@ -4,7 +4,7 @@ pub mod rcon;
 pub mod steamapi;
 pub mod weapon_classes;
 
-use crate::{appbus::AppBus, db::db::DbPool, models::app_settings::AppSettings};
+use crate::{appbus::AppBus, db::connection::DbPool, models::app_settings::AppSettings};
 use std::sync::{Arc, Mutex};
 
 /// Start the background threads for the TF2 module

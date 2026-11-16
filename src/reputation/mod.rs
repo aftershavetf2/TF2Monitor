@@ -23,6 +23,13 @@ pub struct SourceBan {
 pub struct Reputation {
     pub steamid: SteamID,
     pub source_bans: Vec<SourceBan>,
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "Coverage metadata is part of the lookup result and verified by tests"
+        )
+    )]
     pub complete: bool,
 }
 

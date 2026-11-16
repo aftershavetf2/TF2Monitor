@@ -116,8 +116,8 @@ mod tests {
         let p: Envelope = serde_json::from_str(text).unwrap();
         assert_eq!(p.players.len(), 1);
         assert_eq!(p.players[0].steamid, "76561197972495328");
-        assert_eq!(p.players[0].community_banned, false);
-        assert_eq!(p.players[0].vac_banned, false);
+        assert!(!p.players[0].community_banned);
+        assert!(!p.players[0].vac_banned);
         assert_eq!(p.players[0].number_of_vac_bans, 0);
         assert_eq!(p.players[0].days_since_last_ban, 0);
         assert_eq!(p.players[0].number_of_game_bans, 0);

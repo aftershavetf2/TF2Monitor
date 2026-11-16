@@ -2,7 +2,7 @@ use diesel::prelude::*;
 
 use super::entities::{
     Account, Comment, Friendship, Game, NewAccount, NewComment, NewFriendship, NewPlayerFlag,
-    NewPlaytime, NewSteamBan, PlayerFlag, SteamBan,
+    NewPlaytime, NewSteamBan, PlayerFlag,
 };
 use super::schema::{account, comments, friendship, player_flags, playtime, steam_bans};
 
@@ -136,27 +136,6 @@ pub fn upsert_friendship(
     Ok(())
 }
 
-/// Mark a friendship as ended by setting unfriend_date.
-pub fn mark_friendship_ended(
-    conn: &mut SqliteConnection,
-    steam_id: i64,
-    friend_steam_id: i64,
-    unfriend_date: i64,
-) -> Result<(), diesel::result::Error> {
-    use friendship::dsl;
-
-    diesel::update(
-        friendship::table.filter(
-            dsl::steam_id
-                .eq(steam_id)
-                .and(dsl::friend_steam_id.eq(friend_steam_id)),
-        ),
-    )
-    .set(dsl::unfriend_date.eq(Some(unfriend_date)))
-    .execute(conn)?;
-    Ok(())
-}
-
 /// Insert a new comment record.
 /// Does not update if already exists (comments are immutable once created).
 pub fn insert_comment(
@@ -174,20 +153,6 @@ pub fn insert_comment(
     diesel::insert_into(comments::table)
         .values(&new_comment)
         .on_conflict_do_nothing()
-        .execute(conn)?;
-    Ok(())
-}
-
-/// Mark a comment as deleted by setting deleted_date.
-pub fn mark_comment_deleted(
-    conn: &mut SqliteConnection,
-    comment_id: i64,
-    deleted_date: i64,
-) -> Result<(), diesel::result::Error> {
-    use comments::dsl;
-
-    diesel::update(comments::table.filter(dsl::id.eq(comment_id)))
-        .set(dsl::deleted_date.eq(Some(deleted_date)))
         .execute(conn)?;
     Ok(())
 }
@@ -368,40 +333,6 @@ pub fn upsert_player_flag(
     Ok(())
 }
 
-/// Mark a player flag as notified.
-pub fn mark_player_flag_notified(
-    conn: &mut SqliteConnection,
-    steam_id: i64,
-    flag_type: &str,
-    source: &str,
-) -> Result<(), diesel::result::Error> {
-    use player_flags::dsl;
-
-    diesel::update(
-        player_flags::table.filter(
-            dsl::steam_id
-                .eq(steam_id)
-                .and(dsl::flag_type.eq(flag_type))
-                .and(dsl::source.eq(source)),
-        ),
-    )
-    .set(dsl::notified.eq(true))
-    .execute(conn)?;
-    Ok(())
-}
-
-/// Get all player flags for a steam_id.
-pub fn get_player_flags(
-    conn: &mut SqliteConnection,
-    steam_id: i64,
-) -> Result<Vec<PlayerFlag>, diesel::result::Error> {
-    use player_flags::dsl;
-
-    player_flags::table
-        .filter(dsl::steam_id.eq(steam_id))
-        .load::<PlayerFlag>(conn)
-}
-
 pub fn get_all_player_flags(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<PlayerFlag>, diesel::result::Error> {
@@ -409,19 +340,6 @@ pub fn get_all_player_flags(
 
     player_flags::table
         .order((dsl::steam_id.asc(), dsl::flag_type.asc(), dsl::source.asc()))
-        .load::<PlayerFlag>(conn)
-}
-
-/// Get unnotified player flags for a steam_id.
-pub fn get_unnotified_player_flags(
-    conn: &mut SqliteConnection,
-    steam_id: i64,
-) -> Result<Vec<PlayerFlag>, diesel::result::Error> {
-    use player_flags::dsl;
-
-    player_flags::table
-        .filter(dsl::steam_id.eq(steam_id))
-        .filter(dsl::notified.eq(false))
         .load::<PlayerFlag>(conn)
 }
 
@@ -465,27 +383,6 @@ pub fn upsert_steam_bans(
     Ok(())
 }
 
-/// Get steam bans for a player
-pub fn get_steam_bans(
-    conn: &mut SqliteConnection,
-    steam_id: i64,
-) -> Result<Option<SteamBan>, diesel::result::Error> {
-    steam_bans::table
-        .filter(steam_bans::steam_id.eq(steam_id))
-        .first::<SteamBan>(conn)
-        .optional()
-}
-
-/// Get steam bans for multiple players
-pub fn get_steam_bans_batch(
-    conn: &mut SqliteConnection,
-    steam_ids: &[i64],
-) -> Result<Vec<SteamBan>, diesel::result::Error> {
-    steam_bans::table
-        .filter(steam_bans::steam_id.eq_any(steam_ids))
-        .load::<SteamBan>(conn)
-}
-
 /// Update the steam_bans_last_fetched timestamp for an account
 pub fn update_steam_bans_last_fetched(
     conn: &mut SqliteConnection,
@@ -514,19 +411,8 @@ pub fn get_player_flag_count(
     conn: &mut SqliteConnection,
     flag_type: &str,
 ) -> Result<i64, diesel::result::Error> {
-    use diesel::sql_types::BigInt;
     use player_flags::dsl;
 
-    // Use raw SQL to count distinct steam_ids with this flag type
-    // This ensures each player is only counted once, even if they have the flag from multiple sources
-    #[derive(QueryableByName)]
-    struct CountResult {
-        #[diesel(sql_type = BigInt)]
-        count: i64,
-    }
-
-    // Use parameterized query to prevent SQL injection
-    // Note: SQLite doesn't support parameters in COUNT(DISTINCT), so we filter first
     let distinct_steam_ids: Vec<i64> = player_flags::table
         .filter(dsl::flag_type.eq(flag_type))
         .select(dsl::steam_id)
@@ -556,32 +442,6 @@ pub fn get_community_banned_count(
 
     steam_bans::table
         .filter(dsl::community_banned.eq(true))
-        .select(count_star())
-        .first::<i64>(conn)
-}
-
-/// Get count of active friendships
-pub fn get_active_friendships_count(
-    conn: &mut SqliteConnection,
-) -> Result<i64, diesel::result::Error> {
-    use diesel::dsl::count_star;
-    use friendship::dsl;
-
-    friendship::table
-        .filter(dsl::unfriend_date.is_null())
-        .select(count_star())
-        .first::<i64>(conn)
-}
-
-/// Get count of active (non-deleted) comments
-pub fn get_active_comments_count(
-    conn: &mut SqliteConnection,
-) -> Result<i64, diesel::result::Error> {
-    use comments::dsl;
-    use diesel::dsl::count_star;
-
-    comments::table
-        .filter(dsl::deleted_date.is_null())
         .select(count_star())
         .first::<i64>(conn)
 }

@@ -2,7 +2,6 @@ use super::LobbyKill;
 use super::shared_lobby::SharedLobby;
 use super::{LobbyChat, Player, PlayerKill};
 use crate::config::LOBBY_LOOP_DELAY;
-use crate::db::db::DbPool;
 use crate::tf2::lobby::AccountAge;
 use crate::tf2::rcon::{G15DumpPlayerOutput, G15PlayerData};
 use crate::tf2::steamapi::SteamApiMsg;
@@ -152,8 +151,8 @@ impl LobbyThread {
 
         lobby_player.id = player.id;
         lobby_player.name = player.name.clone();
-        if player.team.is_some() {
-            lobby_player.team = player.team.unwrap();
+        if let Some(team) = player.team {
+            lobby_player.team = team;
         }
         lobby_player.alive = player.alive;
         lobby_player.ping_ms = player.ping_ms;
@@ -277,7 +276,6 @@ impl LobbyThread {
                 .join(", ")
         );
 
-        lobby.chat_msg_id = 0;
         lobby.lobby_id = Local::now().format("%Y-%m-%d").to_string();
 
         lobby.players.clear();
@@ -355,9 +353,9 @@ impl LobbyThread {
     fn chat(&mut self, name: String, message: String, dead: bool, team: bool) {
         let mut lobby = self.shared_lobby.get();
 
-        let (steamid, chat_msg_id) = {
+        let steamid = {
             if let Some(player) = lobby.get_player(Some(name.as_str()), None) {
-                (player.steamid, lobby.chat_msg_id)
+                player.steamid
             } else {
                 log::warn!("Player not found: '{}'", name);
                 return;
@@ -365,7 +363,6 @@ impl LobbyThread {
         };
 
         lobby.chat.push(LobbyChat {
-            chat_msg_id,
             steamid,
             player_name: name,
             message: message.trim().to_string(),
@@ -373,8 +370,6 @@ impl LobbyThread {
             dead,
             team,
         });
-
-        lobby.chat_msg_id += 1;
 
         self.shared_lobby.set(lobby);
     }

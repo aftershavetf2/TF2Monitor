@@ -231,8 +231,9 @@ pub fn scoreboard_team(
 
                     if app_win.app_settings.show_health {
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            if player.alive && player.health.is_some() {
-                                let health = player.health.unwrap();
+                            if player.alive
+                                && let Some(health) = player.health
+                            {
                                 ui.label(format!("{}", health))
                                     .on_hover_text_at_pointer("Current health");
                             } else {
@@ -337,7 +338,7 @@ fn end_padded_row(
     );
     let color = if is_self {
         super::theme::TABLE_ROW_SELF
-    } else if row % 2 == 0 {
+    } else if row.is_multiple_of(2) {
         super::theme::TABLE_ROW_LIGHT
     } else {
         super::theme::TABLE_ROW_DARK
@@ -360,17 +361,16 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
         ui.push_id(player.steamid.to_u64(), |ui| {
             ui.scope(|ui| {
                 // Mark selected player and friends of selected player
-                if let Some(steamid) = app_win.selected_player {
-                    if steamid == player.steamid
+                if let Some(steamid) = app_win.selected_player
+                    && (steamid == player.steamid
                         || app_win
                             .lobby
                             .friendships
-                            .are_friends(player.steamid, steamid)
-                    {
-                        let marked_color = Some(Color32::YELLOW);
-                        ui.visuals_mut().override_text_color = marked_color;
-                        ui.style_mut().visuals.override_text_color = marked_color;
-                    }
+                            .are_friends(player.steamid, steamid))
+                {
+                    let marked_color = Some(Color32::YELLOW);
+                    ui.visuals_mut().override_text_color = marked_color;
+                    ui.style_mut().visuals.override_text_color = marked_color;
                 }
 
                 // Player avatar and hover tooltip
@@ -552,74 +552,70 @@ mod tests {
                                     })
                                     .unwrap();
                                 for shape in &output.shapes {
-                                    if let egui::Shape::Text(text) = &shape.shape {
-                                        if [
+                                    if let egui::Shape::Text(text) = &shape.shape
+                                        && [
                                             "Player", "Kills", "Deaths", "Age", "Hours", "Ping",
                                             "Health", "Info",
                                         ]
                                         .contains(&text.galley.text())
-                                        {
-                                            assert!(
-                                                (text.pos.y + text.galley.size().y / 2.0
-                                                    - header_center)
-                                                    .abs()
-                                                    < 0.01,
-                                                "Heading must be vertically centered: {}",
-                                                text.galley.text()
-                                            );
-                                        }
+                                    {
+                                        assert!(
+                                            (text.pos.y + text.galley.size().y / 2.0
+                                                - header_center)
+                                                .abs()
+                                                < 0.01,
+                                            "Heading must be vertically centered: {}",
+                                            text.galley.text()
+                                        );
                                     }
                                 }
                                 let mut stripe_count = 0;
                                 for shape in &output.shapes {
-                                    if let egui::Shape::Rect(stripe) = &shape.shape {
-                                        if [
+                                    if let egui::Shape::Rect(stripe) = &shape.shape
+                                        && [
                                             super::super::theme::TABLE_ROW_LIGHT,
                                             super::super::theme::TABLE_ROW_DARK,
                                         ]
                                         .contains(&stripe.fill)
-                                        {
-                                            let (_, content) = bounds
-                                                .iter()
-                                                .min_by(|a, b| {
-                                                    (a.1.center().x - stripe.rect.center().x)
-                                                        .abs()
-                                                        .total_cmp(
-                                                            &(b.1.center().x
-                                                                - stripe.rect.center().x)
-                                                                .abs(),
-                                                        )
-                                                })
-                                                .unwrap();
-                                            let pixels = ctx.pixels_per_point();
-                                            assert!(
-                                                ((content.left() - stripe.rect.left()) * pixels
-                                                    - 6.0)
+                                    {
+                                        let (_, content) = bounds
+                                            .iter()
+                                            .min_by(|a, b| {
+                                                (a.1.center().x - stripe.rect.center().x)
                                                     .abs()
-                                                    < 0.01
-                                            );
-                                            assert!(
-                                                ((stripe.rect.right() - content.right()) * pixels
-                                                    - 6.0)
-                                                    .abs()
-                                                    < 0.01
-                                            );
-                                            stripe_count += 1;
-                                        }
+                                                    .total_cmp(
+                                                        &(b.1.center().x - stripe.rect.center().x)
+                                                            .abs(),
+                                                    )
+                                            })
+                                            .unwrap();
+                                        let pixels = ctx.pixels_per_point();
+                                        assert!(
+                                            ((content.left() - stripe.rect.left()) * pixels - 6.0)
+                                                .abs()
+                                                < 0.01
+                                        );
+                                        assert!(
+                                            ((stripe.rect.right() - content.right()) * pixels
+                                                - 6.0)
+                                                .abs()
+                                                < 0.01
+                                        );
+                                        stripe_count += 1;
                                     }
                                 }
                                 assert!(stripe_count >= 2);
                             }
                             for shape in &output.shapes {
-                                if let egui::Shape::Text(text) = &shape.shape {
-                                    if ["Age", "Unknown", "Private"].contains(&text.galley.text()) {
-                                        assert_eq!(
-                                            text.galley.rows.len(),
-                                            1,
-                                            "Age must never wrap: {}",
-                                            text.galley.text()
-                                        );
-                                    }
+                                if let egui::Shape::Text(text) = &shape.shape
+                                    && ["Age", "Unknown", "Private"].contains(&text.galley.text())
+                                {
+                                    assert_eq!(
+                                        text.galley.rows.len(),
+                                        1,
+                                        "Age must never wrap: {}",
+                                        text.galley.text()
+                                    );
                                 }
                             }
                             if frame == 3 && count > 0 && flags & 4 != 0 && width == 1000.0 {

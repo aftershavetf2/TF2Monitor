@@ -53,12 +53,12 @@ impl LogfileWatcher {
         self.last_pos = 0;
 
         let file = fs::File::open(self.filename.as_str());
-        if let Ok(file) = file {
-            if let Ok(metadata) = file.metadata() {
-                log::info!("Moving to the end of TF2 console.log.");
+        if let Ok(file) = file
+            && let Ok(metadata) = file.metadata()
+        {
+            log::info!("Moving to the end of TF2 console.log.");
 
-                self.last_pos = metadata.len();
-            }
+            self.last_pos = metadata.len();
         }
     }
 

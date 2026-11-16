@@ -118,7 +118,7 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
                 },
             );
             job.append(
-                format!("({})", &chat_row.translated_message.as_ref().unwrap()).as_str(),
+                format!("({})", chat_row.translated_message.as_ref().unwrap()).as_str(),
                 0.0,
                 TextFormat {
                     color: Color32::from_rgb(255, 255, 255),

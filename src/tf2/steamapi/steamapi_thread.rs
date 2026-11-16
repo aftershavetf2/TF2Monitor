@@ -5,7 +5,7 @@ use crate::config::{
     NUM_PLAYTIMES_TO_FETCH, NUM_PROFILE_COMMENTS_TO_FETCH, STEAMAPI_LOOP_DELAY,
     STEAMAPI_RETRY_DELAY,
 };
-use crate::db::db::DbPool;
+use crate::db::connection::DbPool;
 use crate::db::entities::{Game, NewAccount, NewComment, NewFriendship, NewPlaytime};
 use crate::db::queries;
 use crate::{
@@ -91,44 +91,43 @@ impl SteamApiThread {
         for player in lobby.players.iter() {
             if player.steam_info.is_none() {
                 // Check database
-                if let Ok(mut conn) = self.db.get() {
-                    if let Ok(Some(account)) =
+                if let Ok(mut conn) = self.db.get()
+                    && let Ok(Some(account)) =
                         queries::get_account_by_steam_id(&mut conn, player.steamid.to_u64() as i64)
-                    {
-                        let is_outdated =
-                            current_time - account.last_updated > DB_CACHE_TTL_ACCOUNT_SECONDS;
+                {
+                    let is_outdated =
+                        current_time - account.last_updated > DB_CACHE_TTL_ACCOUNT_SECONDS;
 
-                        // Convert database account to PlayerSteamInfo
-                        let account_age = account.created_date.map(|ts| {
-                            chrono::DateTime::from_timestamp(ts, 0)
-                                .unwrap_or_else(|| chrono::DateTime::UNIX_EPOCH)
-                                .with_timezone(&chrono::Local)
-                        });
+                    // Convert database account to PlayerSteamInfo
+                    let account_age = account.created_date.map(|ts| {
+                        chrono::DateTime::from_timestamp(ts, 0)
+                            .unwrap_or(chrono::DateTime::UNIX_EPOCH)
+                            .with_timezone(&chrono::Local)
+                    });
 
-                        let summary = PlayerSteamInfo {
-                            steamid: player.steamid,
-                            public_profile: account.public_profile,
-                            avatar_thumb: account.avatar_thumb_url.clone(),
-                            avatar_full: account.avatar_full_url.clone(),
-                            account_age,
-                        };
+                    let summary = PlayerSteamInfo {
+                        steamid: player.steamid,
+                        public_profile: account.public_profile,
+                        avatar_thumb: account.avatar_thumb_url.clone(),
+                        avatar_full: account.avatar_full_url.clone(),
+                        account_age,
+                    };
 
-                        if is_outdated {
-                            // Send cached data first so UI has something to show
-                            log::info!(
-                                "Sending outdated cached data for {}, will refresh",
-                                player.name
-                            );
-                            self.send(SteamApiMsg::PlayerSummary(summary));
-                            // Mark for refresh
-                            summaries_to_fetch.push(player.steamid);
-                        } else {
-                            // Data is fresh, use it
-                            // log::info!("Fetched from database summary of {}", player.name);
-                            self.send(SteamApiMsg::PlayerSummary(summary));
-                        }
-                        continue;
+                    if is_outdated {
+                        // Send cached data first so UI has something to show
+                        log::info!(
+                            "Sending outdated cached data for {}, will refresh",
+                            player.name
+                        );
+                        self.send(SteamApiMsg::PlayerSummary(summary));
+                        // Mark for refresh
+                        summaries_to_fetch.push(player.steamid);
+                    } else {
+                        // Data is fresh, use it
+                        // log::info!("Fetched from database summary of {}", player.name);
+                        self.send(SteamApiMsg::PlayerSummary(summary));
                     }
+                    continue;
                 }
 
                 // No cache hit, bulk fetch from Steam API below
@@ -136,57 +135,53 @@ impl SteamApiThread {
             }
         }
 
-        if !summaries_to_fetch.is_empty() {
-            if let Ok(infos) = self.steam_api.get_player_summaries(summaries_to_fetch) {
-                for info in infos {
-                    if let Some(steamid) = SteamID::from_u64_string(&info.steamid) {
-                        let public_profile = matches!(info.communityvisibilitystate, 3);
-                        let account_age = info.get_account_age();
+        if !summaries_to_fetch.is_empty()
+            && let Ok(infos) = self.steam_api.get_player_summaries(summaries_to_fetch)
+        {
+            for info in infos {
+                if let Some(steamid) = SteamID::from_u64_string(&info.steamid) {
+                    let public_profile = matches!(info.communityvisibilitystate, 3);
+                    let account_age = info.get_account_age();
 
-                        let info = PlayerSteamInfo {
-                            steamid,
-                            public_profile,
-                            // name: info.personaname.clone(),
-                            avatar_thumb: info.avatar.clone(),
-                            // avatarmedium: info.avatarmedium.clone(),
-                            avatar_full: info.avatarfull.clone(),
-                            account_age: account_age.clone(),
+                    let info = PlayerSteamInfo {
+                        steamid,
+                        public_profile,
+                        // name: info.personaname.clone(),
+                        avatar_thumb: info.avatar.clone(),
+                        // avatarmedium: info.avatarmedium.clone(),
+                        avatar_full: info.avatarfull.clone(),
+                        account_age,
+                    };
+
+                    // Send to lobby
+                    self.send(SteamApiMsg::PlayerSummary(info.clone()));
+
+                    // Persist to database
+                    if let Ok(mut conn) = self.db.get() {
+                        // Find the player name from the lobby
+                        let player_name = lobby
+                            .get_player(None, Some(steamid))
+                            .map(|p| p.name.clone())
+                            .unwrap_or_else(|| String::from("Unknown"));
+
+                        let created_date = account_age.map(|dt| dt.timestamp());
+
+                        let new_account = NewAccount {
+                            steam_id: steamid.to_u64() as i64,
+                            name: player_name,
+                            created_date,
+                            avatar_thumb_url: info.avatar_thumb.clone(),
+                            avatar_full_url: info.avatar_full.clone(),
+                            public_profile: info.public_profile,
+                            last_updated: Utc::now().timestamp(),
+                            friends_fetched: None,
+                            comments_fetched: None,
+                            playtimes_fetched: None,
+                            steam_bans_last_fetched: None,
                         };
 
-                        // Send to lobby
-                        self.send(SteamApiMsg::PlayerSummary(info.clone()));
-
-                        // Persist to database
-                        if let Ok(mut conn) = self.db.get() {
-                            // Find the player name from the lobby
-                            let player_name = lobby
-                                .get_player(None, Some(steamid))
-                                .map(|p| p.name.clone())
-                                .unwrap_or_else(|| String::from("Unknown"));
-
-                            let created_date = account_age.map(|dt| dt.timestamp());
-
-                            let new_account = NewAccount {
-                                steam_id: steamid.to_u64() as i64,
-                                name: player_name,
-                                created_date,
-                                avatar_thumb_url: info.avatar_thumb.clone(),
-                                avatar_full_url: info.avatar_full.clone(),
-                                public_profile: info.public_profile,
-                                last_updated: Utc::now().timestamp(),
-                                friends_fetched: None,
-                                comments_fetched: None,
-                                playtimes_fetched: None,
-                                steam_bans_last_fetched: None,
-                            };
-
-                            if let Err(e) = queries::upsert_account(&mut conn, new_account) {
-                                log::error!(
-                                    "Failed to persist account {}: {}",
-                                    steamid.to_u64(),
-                                    e
-                                );
-                            }
+                        if let Err(e) = queries::upsert_account(&mut conn, new_account) {
+                            log::error!("Failed to persist account {}: {}", steamid.to_u64(), e);
                         }
                     }
                 }
@@ -211,12 +206,12 @@ impl SteamApiThread {
                         // Convert to HashSet<SteamID>
                         let friends: HashSet<SteamID> = friendships
                             .iter()
-                            .filter_map(|f| {
+                            .map(|f| {
                                 // Check if this is a direct or reverse friendship
                                 if f.steam_id == steamid.to_u64() as i64 {
-                                    Some(SteamID::from_u64(f.friend_steam_id as u64))
+                                    SteamID::from_u64(f.friend_steam_id as u64)
                                 } else {
-                                    Some(SteamID::from_u64(f.steam_id as u64))
+                                    SteamID::from_u64(f.steam_id as u64)
                                 }
                             })
                             .collect();
@@ -262,18 +257,17 @@ impl SteamApiThread {
                     // Preserve known friendships in the UI even if the live profile no longer
                     // exposes them, so players cannot hide old relationships by clearing their
                     // friend list after we have already observed it.
-                    if let Ok(mut conn) = self.db.get() {
-                        if let Ok(friendships) =
+                    if let Ok(mut conn) = self.db.get()
+                        && let Ok(friendships) =
                             queries::get_friendships(&mut conn, steamid.to_u64() as i64, false)
-                        {
-                            display_friends.extend(friendships.iter().filter_map(|f| {
-                                if f.steam_id == steamid.to_u64() as i64 {
-                                    Some(SteamID::from_u64(f.friend_steam_id as u64))
-                                } else {
-                                    Some(SteamID::from_u64(f.steam_id as u64))
-                                }
-                            }));
-                        }
+                    {
+                        display_friends.extend(friendships.iter().map(|f| {
+                            if f.steam_id == steamid.to_u64() as i64 {
+                                SteamID::from_u64(f.friend_steam_id as u64)
+                            } else {
+                                SteamID::from_u64(f.steam_id as u64)
+                            }
+                        }));
                     }
 
                     self.send(SteamApiMsg::FriendsList(steamid, display_friends));
@@ -364,7 +358,8 @@ impl SteamApiThread {
                         queries::get_account_by_steam_id(&mut conn, steamid.to_u64() as i64)
                     {
                         // Only refresh if timestamp exists AND is outdated
-                        let result = account
+
+                        account
                             .playtimes_fetched
                             .map(|ts| {
                                 let age = current_time - ts;
@@ -383,8 +378,7 @@ impl SteamApiThread {
                                     player.name
                                 );
                                 false
-                            });
-                        result
+                            })
                     } else {
                         log::info!("No account record for {}, not refreshing", player.name);
                         false
@@ -692,9 +686,8 @@ impl SteamApiThread {
 
                         // Populate thumbnails for comments cached before avatar support.
                         let missing_avatars = comments.iter().any(|c| c.avatar_thumb.is_empty());
-                        let should_refresh = DB_CACHE_TTL_COMMENTS_SECONDS <= 0
-                            || should_refresh
-                            || missing_avatars;
+                        let should_refresh =
+                            DB_CACHE_TTL_COMMENTS_SECONDS <= 0 || should_refresh || missing_avatars;
                         if should_refresh {
                             // Only send cached comments if we actually have some.
                             // An empty DB result is not a real cache hit and should not mark

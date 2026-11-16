@@ -24,21 +24,21 @@ pub fn get_tf2_play_minutes(steam_api_key: &String, steamid: SteamID) -> Tf2Play
         steamid.to_u64()
     );
 
-    if let Ok(data) = reqwest::blocking::get(&url).and_then(|response| response.text()) {
-        if let Ok(reply) = serde_json::from_str::<Envelope>(&data) {
-            match reply
-                .response
-                .games
-                .iter()
-                .find(|g| g.appid == 440)
-                .map(|game| game.playtime_forever)
-            {
-                Some(playtime) => {
-                    return Tf2PlayMinutes::PlayMinutes(playtime);
-                }
-                None => {
-                    return Tf2PlayMinutes::Unknown;
-                }
+    if let Ok(data) = reqwest::blocking::get(&url).and_then(|response| response.text())
+        && let Ok(reply) = serde_json::from_str::<Envelope>(&data)
+    {
+        match reply
+            .response
+            .games
+            .iter()
+            .find(|g| g.appid == 440)
+            .map(|game| game.playtime_forever)
+        {
+            Some(playtime) => {
+                return Tf2PlayMinutes::PlayMinutes(playtime);
+            }
+            None => {
+                return Tf2PlayMinutes::Unknown;
             }
         }
     }

@@ -46,13 +46,11 @@ pub fn handle_shortcuts(active_tab: &mut Tab, ctx: &egui::Context) {
                 modifiers,
                 ..
             } = event
+                && modifiers.is_none()
+                && let Some(&tab) = Tab::ALL.iter().find(|tab| tab.shortcut().0 == *key)
             {
-                if modifiers.is_none() {
-                    if let Some(&tab) = Tab::ALL.iter().find(|tab| tab.shortcut().0 == *key) {
-                        *active_tab = tab;
-                        return false;
-                    }
-                }
+                *active_tab = tab;
+                return false;
             }
             true
         });

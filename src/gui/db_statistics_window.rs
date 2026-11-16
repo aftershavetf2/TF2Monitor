@@ -1,6 +1,5 @@
 use crate::models::AppWin;
 use eframe::egui::{self, Ui};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Shows the DB statistics window as an egui Window (internal frame)
 pub fn show_db_statistics_window(app_win: &mut AppWin, ctx: &egui::Context) {
@@ -27,12 +26,6 @@ pub fn show_db_statistics_window(app_win: &mut AppWin, ctx: &egui::Context) {
 
 fn show_statistics_content(ui: &mut Ui, app_win: &AppWin) {
     use crate::db::queries::*;
-
-    // Get current time for ban queries
-    let current_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
 
     // Try to get a database connection
     let mut conn = match app_win.db.get() {
@@ -105,13 +98,4 @@ fn show_statistics_content(ui: &mut Ui, app_win: &AppWin) {
         "Community Banned",
         get_community_banned_count(&mut conn),
     );
-
-    // ui.separator();
-    // ui.add_space(5.0);
-    // ui.heading("Other Statistics");
-    // ui.add_space(5.0);
-
-    // show_stat(ui, "Active Friendships", get_active_friendships_count(&mut conn));
-    // show_stat(ui, "Active Comments", get_active_comments_count(&mut conn));
-    // show_stat(ui, "Active Bans", get_active_bans_count(&mut conn, current_time));
 }

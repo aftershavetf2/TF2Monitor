@@ -4,8 +4,6 @@ use crate::utils::BoxResult;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{self, ErrorKind, prelude::*};
-use std::path::Path;
-use std::process::exit;
 
 const SETTINGS_FILENAME: &str = "settings.json";
 
@@ -190,11 +188,6 @@ impl AppSettings {
 
         settings.save();
 
-        // if !settings.validate_settings() {
-        //     log::info!("Settings are not valid.");
-        //     exit(1);
-        // }
-
         Ok(settings)
     }
 
@@ -206,49 +199,7 @@ impl AppSettings {
         log::info!("Settings saved to file {}", SETTINGS_FILENAME);
     }
 
-    /// Validates the settings and logs warnings if something is wrong.
-    /// Returns true if all settings are valid.
-    /// Not all problems are fatal, so this function can return true even if there are warnings.
-    fn validate_settings(&self) -> bool {
-        let mut valid = true;
-
-        if !Path::new(&self.exe_filename).exists() {
-            log::warn!(
-                "TF2 exe file '{}' does not exist. Please check the path and edit the settings.json file and try again.",
-                self.exe_filename
-            );
-            valid = false;
-        }
-
-        if !Path::new(&self.log_filename).exists() {
-            log::warn!(
-                "Log file '{}' does not exist. Maybe path is wrong or you have not yet started TF2?",
-                self.log_filename
-            );
-        }
-
-        if !self.self_steamid64.is_valid() {
-            log::warn!(
-                "SteamID for yourself is empty or not valid. You will not see a white rectangle for youself in the scoreboard."
-            );
-        }
-
-        if self.steam_api_key.is_empty() {
-            log::warn!(
-                "Steam API key is empty. Some features will not work. Go here to crate a new key: https://steamcommunity.com/dev/apikey"
-            );
-        }
-
-        if self.rcon_password.is_empty() {
-            log::warn!("RCON password is empty. RCON will not work.");
-            valid = false;
-        }
-
-        valid
-    }
-
     /// Checks if the configuration is complete enough to run the application.
-    /// This is a stricter check than validate_settings - it requires essential fields to be filled.
     pub fn check_config_is_ok(&self) -> bool {
         // Must have valid SteamID
         if !self.self_steamid64.is_valid() {

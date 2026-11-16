@@ -11,4 +11,4 @@ pub use comments::{Comment, NewComment};
 pub use friendship::{Friendship, NewFriendship};
 pub use player_flags::{NewPlayerFlag, PlayerFlag};
 pub use playtime::{Game, NewPlaytime, Playtime};
-pub use steam_bans::{NewSteamBan, SteamBan};
+pub use steam_bans::NewSteamBan;

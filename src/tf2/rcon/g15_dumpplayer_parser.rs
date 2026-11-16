@@ -24,7 +24,7 @@ impl G15DumpPlayerParser {
         let dump = Self::parse_dump(data, self.default_seen_counter);
 
         // Add players from the current dump to the current_players map
-        for (_, player) in dump.player_resource.players.iter() {
+        for player in dump.player_resource.players.values() {
             if !player.is_active() {
                 continue;
             }
@@ -86,37 +86,37 @@ impl G15DumpPlayerParser {
                 continue;
             }
 
-            if current_section == "playerresource" {
-                if let Some(caps) = re_field.captures(line) {
-                    let raw_key = &caps[1];
-                    let value_str = &caps[2];
+            if current_section == "playerresource"
+                && let Some(caps) = re_field.captures(line)
+            {
+                let raw_key = &caps[1];
+                let value_str = &caps[2];
 
-                    if let Some(cap_indexed) = re_indexed.captures(raw_key) {
-                        let key = cap_indexed[1].to_string();
-                        let index: usize = cap_indexed[2].parse().unwrap_or(999);
+                if let Some(cap_indexed) = re_indexed.captures(raw_key) {
+                    let key = cap_indexed[1].to_string();
+                    let index: usize = cap_indexed[2].parse().unwrap_or(999);
 
-                        let entry = dump.player_resource.players.entry(index).or_default();
+                    let entry = dump.player_resource.players.entry(index).or_default();
 
-                        match key.as_str() {
-                            "m_szName" => entry.name = Some(value_str.to_string()),
-                            "m_bConnected" => entry.connected = Some(value_str == "true"),
-                            "m_bValid" => entry.valid = Some(value_str == "true"),
-                            "m_bAlive" => entry.alive = Some(value_str == "true"),
-                            "m_iHealth" => entry.health = value_str.parse().ok(),
-                            "m_iPing" => entry.ping_ms = value_str.parse().ok(),
-                            "m_iDeaths" => entry.deaths = value_str.parse().ok(),
-                            "m_iTeam" => entry.team = value_str.parse().ok(),
-                            "m_iAccountID" => entry.account_id = value_str.parse().ok(),
-                            "m_iUserID" => entry.user_id = value_str.parse().ok(),
-                            _ => {}
-                        }
+                    match key.as_str() {
+                        "m_szName" => entry.name = Some(value_str.to_string()),
+                        "m_bConnected" => entry.connected = Some(value_str == "true"),
+                        "m_bValid" => entry.valid = Some(value_str == "true"),
+                        "m_bAlive" => entry.alive = Some(value_str == "true"),
+                        "m_iHealth" => entry.health = value_str.parse().ok(),
+                        "m_iPing" => entry.ping_ms = value_str.parse().ok(),
+                        "m_iDeaths" => entry.deaths = value_str.parse().ok(),
+                        "m_iTeam" => entry.team = value_str.parse().ok(),
+                        "m_iAccountID" => entry.account_id = value_str.parse().ok(),
+                        "m_iUserID" => entry.user_id = value_str.parse().ok(),
+                        _ => {}
                     }
                 }
             }
         }
 
         // Set seen_counter for all players
-        for (_, player) in dump.player_resource.players.iter_mut() {
+        for player in dump.player_resource.players.values_mut() {
             player.seen_counter = default_seen_counter;
             if let Some(account_id) = player.account_id {
                 player.steamid = Some(steamid::SteamID::from_u64(

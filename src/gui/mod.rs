@@ -30,8 +30,8 @@ pub mod window_status_row;
 
 use crate::{
     appbus::AppBus,
-    config::{GUI_REPAINT_DELAY},
-    db::db::DbPool,
+    config::GUI_REPAINT_DELAY,
+    db::connection::DbPool,
     models::{AppWin, app_settings::AppSettings},
 };
 use background_image::get_background_image_desc;
@@ -40,10 +40,7 @@ use eframe::egui::{self};
 use player_database_window::show_player_database_window;
 use player_details_panel::{add_player_details_panel, show_player_details_windows};
 use settings_window::show_settings_window;
-use std::{
-    sync::{Arc, Mutex},
-    thread::sleep,
-};
+use std::sync::{Arc, Mutex};
 use window_status_row::add_status_row;
 
 pub fn run(

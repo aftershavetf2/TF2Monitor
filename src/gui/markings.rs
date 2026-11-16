@@ -46,32 +46,32 @@ pub fn add_reputation(ui: &mut Ui, player: &Player) {
     add_flags(ui, player);
 
     // Indicate available ban history; users assess its relevance.
-    if let Some(reputation) = &player.reputation {
-        if !reputation.source_bans.is_empty() {
-            let warning = reputation.has_warning_ban();
-            let response = if warning {
-                add_sourceban_warning(ui)
-            } else {
-                colored_box(
-                    ui,
-                    "SB",
-                    Color32::BLACK,
-                    Color32::ORANGE,
-                    FontId::proportional(BADGE_FONT_SIZE),
-                )
-            };
-            response.on_hover_ui(|ui| {
-                ui.label("SourceBans");
-                if warning {
-                    ui.label("Warning keyword found in ban history.");
-                    ui.add_space(4.0);
-                }
-                let today = chrono::Utc::now().date_naive();
-                for ban in &reputation.source_bans {
-                    add_sourceban_row(ui, ban, today);
-                }
-            });
-        }
+    if let Some(reputation) = &player.reputation
+        && !reputation.source_bans.is_empty()
+    {
+        let warning = reputation.has_warning_ban();
+        let response = if warning {
+            add_sourceban_warning(ui)
+        } else {
+            colored_box(
+                ui,
+                "SB",
+                Color32::BLACK,
+                Color32::ORANGE,
+                FontId::proportional(BADGE_FONT_SIZE),
+            )
+        };
+        response.on_hover_ui(|ui| {
+            ui.label("SourceBans");
+            if warning {
+                ui.label("Warning keyword found in ban history.");
+                ui.add_space(4.0);
+            }
+            let today = chrono::Utc::now().date_naive();
+            for ban in &reputation.source_bans {
+                add_sourceban_row(ui, ban, today);
+            }
+        });
     }
 }
 

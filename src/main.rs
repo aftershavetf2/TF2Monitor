@@ -21,7 +21,7 @@ fn main() -> Result<(), eframe::Error> {
 
     // Connect to database
     log::info!("Connecting to database...");
-    let db = crate::db::db::connect().expect("Failed to connect to database");
+    let db = crate::db::connection::connect().expect("Failed to connect to database");
     log::info!("Database connection established");
 
     let settings = AppSettings::load_or_default();

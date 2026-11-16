@@ -1,6 +1,5 @@
 use super::rcon_connection::{RConArgs, RConConnection};
 use crate::config::{RCON_DELAY, RCON_LOOP_DELAY};
-use crate::db::db::DbPool;
 use crate::models::app_settings::AppSettings;
 use crate::utils::BoxResult;
 use crate::{appbus::AppBus, tf2::rcon::g15_dumpplayer_parser::G15DumpPlayerParser};

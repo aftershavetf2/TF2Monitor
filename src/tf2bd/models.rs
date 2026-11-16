@@ -276,6 +276,6 @@ mod tests {
         );
 
         assert!(rules_file.players.len() == 1);
-        assert!(rules_file.players[0].steamid32 == "[U:1:1532246671]".to_string());
+        assert!(rules_file.players[0].steamid32 == "[U:1:1532246671]");
     }
 }

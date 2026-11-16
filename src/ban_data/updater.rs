@@ -114,10 +114,10 @@ fn download(
         Ok(bans)
     })();
     // Downloads are temporary; the database is the durable local snapshot.
-    if let Err(error) = fs::remove_file(path) {
-        if error.kind() != std::io::ErrorKind::NotFound {
-            log::warn!("Could not remove ban staging file: {error}");
-        }
+    if let Err(error) = fs::remove_file(path)
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        log::warn!("Could not remove ban staging file: {error}");
     }
     result
 }
@@ -265,7 +265,16 @@ mod tests {
                     .set_read_timeout(Some(Duration::from_secs(5)))
                     .unwrap();
                 let mut request = [0; 8192];
-                stream.read(&mut request).unwrap();
+                let mut received = 0;
+                while !request[..received].ends_with(b"\r\n\r\n") {
+                    assert!(
+                        received < request.len(),
+                        "Fixture HTTP request is too large"
+                    );
+                    let count = stream.read(&mut request[received..]).unwrap();
+                    assert!(count > 0, "Fixture HTTP request ended before its headers");
+                    received += count;
+                }
                 write!(
                     stream,
                     "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",

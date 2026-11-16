@@ -4,7 +4,7 @@ pub mod steamid;
 use self::{app_settings::AppSettings, steamid::SteamID};
 use crate::{
     appbus::{AppBus, AppEventMsg},
-    db::db::DbPool,
+    db::connection::DbPool,
     gui::{overview_tab::OverviewState, tabs::Tab},
     tf2::lobby::{Lobby, shared_lobby::SharedLobby},
     tf2bd::models::PlayerAttribute,

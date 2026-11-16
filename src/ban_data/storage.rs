@@ -35,6 +35,13 @@ pub struct UpdateState {
     #[diesel(sql_type = diesel::sql_types::Nullable<BigInt>)]
     pub last_attempt: Option<i64>,
     #[diesel(sql_type = diesel::sql_types::Nullable<BigInt>)]
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "Update metadata retained for diagnostics and verified by storage tests"
+        )
+    )]
     pub last_success: Option<i64>,
     #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
     pub release: Option<String>,
@@ -230,7 +237,7 @@ mod tests {
         expect_communities(&mut conn, &[community(), other]).unwrap();
         let mut community = community();
         let record = ban();
-        import(&mut conn, &community, &[record.clone()]).unwrap();
+        import(&mut conn, &community, std::slice::from_ref(&record)).unwrap();
         assert_eq!(
             lookup(&mut conn, record.steam_id().unwrap()).unwrap().len(),
             1
@@ -253,7 +260,7 @@ mod tests {
         conn.batch_execute("CREATE TRIGGER fail_import BEFORE INSERT ON bans BEGIN SELECT RAISE(ABORT, 'test failure'); END;").unwrap();
         let original_hash = community.sha256.clone();
         community.sha256 = "c".repeat(64);
-        assert!(import(&mut conn, &community, &[record.clone()]).is_err());
+        assert!(import(&mut conn, &community, std::slice::from_ref(&record)).is_err());
         assert_eq!(
             content_hash(&mut conn, "example").unwrap().as_deref(),
             Some(original_hash.as_str())

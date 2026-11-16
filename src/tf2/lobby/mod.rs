@@ -25,8 +25,6 @@ pub struct Lobby {
     /// Players who no longer show up in the status command output
     /// or in tf_lobby_debug output. Players are kept in here for 1 minute.
     pub recently_left_players: Vec<Player>,
-
-    chat_msg_id: i64,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -41,8 +39,6 @@ pub struct LobbyKill {
 
 #[derive(Default, Debug, Clone)]
 pub struct LobbyChat {
-    pub chat_msg_id: i64,
-
     pub steamid: SteamID,
 
     /// The name of the player who sent the message,
@@ -230,33 +226,6 @@ impl Player {
         None
     }
 
-    pub fn is_newbie(&self) -> Option<String> {
-        let mut is_new_account = false;
-        if let Some(steam_info) = &self.steam_info {
-            is_new_account = steam_info.is_account_new();
-        }
-
-        let mut hours = 0;
-        let has_few_hours: bool = match self.tf2_play_minutes {
-            Tf2PlayMinutes::Loading => false,
-            Tf2PlayMinutes::PlayMinutes(minutes) => {
-                hours = minutes / 60;
-                minutes < 60 * 500
-            }
-            Tf2PlayMinutes::Unknown => false,
-        };
-
-        match (is_new_account, has_few_hours) {
-            (true, true) => Some(format!(
-                "Account is < 1 year old and has only {} hours in TF2",
-                hours
-            )),
-            (true, false) => Some("Account is < 1 year old".to_string()),
-            (false, true) => Some(format!("Account has only {} hours in TF2", hours)),
-            _ => None,
-        }
-    }
-
     pub fn clear_stats(&mut self) {
         self.kills = 0;
         self.deaths = 0;
@@ -276,23 +245,11 @@ impl PlayerSteamInfo {
 
         format!("{}", account_age.format("%Y-%m-%d"))
     }
-
-    pub fn is_account_new(&self) -> bool {
-        if self.account_age.is_none() {
-            return false;
-        }
-
-        let account_age = self.account_age.unwrap();
-        let days = (Local::now() - account_age).num_days();
-
-        days < 365
-    }
 }
 
 impl Lobby {
     pub fn new(self_steamid: SteamID) -> Self {
         Self {
-            chat_msg_id: 0,
             lobby_id: Local::now().format("%Y-%m-%d").to_string(),
             self_steamid,
             players: Vec::new(),

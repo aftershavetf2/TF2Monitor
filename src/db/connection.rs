@@ -18,29 +18,29 @@ impl CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for SqliteConnec
         // This allows multiple readers and one writer simultaneously
         sql_query("PRAGMA journal_mode = WAL")
             .execute(conn)
-            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+            .map_err(diesel::r2d2::Error::QueryError)?;
 
         // Set busy timeout to 15 seconds (15000ms)
         // SQLite will retry for this duration instead of immediately failing with "database is locked"
         sql_query("PRAGMA busy_timeout = 15000")
             .execute(conn)
-            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+            .map_err(diesel::r2d2::Error::QueryError)?;
 
         // Use NORMAL synchronous mode for better performance
         // Still safe with WAL mode, provides good balance of safety and speed
         sql_query("PRAGMA synchronous = NORMAL")
             .execute(conn)
-            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+            .map_err(diesel::r2d2::Error::QueryError)?;
 
         // Store temp tables in memory for better performance
         sql_query("PRAGMA temp_store = MEMORY")
             .execute(conn)
-            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+            .map_err(diesel::r2d2::Error::QueryError)?;
 
         // Enable foreign keys (best practice)
         sql_query("PRAGMA foreign_keys = ON")
             .execute(conn)
-            .map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+            .map_err(diesel::r2d2::Error::QueryError)?;
 
         Ok(())
     }

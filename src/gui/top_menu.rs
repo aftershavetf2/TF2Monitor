@@ -288,7 +288,7 @@ fn start_tf2(app_win: &AppWin) {
 
     // Spawn the process
     match cmd.spawn() {
-        Ok(mut child) => {
+        Ok(child) => {
             log::info!("TF2 started successfully with PID: {:?}", child.id());
             // Detach the child process so it continues running independently
             let _ = child;
