@@ -2,6 +2,17 @@
 use super::{menu_item, theme, title_bar};
 use eframe::egui::{self, Event, Pos2, Rect, ViewportCommand};
 
+/// Inspect shapes and commands without a renderer consuming the texture updates.
+pub(super) fn run_ui(
+    ctx: &egui::Context,
+    input: egui::RawInput,
+    ui: impl FnMut(&mut egui::Ui),
+) -> egui::FullOutput {
+    let mut output = ctx.run_ui(input, ui);
+    output.textures_delta.clear();
+    output
+}
+
 fn input(events: Vec<Event>, scale: f32, maximized: bool, fullscreen: bool) -> egui::RawInput {
     let mut input = egui::RawInput {
         screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(800.0, 600.0))),
@@ -37,15 +48,15 @@ fn title_frame(
     maximized: bool,
 ) -> (egui::FullOutput, [Rect; 3]) {
     let mut buttons = [Rect::NOTHING; 3];
-    let output = ctx.run(input(events, 1.0, maximized, false), |ctx| {
-        egui::TopBottomPanel::top("test_title")
+    let output = run_ui(&ctx, input(events, 1.0, maximized, false), |root_ui| {
+        egui::Panel::top("test_title")
             .frame(egui::Frame::new().inner_margin(egui::Margin {
                 left: 8,
                 right: 0,
                 top: 2,
                 bottom: 2,
             }))
-            .show(ctx, |ui| {
+            .show(root_ui, |ui| {
                 theme::menu_bar().ui(ui, |ui| {
                     ui.menu_button("File", |_| {});
                     buttons = title_bar::contents(ui, "TF2 Monitor").map(|r| r.rect);
@@ -191,12 +202,13 @@ fn all_resize_directions_and_blocking_states() {
             let ctx = egui::Context::default();
             theme::install(&ctx);
             let frame = |events| {
-                ctx.run(input(events, 1.0, maximized, fullscreen), |ctx| {
-                    egui::CentralPanel::default().show(ctx, |ui| {
+                run_ui(&ctx, input(events, 1.0, maximized, fullscreen), |root_ui| {
+                    let ctx = &root_ui.ctx().clone();
+                    egui::CentralPanel::default().show(root_ui, |ui| {
                         ui.label("Content");
                     });
                     if modal {
-                        egui::Modal::new(egui::Id::new("modal")).show(ctx, |ui| {
+                        egui::Modal::new(egui::Id::unique("modal")).show(ctx, |ui| {
                             ui.label("Blocking dialog");
                         });
                     }
@@ -227,8 +239,9 @@ fn separators_and_font_fallback_at_fractional_dpi() {
     for scale in [1.0, 1.25, 1.5, 2.0] {
         let ctx = egui::Context::default();
         theme::install(&ctx);
-        let output = ctx.run(input(vec![], scale, false, false), |ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
+        let output = run_ui(&ctx, input(vec![], scale, false, false), |root_ui| {
+            let ctx = &root_ui.ctx().clone();
+            egui::CentralPanel::default().show(root_ui, |ui| {
                 ctx.fonts_mut(|fonts| {
                     for font in [
                         egui::FontId::proportional(13.0),
@@ -245,7 +258,7 @@ fn separators_and_font_fallback_at_fractional_dpi() {
                 ] {
                     let response = ui.interact(
                         Rect::from_min_max(egui::pos2(0.3, 0.3), egui::pos2(700.7, 500.7)),
-                        egui::Id::new("panel"),
+                        egui::Id::unique("panel"),
                         egui::Sense::hover(),
                     );
                     theme::panel_separator(ctx, &response, edge);
@@ -280,8 +293,8 @@ fn menus_open_on_click_switch_on_hover_and_close_on_escape_or_outside() {
     let mut visible = [false; 2];
     let mut frame = |events| {
         visible.fill(false);
-        let output = ctx.run(input(events, 1.0, false, false), |ctx| {
-            egui::TopBottomPanel::top("menus").show(ctx, |ui| {
+        let output = run_ui(&ctx, input(events, 1.0, false, false), |root_ui| {
+            egui::Panel::top("menus").show(root_ui, |ui| {
                 theme::menu_bar().ui(ui, |ui| {
                     for (index, label) in ["File", "View"].iter().enumerate() {
                         heads[index] = theme::menu_header(ui, *label, |ui| {
@@ -331,8 +344,8 @@ fn menu_rows_share_text_column_and_checkbox_has_one_click_target() {
     let mut checked = false;
     let mut rect = Rect::NOTHING;
     let mut frame = |events, enabled| {
-        let output = ctx.run(input(events, 1.0, false, false), |ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
+        let output = run_ui(&ctx, input(events, 1.0, false, false), |root_ui| {
+            egui::CentralPanel::default().show(root_ui, |ui| {
                 ui.set_max_width(350.0);
                 ui.add_enabled_ui(enabled, |ui| {
                     menu_item::command_with_keys(
@@ -381,14 +394,15 @@ fn shortcut_commands_respect_editor_and_modal_focus() {
         let mut text = String::new();
         let mut frame = |events| {
             let mut consumed = false;
-            let _ = ctx.run(input(events, 1.0, false, false), |ctx| {
-                egui::CentralPanel::default().show(ctx, |ui| {
+            let _ = run_ui(&ctx, input(events, 1.0, false, false), |root_ui| {
+                let ctx = &root_ui.ctx().clone();
+                egui::CentralPanel::default().show(root_ui, |ui| {
                     if editor {
                         ui.text_edit_singleline(&mut text).request_focus();
                     }
                 });
                 if modal {
-                    egui::Modal::new(egui::Id::new("modal")).show(ctx, |ui| {
+                    egui::Modal::new(egui::Id::unique("modal")).show(ctx, |ui| {
                         ui.label("Dialog");
                     });
                 }
@@ -418,8 +432,9 @@ fn menu_hints_stay_outside_popup_and_flip_at_screen_edge() {
         let mut menu = Rect::NOTHING;
         let mut item = egui::Id::NULL;
         for _ in 0..3 {
-            let _ = ctx.run(input(vec![],1.0,false,false), |ctx| {
-                let area = egui::Area::new(egui::Id::new("test_menu")).fixed_pos(egui::pos2(x,50.0)).show(ctx, |ui| {
+            let _ = run_ui(&ctx, input(vec![], 1.0, false, false), |root_ui| {
+                let ctx = &root_ui.ctx().clone();
+                let area = egui::Area::new(egui::Id::unique("test_menu")).fixed_pos(egui::pos2(x,50.0)).show(ctx, |ui| {
                     ui.set_width(220.0);
                     item = menu_item::command(ui,"Command").menu_tooltip("An explanatory menu hint with enough text to wrap, without covering other menu rows.").id;
                 });
@@ -442,10 +457,10 @@ fn long_title_keeps_controls_visible_at_supported_scales() {
     for scale in [1.0, 1.25, 1.5, 2.0] {
         let ctx = egui::Context::default();
         theme::install(&ctx);
-        let _ = ctx.run(input(vec![],scale,false,false), |ctx| {
-            egui::TopBottomPanel::top("title")
+        let _ = run_ui(&ctx, input(vec![], scale, false, false), |root_ui| {
+            egui::Panel::top("title")
                 .frame(egui::Frame::new().inner_margin(egui::Margin {left:8,right:0,top:2,bottom:2}))
-                .show(ctx, |ui| {
+                .show(root_ui, |ui| {
                     theme::menu_bar().ui(ui, |ui| {
                         for label in ["File","View","Actions","Tools"] { theme::menu_header(ui,label, |_| {}); }
                         let controls = title_bar::contents(ui, "A very long application title that must truncate without moving or hiding the native window controls");

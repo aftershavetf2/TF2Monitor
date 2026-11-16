@@ -316,8 +316,7 @@ fn header_label(ui: &mut Ui, headings: &mut Vec<HeaderLabel>, label: &str) -> eg
         rect,
         text,
     });
-    response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), label));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), label));
     response
 }
 
@@ -518,8 +517,9 @@ mod tests {
                                 .get_mut(&egui::ViewportId::ROOT)
                                 .unwrap()
                                 .native_pixels_per_point = Some(scale);
-                            let output = ctx.run(input, |ctx| {
-                                egui::CentralPanel::default().show(ctx, |ui| {
+                            let output = super::super::tests::run_ui(&ctx, input, |root_ui| {
+                                let ctx = &root_ui.ctx().clone();
+                                egui::CentralPanel::default().show(root_ui, |ui| {
                                     ui.columns(2, |columns| {
                                         for (index, ui) in columns.iter_mut().enumerate() {
                                             let expected = ui.max_rect().shrink2(egui::vec2(

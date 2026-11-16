@@ -2,8 +2,9 @@
 use crate::models::AppWin;
 use eframe::egui::{self, CursorIcon, ResizeDirection, Sense, ViewportCommand};
 
-pub fn show(ctx: &egui::Context, app: &mut AppWin) {
-    let panel = egui::TopBottomPanel::top("title_bar")
+pub fn show(root_ui: &mut egui::Ui, app: &mut AppWin) {
+    let ctx = &root_ui.ctx().clone();
+    let panel = egui::Panel::top("title_bar")
         .show_separator_line(false)
         .frame(
             egui::Frame::new()
@@ -15,7 +16,7 @@ pub fn show(ctx: &egui::Context, app: &mut AppWin) {
                     bottom: 2,
                 }),
         )
-        .show(ctx, |ui| {
+        .show(root_ui, |ui| {
             ui.horizontal(|ui| {
                 super::top_menu::add_top_menu(ui, app);
             });
@@ -57,7 +58,7 @@ pub fn contents(ui: &mut egui::Ui, title: &str) -> [egui::Response; 3] {
     }
     // Updating the native title also keeps task switchers and accessibility in sync.
     let changed = ui.ctx().data_mut(|data| {
-        let id = egui::Id::new("native_window_title");
+        let id = egui::Id::unique("native_window_title");
         if data.get_temp::<String>(id).as_deref() != Some(title) {
             data.insert_temp(id, title.to_owned());
             true
@@ -97,7 +98,7 @@ pub fn contents(ui: &mut egui::Ui, title: &str) -> [egui::Response; 3] {
                 );
             }
             response.widget_info(|| {
-                egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), name)
+                egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), name)
             });
             if response.clicked() {
                 ui.ctx().send_viewport_cmd(command);
@@ -214,7 +215,7 @@ pub fn resize_edges(ctx: &egui::Context) {
     .into_iter()
     .enumerate()
     {
-        egui::Area::new(egui::Id::new(("window_resize", index)))
+        egui::Area::new(egui::Id::unique(("window_resize", index)))
             .order(egui::Order::Foreground)
             .fixed_pos(target.min)
             .movable(false)

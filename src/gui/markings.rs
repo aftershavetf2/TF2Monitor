@@ -91,7 +91,7 @@ fn add_sourceban_warning(ui: &mut Ui) -> Response {
     ) + 2.0 * BADGE_PADDING;
     let (rect, response) = ui.allocate_exact_size(size, Sense::hover());
     response.widget_info(|| {
-        egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), "SB warning")
+        egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), "SB warning")
     });
     if ui.is_rect_visible(rect) {
         ui.painter()
@@ -207,9 +207,8 @@ fn colored_box(
     // Allocate directly in the wrapping row so each badge stays together.
     let (rect, response) =
         ui.allocate_exact_size(text.size() + 2.0 * BADGE_PADDING, Sense::hover());
-    response.widget_info(|| {
-        egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text.text())
-    });
+    response
+        .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), text.text()));
     if ui.is_rect_visible(rect) {
         ui.painter().rect_filled(rect, BADGE_CORNER_RADIUS, bgcolor);
         let text_pos = rect.center() - text.size() / 2.0;

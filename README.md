@@ -47,7 +47,7 @@ There are pre-compiled binaries you can use, but you can compile TF2Monitor your
 
 ## How to Compile TF2Monitor
 
-To compile it yourself you need to download the source code and [install The Rust programming language](https://www.rust-lang.org/tools/install).
+To compile it yourself you need to [install Rust](https://www.rust-lang.org/tools/install). Rust 1.95 or newer is required; use the current stable toolchain (`rustup update stable`).
 
 After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and type `cargo run --release` and the application will be compiled and started.
 
@@ -122,8 +122,9 @@ The full source code is available for anyone to inspect.
 
 I have not tested it but currently the app does not use any platform specifc API. My intention is that it should work.
 
-The UI framework uses OpenGL via `glow` and there's a note here on libs you might need to install on your Linux machine:
-https://crates.io/crates/eframe/0.27.2
+The UI uses eframe with the `wgpu` renderer. Linux builds support both X11 and Wayland. Install a working Vulkan driver for your GPU (typically Mesa on Intel/AMD, or the NVIDIA driver). On Windows, wgpu normally uses DirectX 12; on macOS, Metal.
+
+See the [eframe documentation](https://docs.rs/eframe/0.37.0/eframe/#native) for native build prerequisites.
 
 # Other projects of interest
 

@@ -190,7 +190,7 @@ pub(super) fn shortcut_font() -> FontId {
 }
 
 pub(super) fn modal_frame(ctx: &egui::Context) -> egui::Frame {
-    let style = ctx.style();
+    let style = ctx.global_style();
     egui::Frame::window(&style).inner_margin(style.spacing.window_margin)
 }
 
@@ -235,7 +235,7 @@ impl MenuTooltip for egui::Response {
             egui::pos2(menu.left().min(self.rect.left()), self.rect.top()),
             egui::pos2(menu.right().max(self.rect.right()), self.rect.bottom()),
         );
-        let frame = egui::Frame::popup(&self.ctx.style())
+        let frame = egui::Frame::popup(&self.ctx.global_style())
             .fill(TOOLTIP_BACKGROUND)
             .stroke(Stroke::new(1.0_f32, TOOLTIP_BORDER))
             .inner_margin(egui::Margin::symmetric(14, 10))
@@ -272,7 +272,7 @@ pub fn menu_header<R>(
     label: &str,
     contents: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<Option<R>> {
-    let group = ui.id().with("open_menu_header");
+    let group = ui.scope_id().with("open_menu_header");
     let previous = ui.ctx().data(|d| d.get_temp::<egui::Id>(group));
     let inactive = ui.visuals().widgets.inactive;
     if previous.is_some_and(|id| {
@@ -325,7 +325,7 @@ mod tests {
     fn fallback_fonts_cover_braille_with_uniform_width_and_common_emoji() {
         let ctx = egui::Context::default();
         install(&ctx);
-        let _ = ctx.run(Default::default(), |ctx| {
+        ctx.run_pass(Default::default(), |ctx| {
             ctx.fonts_mut(|fonts| {
                 for font in [FontId::proportional(13.0), heading_font(), shortcut_font()] {
                     let width = fonts.glyph_width(&font, '\u{2800}');
@@ -343,6 +343,7 @@ mod tests {
                     assert_eq!(galley.rows.len(), 2);
                 }
             });
-        });
+        })
+        .drop_without_applying_deltas();
     }
 }

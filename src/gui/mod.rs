@@ -61,7 +61,7 @@ pub fn run(
         .with_icon(icon_data);
 
     let options = eframe::NativeOptions {
-        vsync: true,
+        renderer: eframe::Renderer::Wgpu,
         viewport,
 
         ..Default::default()
@@ -78,25 +78,23 @@ pub fn run(
             egui_extras::install_image_loaders(&cc.egui_ctx);
 
             Ok(Box::new(app_data))
-
-            // - eframe::run_native("My App", options, Box::new(|cc| Box::new(MyApp::new(cc))));
-            // + eframe::run_native("My App", options, Box::new(|cc| Ok(Box::new(MyApp::new(cc)))));
         }),
     )
 }
 
 impl eframe::App for AppWin {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, root_ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &root_ui.ctx().clone();
         self.get_latest_lobby();
 
         self.friendship_positions.clear();
 
         top_menu::handle_shortcuts(ctx, self);
-        title_bar::show(ctx, self);
+        title_bar::show(root_ui, self);
 
-        let status = egui::TopBottomPanel::bottom("status")
+        let status = egui::Panel::bottom("status")
             .show_separator_line(false)
-            .show(ctx, |ui| {
+            .show(root_ui, |ui| {
                 let image_desc = get_background_image_desc();
 
                 add_status_row(self, ui, &image_desc);
@@ -104,15 +102,15 @@ impl eframe::App for AppWin {
 
         theme::panel_separator(ctx, &status.response, theme::PanelEdge::Top);
 
-        let details = egui::SidePanel::right("right_panel")
+        let details = egui::Panel::right("right_panel")
             .show_separator_line(false)
-            .show(ctx, |ui| {
+            .show(root_ui, |ui| {
                 add_player_details_panel(self, ui);
             });
 
         theme::panel_separator(ctx, &details.response, theme::PanelEdge::Left);
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show(root_ui, |ui| {
             tabs::add_tab_bar(&mut self.active_tab, ui);
             ui.separator();
             match self.active_tab {

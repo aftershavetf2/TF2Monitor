@@ -59,9 +59,9 @@ fn row(ui: &mut Ui, label: &str, selected: Option<bool>, keys: &[&str]) -> Respo
     super::shortcut::paint(ui, rect.shrink2(egui::vec2(10.0, 0.0)), keys);
     response.widget_info(|| match selected {
         Some(checked) => {
-            egui::WidgetInfo::selected(egui::WidgetType::Checkbox, ui.is_enabled(), checked, label)
+            egui::WidgetInfo::selected(egui::Role::CheckBox, ui.is_enabled(), checked, label)
         }
-        None => egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label),
+        None => egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label),
     });
     response
 }

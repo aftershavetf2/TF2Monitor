@@ -79,11 +79,17 @@ mod tests {
     fn comments_wrap_below_author_and_before_next_entry() {
         let ctx = egui::Context::default();
         super::super::theme::install(&ctx);
-        let output = ctx.run(egui::RawInput {
-            screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(300.0,600.0))),
-            ..Default::default()
-        }, |ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
+        let output = super::super::tests::run_ui(
+            &ctx,
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(300.0, 600.0),
+                )),
+                ..Default::default()
+            },
+            |root_ui| {
+                egui::CentralPanel::default().show(root_ui, |ui| {
                 for name in ["First Author", "Second Author"] {
                     add_comment_row(ui, &SteamProfileComment {
                         name: name.into(), avatar_thumb: String::new(),
@@ -92,7 +98,8 @@ mod tests {
                     });
                 }
             });
-        });
+            },
+        );
         let text: Vec<_> = output
             .shapes
             .iter()

@@ -25,9 +25,8 @@ pub fn add_player_class_symbol(ui: &mut Ui, player: &Player) -> Response {
         Some(class) => format!("Estimated class: {class:?}\nBased on the last five kills"),
         None => "Unknown class: no unambiguous weapon in the last five kills".to_owned(),
     };
-    response.widget_info(|| {
-        egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), &tooltip)
-    });
+    response
+        .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), &tooltip));
     if ui.is_rect_visible(rect) {
         let (symbol, font) = match class {
             Some(class) => (
@@ -86,7 +85,7 @@ mod tests {
         use PlayerClass::*;
         let ctx = egui::Context::default();
         super::super::theme::install(&ctx);
-        let _ = ctx.run(Default::default(), |ctx| {
+        ctx.run_pass(Default::default(), |ctx| {
             ctx.fonts_mut(|fonts| {
                 let font = FontId::new(22.0, FontFamily::Name("TF2 Classes".into()));
                 for class in [
@@ -95,7 +94,8 @@ mod tests {
                     assert!(fonts.has_glyphs(&font, class_glyph(class)), "{class:?}");
                 }
             });
-        });
+        })
+        .drop_without_applying_deltas();
     }
 
     #[test]

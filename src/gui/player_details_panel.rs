@@ -38,7 +38,10 @@ pub fn show_player_details_windows(app_win: &mut AppWin, ctx: &egui::Context) {
 
         egui::Window::new(window_title)
             .frame(super::theme::modal_frame(ctx))
-            .id(egui::Id::new(("player_details_window", steamid.to_u64())))
+            .id(egui::Id::unique((
+                "player_details_window",
+                steamid.to_u64(),
+            )))
             .open(&mut window_open)
             .resizable(true)
             .default_width(420.0)

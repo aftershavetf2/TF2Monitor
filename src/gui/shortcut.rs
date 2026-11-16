@@ -56,7 +56,7 @@ pub fn paint(ui: &egui::Ui, rect: Rect, keys: &[&str]) {
 
 /// Consume app commands only when no editor or modal owns keyboard input.
 pub fn consume_command(ctx: &egui::Context, key: egui::Key) -> bool {
-    if ctx.wants_keyboard_input() || ctx.memory(|m| m.top_modal_layer().is_some()) {
+    if ctx.egui_wants_keyboard_input() || ctx.memory(|m| m.top_modal_layer().is_some()) {
         return false;
     }
     ctx.input_mut(|input| input.consume_key(egui::Modifiers::COMMAND, key))

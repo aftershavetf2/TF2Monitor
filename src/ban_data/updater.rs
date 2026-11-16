@@ -61,6 +61,10 @@ fn release_manifest(client: &Client) -> Result<(String, reqwest::Url, Manifest)>
     Ok((release.tag_name, base, manifest))
 }
 
+fn hex_digest(digest: &[u8]) -> String {
+    digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
 /// Stage and hash the exact compressed bytes, then verify the decompressed JSON.
 fn download(
     client: &Client,
@@ -88,7 +92,7 @@ fn download(
             file.write_all(&buffer[..count])?;
         }
         if bytes != community.gzip.bytes
-            || !format!("{:x}", hasher.finalize()).eq_ignore_ascii_case(&community.gzip.sha256)
+            || !hex_digest(&hasher.finalize()).eq_ignore_ascii_case(&community.gzip.sha256)
         {
             return Err(format!("Compressed size or SHA-256 mismatch for {}", community.id).into());
         }
@@ -99,7 +103,7 @@ fn download(
             .take(community.bytes + 1)
             .read_to_end(&mut raw)?;
         if raw.len() as u64 != community.bytes
-            || !format!("{:x}", Sha256::digest(&raw)).eq_ignore_ascii_case(&community.sha256)
+            || !hex_digest(&Sha256::digest(&raw)).eq_ignore_ascii_case(&community.sha256)
         {
             return Err(format!("JSON size or SHA-256 mismatch for {}", community.id).into());
         }
@@ -227,11 +231,11 @@ mod tests {
         let compressed = encoder.finish().unwrap();
         let mut community = community();
         community.bytes = raw.len() as u64;
-        community.sha256 = format!("{:x}", Sha256::digest(&raw));
+        community.sha256 = hex_digest(&Sha256::digest(&raw));
         community.gzip = CompressedFile {
             file: "example.json.gz".into(),
             bytes: compressed.len() as u64,
-            sha256: format!("{:x}", Sha256::digest(&compressed)),
+            sha256: hex_digest(&Sha256::digest(&compressed)),
         };
         (community, compressed)
     }
@@ -272,6 +276,15 @@ mod tests {
             }
         });
         (url, handle)
+    }
+
+    #[test]
+    fn sha256_hex_matches_known_digest() {
+        assert_eq!(
+            hex_digest(&Sha256::digest(b"abc")),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        assert_eq!(hex_digest(&[0, 1, 15, 16, 255]), "00010f10ff");
     }
 
     #[test]

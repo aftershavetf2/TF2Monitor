@@ -35,7 +35,7 @@ pub fn add_menu_section(active_tab: &mut Tab, ui: &mut Ui) {
 }
 
 pub fn handle_shortcuts(active_tab: &mut Tab, ctx: &egui::Context) {
-    if ctx.wants_keyboard_input() || ctx.memory(|memory| memory.top_modal_layer().is_some()) {
+    if ctx.egui_wants_keyboard_input() || ctx.memory(|memory| memory.top_modal_layer().is_some()) {
         return;
     }
     ctx.input_mut(|input| {
@@ -85,7 +85,8 @@ mod tests {
             let mut tab = Tab::Game;
             let mut text = String::new();
             for key in [None, Some(Key::Num2), Some(Key::Num1)] {
-                let _ = ctx.run(
+                let _ = super::super::tests::run_ui(
+                    &ctx,
                     egui::RawInput {
                         events: key
                             .map(|key| egui::Event::Key {
@@ -99,16 +100,20 @@ mod tests {
                             .collect(),
                         ..Default::default()
                     },
-                    |ctx| {
-                        egui::CentralPanel::default().show(ctx, |ui| {
+                    |root_ui| {
+                        let ctx = &root_ui.ctx().clone();
+                        egui::CentralPanel::default().show(root_ui, |ui| {
                             if editor {
                                 ui.text_edit_singleline(&mut text).request_focus();
                             }
                         });
                         if modal {
-                            egui::Modal::new(egui::Id::new("tab_shortcut_modal")).show(ctx, |ui| {
-                                ui.label("Dialog");
-                            });
+                            egui::Modal::new(egui::Id::unique("tab_shortcut_modal")).show(
+                                ctx,
+                                |ui| {
+                                    ui.label("Dialog");
+                                },
+                            );
                         }
                         handle_shortcuts(&mut tab, ctx);
                     },

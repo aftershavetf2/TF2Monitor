@@ -360,7 +360,7 @@ pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
                 ui.expand_to_include_rect(rect.expand(30.0));
                 let response = ui.interact(
                     rect,
-                    ui.id().with(player.steamid.to_u64()),
+                    ui.scope_id().with(player.steamid.to_u64()),
                     Sense::click_and_drag(),
                 );
                 if response.dragged() {
@@ -699,16 +699,20 @@ mod tests {
                 ],
                 _ => vec![],
             };
-            let output = ctx.run(
+            let output = super::super::tests::run_ui(
+                &ctx,
                 egui::RawInput {
                     screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1000.0, 700.0))),
                     events,
                     ..Default::default()
                 },
-                |ctx| {
-                    egui::CentralPanel::default().show(ctx, |ui| {
-                        let layer =
-                            egui::LayerId::new(ui.layer_id().order, ui.id().with("scene_area"));
+                |root_ui| {
+                    let ctx = &root_ui.ctx().clone();
+                    egui::CentralPanel::default().show(root_ui, |ui| {
+                        let layer = egui::LayerId::new(
+                            ui.layer_id().order,
+                            ui.scope_id().with("scene_area"),
+                        );
                         show(&mut app, ui);
                         point = ctx.layer_transform_to_global(layer).unwrap()
                             * app.overview.nodes[0].position;
