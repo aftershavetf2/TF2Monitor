@@ -14,6 +14,7 @@ const JETBRAINS_MONO_MEDIUM: &[u8] =
     include_bytes!("../../assets/fonts/jetbrains-mono/JetBrainsMono-Medium.ttf");
 
 pub const PANEL: Color32 = Color32::from_rgb(0x36, 0x31, 0x2B);
+pub(super) const TITLE_BAR: Color32 = Color32::from_rgb(0x26, 0x21, 0x1B);
 pub(super) const TABLE_ROW_SELF: Color32 = Color32::from_rgb(0x5F, 0x57, 0x4F);
 pub(super) const TABLE_ROW_LIGHT: Color32 = Color32::from_rgb(0x41, 0x3C, 0x36);
 pub(super) const TABLE_ROW_DARK: Color32 = Color32::from_rgb(0x2E, 0x29, 0x23);
@@ -176,7 +177,7 @@ pub(crate) fn install(ctx: &egui::Context) {
     // The menu style clears this resting fill, retaining blue only on hover/open.
     visuals.widgets.inactive.weak_bg_fill = BUTTON;
     // egui also uses this fill for the active floating window's title bar.
-    visuals.widgets.open.weak_bg_fill = PANEL;
+    visuals.widgets.open.weak_bg_fill = TITLE_BAR;
     style.visuals = visuals;
     // Keep the painting workspace neutral and consistent across OS appearances.
     ctx.set_theme(egui::ThemePreference::Dark);
@@ -200,7 +201,9 @@ pub(super) fn window(ctx: &egui::Context, title: impl Into<String>) -> egui::Win
     )
     .frame(modal_frame(ctx))
     .title_frame(
-        egui::Frame::window(&ctx.global_style()).inner_margin(egui::Margin::symmetric(10, 6)),
+        egui::Frame::window(&ctx.global_style())
+            .fill(TITLE_BAR)
+            .inner_margin(egui::Margin::symmetric(10, 6)),
     )
     .collapsible(false)
 }

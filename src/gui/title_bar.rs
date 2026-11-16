@@ -8,7 +8,7 @@ pub fn show(root_ui: &mut egui::Ui, app: &mut AppWin) {
         .show_separator_line(false)
         .frame(
             egui::Frame::new()
-                .fill(super::theme::PANEL)
+                .fill(super::theme::TITLE_BAR)
                 .inner_margin(egui::Margin {
                     left: 8,
                     right: 0,
