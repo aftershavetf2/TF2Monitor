@@ -190,20 +190,9 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
 
             ui.separator();
 
-            let ban_data = app_win.bus.lock().unwrap().ban_data.clone();
-            let status = ban_data.status();
-            ui.add_enabled_ui(status.available && !status.busy, |ui| {
-                if menu_item::command(ui, "Check for New Ban Data").clicked() {
-                    ban_data.request_check();
-                }
+            menu_item::submenu(ui, "SourceBan Data", |ui| {
+                source_ban_data_menu(ui, app_win);
             });
-            ui.label(&status.message);
-            if let Some(attempt) = status.state.last_attempt.and_then(|value| chrono::DateTime::from_timestamp(value, 0)) {
-                ui.label(format!("Last check: {}", attempt.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M")));
-            }
-            if let Some(success) = status.state.last_success.and_then(|value| chrono::DateTime::from_timestamp(value, 0)) {
-                ui.label(format!("Last successful check: {}", success.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M")));
-            }
             ui.separator();
 
             if menu_item::command(ui, "DB Statistics").clicked() {
@@ -246,6 +235,34 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             }
         });
         super::title_bar::contents(ui, "TF2 Monitor");
+    });
+}
+
+fn source_ban_data_menu(ui: &mut Ui, app_win: &AppWin) {
+    ui.set_width(340.0);
+    let ban_data = app_win.bus.lock().unwrap().ban_data.clone();
+    let status = ban_data.status();
+    ui.add_enabled_ui(status.available && !status.busy, |ui| {
+        if menu_item::command(ui, "Check for Updates").clicked() {
+            ban_data.request_check();
+        }
+    });
+    ui.separator();
+    menu_item::information(ui, |ui| {
+        let time = status
+            .state
+            .last_attempt
+            .and_then(|value| chrono::DateTime::from_timestamp(value, 0))
+            .map(|value| {
+                let local = value.with_timezone(&chrono::Local);
+                if local.date_naive() == chrono::Local::now().date_naive() {
+                    local.format("Today at %H:%M").to_string()
+                } else {
+                    local.format("%Y-%m-%d %H:%M").to_string()
+                }
+            })
+            .unwrap_or_else(|| "Never".into());
+        ui.label(format!("Last checked at: {time}"));
     });
 }
 

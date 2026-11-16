@@ -29,8 +29,7 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
     let mut should_close = false;
     let mut should_save = false;
 
-    egui::Window::new("Settings")
-        .frame(super::theme::modal_frame(ctx))
+    super::theme::window(ctx, "Settings")
         .open(&mut window_open)
         .resizable(true)
         .default_width(500.0)

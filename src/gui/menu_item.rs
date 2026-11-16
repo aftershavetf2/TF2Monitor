@@ -86,3 +86,32 @@ pub fn checkbox(ui: &mut Ui, checked: &mut bool, label: &str) -> Response {
     }
     response
 }
+
+/// Keep submenu labels in the same text column as commands and checkboxes.
+pub fn submenu<R>(ui: &mut Ui, label: &str, contents: impl FnOnce(&mut Ui) -> R) {
+    let response = row(ui, label, None, &[]);
+    let arrow_rect = egui::Rect::from_center_size(
+        egui::pos2(response.rect.right() - 17.0, response.rect.center().y),
+        egui::Vec2::splat(14.0),
+    );
+    ui.painter().add(egui::containers::menu::SubMenuButton::arrow_shape(
+        arrow_rect,
+        ui.style().interact(&response).fg_stroke.color,
+    ));
+    egui::containers::menu::SubMenu::new().show(ui, &response, contents);
+}
+
+/// Inset wrapped menu information to match the command text column.
+pub fn information(ui: &mut Ui, contents: impl FnOnce(&mut Ui)) {
+    egui::Frame::NONE
+        .inner_margin(egui::Margin {
+            left: 32,
+            right: 10,
+            top: 6,
+            bottom: 6,
+        })
+        .show(ui, |ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+            contents(ui);
+        });
+}

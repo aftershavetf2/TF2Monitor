@@ -36,8 +36,7 @@ pub fn show_player_details_windows(app_win: &mut AppWin, ctx: &egui::Context) {
         let mut window_open = true;
         let window_title = player_window_title(app_win, steamid);
 
-        egui::Window::new(window_title)
-            .frame(super::theme::modal_frame(ctx))
+        super::theme::window(ctx, window_title)
             .id(egui::Id::unique((
                 "player_details_window",
                 steamid.to_u64(),

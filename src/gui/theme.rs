@@ -135,7 +135,7 @@ pub(crate) fn install(ctx: &egui::Context) {
     visuals.extreme_bg_color = Color32::from_gray(26);
     visuals.faint_bg_color = Color32::from_gray(40);
     visuals.code_bg_color = CONTROL;
-    visuals.text_edit_bg_color = Some(CONTROL);
+    visuals.text_edit_bg_color = Some(Color32::from_gray(24));
     visuals.override_text_color = None;
     visuals.weak_text_color = Some(MUTED_TEXT);
     visuals.error_fg_color = ERROR;
@@ -175,6 +175,8 @@ pub(crate) fn install(ctx: &egui::Context) {
     // Button backgrounds use weak_bg_fill; input fields keep their neutral fill.
     // The menu style clears this resting fill, retaining blue only on hover/open.
     visuals.widgets.inactive.weak_bg_fill = BUTTON;
+    // egui also uses this fill for the active floating window's title bar.
+    visuals.widgets.open.weak_bg_fill = PANEL;
     style.visuals = visuals;
     // Keep the painting workspace neutral and consistent across OS appearances.
     ctx.set_theme(egui::ThemePreference::Dark);
@@ -187,6 +189,20 @@ fn semibold(size: f32) -> FontId {
 
 pub(super) fn shortcut_font() -> FontId {
     FontId::new(11.0, FontFamily::Name("JetBrains Mono Medium".into()))
+}
+
+/// Shared floating window chrome, separate from the spacious content frame.
+pub(super) fn window(ctx: &egui::Context, title: impl Into<String>) -> egui::Window<'static> {
+    egui::Window::new(
+        egui::RichText::new(title.into())
+            .font(semibold(13.0))
+            .color(TEXT),
+    )
+    .frame(modal_frame(ctx))
+    .title_frame(
+        egui::Frame::window(&ctx.global_style()).inner_margin(egui::Margin::symmetric(10, 6)),
+    )
+    .collapsible(false)
 }
 
 pub(super) fn modal_frame(ctx: &egui::Context) -> egui::Frame {
@@ -202,12 +218,14 @@ pub(super) fn menu_bar() -> egui::MenuBar {
     egui::MenuBar::new()
         .style(|style: &mut egui::Style| {
             egui::containers::menu::menu_style(style);
+            style.visuals.widgets.open.weak_bg_fill = HOVER;
             style.spacing.button_padding = egui::vec2(10.0, 4.0);
             style.spacing.interact_size.y = 26.0;
         })
         .config(
             egui::containers::menu::MenuConfig::new().style(|style: &mut egui::Style| {
                 egui::containers::menu::menu_style(style);
+                style.visuals.widgets.open.weak_bg_fill = HOVER;
                 style.spacing.button_padding = egui::vec2(10.0, 5.0);
                 style.spacing.interact_size.y = 27.0;
                 style.spacing.item_spacing.y = 3.0;
