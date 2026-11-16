@@ -3,9 +3,7 @@
 // https://raw.githubusercontent.com/PazerOP/tf2_bot_detector/master/schemas/v3/settings.schema.json
 //
 
-use fs_err as fs;
 use serde::{Deserialize, Serialize};
-use std::{io::Read, path::Path};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TF2BDPlayerList {
@@ -110,19 +108,6 @@ pub enum PlayerAttribute {
     Cool,
 }
 
-#[derive(Debug)]
-struct RulesStats {
-    pub rules: usize,
-
-    pub players: usize,
-
-    pub cheaters: usize,
-    pub bots: usize,
-    pub suspicious: usize,
-    pub racists: usize,
-    pub exploiters: usize,
-}
-
 impl TF2BDPlayerList {
     pub fn new() -> Self {
         Self {
@@ -133,73 +118,9 @@ impl TF2BDPlayerList {
         }
     }
 
-    pub fn load(filename: &str) -> TF2BDPlayerList {
-        if Path::new(filename).exists() {
-            log::info!("Loading TF2BD rules file: {}", filename);
-            let mut f = fs::File::open(filename).unwrap();
-            let mut json = String::new();
-            f.read_to_string(&mut json).unwrap();
-            let rules = TF2BDPlayerList::from_json_str(&json);
-            log::info!("Stats: {:?}", rules.get_stats());
-
-            rules
-        } else {
-            log::info!(
-                "File {} does not exist. Creating an empty rules file",
-                filename
-            );
-            TF2BDPlayerList::new()
-        }
-    }
-
-    pub fn save(&self, filename: &str) {
-        log::info!("Saving TF2BD rules file: {}", filename);
-        let json = serde_json::to_string_pretty(self).unwrap();
-        let mut f = fs::File::create(filename).unwrap();
-        std::io::Write::write_all(&mut f, json.as_bytes()).unwrap();
-        log::info!("Saving done");
-    }
-
+    #[cfg(test)]
     pub fn from_json_str(json: &str) -> TF2BDPlayerList {
         serde_json::from_str(json).unwrap()
-    }
-
-    fn get_stats(&self) -> RulesStats {
-        let mut result = RulesStats {
-            rules: 0,
-            players: self.players.len(),
-            cheaters: 0,
-            bots: 0,
-            suspicious: 0,
-            racists: 0,
-            exploiters: 0,
-        };
-
-        if let Some(rules) = &self.rules {
-            result.rules = rules.len();
-        }
-
-        result.players = self.players.len();
-
-        for player in &self.players {
-            if player.attributes.contains(&PlayerAttribute::Cheater) {
-                result.cheaters += 1;
-            }
-            if player.attributes.contains(&PlayerAttribute::Bot) {
-                result.bots += 1;
-            }
-            if player.attributes.contains(&PlayerAttribute::Suspicious) {
-                result.suspicious += 1;
-            }
-            if player.attributes.contains(&PlayerAttribute::Exploiter) {
-                result.exploiters += 1;
-            }
-            if player.attributes.contains(&PlayerAttribute::Toxic) {
-                result.racists += 1;
-            }
-        }
-
-        result
     }
 }
 

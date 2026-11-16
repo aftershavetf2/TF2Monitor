@@ -1,15 +1,12 @@
 use super::{Tf2bdMsg, models::PlayerAttribute, ruleset_handler::RulesetHandler};
 use crate::config::TF2BD_LOOP_DELAY;
 use crate::db::connection::DbPool;
-use crate::db::entities::NewPlayerFlag;
-use crate::db::queries;
 use crate::{
     appbus::{AppBus, AppEventMsg},
     models::{app_settings::AppSettings, steamid::SteamID},
     tf2::lobby::{Lobby, Player, Team},
 };
 use bus::BusReader;
-use chrono::Utc;
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
@@ -26,9 +23,16 @@ pub fn start(
     bus: &Arc<Mutex<AppBus>>,
     db: &DbPool,
 ) -> thread::JoinHandle<()> {
-    let mut tf2bd_thread = Tf2bdThread::new(settings, bus, db);
-
-    thread::spawn(move || tf2bd_thread.run())
+    let settings = settings.clone();
+    let bus = Arc::clone(bus);
+    let db = db.clone();
+    thread::spawn(move || match Tf2bdThread::new(&settings, &bus, &db) {
+        Ok(mut worker) => worker.run(),
+        Err(error) => log::error!(
+            "Could not initialize database-backed player markings: {}",
+            error
+        ),
+    })
 }
 
 struct Tf2bdThread {
@@ -40,8 +44,6 @@ struct Tf2bdThread {
 
     ruleset_handler: RulesetHandler,
 
-    db: DbPool,
-
     last_lobby_id: String,
     last_vote_time: Instant,
 
@@ -49,13 +51,17 @@ struct Tf2bdThread {
 }
 
 impl Tf2bdThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> Self {
+    pub fn new(
+        settings: &AppSettings,
+        bus: &Arc<Mutex<AppBus>>,
+        db: &DbPool,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
         let app_event_bus_rx = bus.lock().unwrap().app_event_bus.add_rx();
 
-        let ruleset_handler = RulesetHandler::new(FILENAME, false);
+        let ruleset_handler = RulesetHandler::new(FILENAME, db)?;
 
-        Self {
+        Ok(Self {
             bus: Arc::clone(bus),
             shared_lobby,
             app_event_bus_rx,
@@ -64,14 +70,12 @@ impl Tf2bdThread {
 
             ruleset_handler,
 
-            db: db.clone(),
-
             last_lobby_id: String::new(),
 
             last_vote_time: Instant::now(),
 
             notifications_send: HashSet::new(),
-        }
+        })
     }
 
     pub fn run(&mut self) {
@@ -80,6 +84,7 @@ impl Tf2bdThread {
         loop {
             self.process_bus();
 
+            self.ruleset_handler.sync_export();
             self.apply_rules_to_lobby();
             self.send_notifications();
 
@@ -136,53 +141,21 @@ impl Tf2bdThread {
             enable
         );
 
-        // Send out the updated marking
+        if let Err(error) = self.ruleset_handler.set_player_flags(
+            steamid,
+            Some(player_name),
+            player_attribute,
+            enable,
+        ) {
+            log::error!(
+                "Failed to save player marking for {}: {}",
+                steamid.to_u64(),
+                error
+            );
+            return;
+        }
         let data = self.ruleset_handler.get_player_marking(&steamid);
         self.send(Tf2bdMsg::Tf2bdPlayerMarking(steamid, data.cloned()));
-
-        self.ruleset_handler
-            .set_player_flags(steamid, Some(player_name), player_attribute, enable);
-
-        // Persist to database
-        if let Ok(mut conn) = self.db.get() {
-            let current_time = Utc::now().timestamp();
-            let flag_type = format!("{:?}", player_attribute);
-            let source = "manual".to_string();
-
-            if enable {
-                // Add or update the flag
-                let new_flag = NewPlayerFlag {
-                    steam_id: steamid.to_u64() as i64,
-                    flag_type,
-                    source,
-                    first_seen: current_time,
-                    last_seen: current_time,
-                    notified: false,
-                };
-
-                if let Err(e) = queries::upsert_player_flag(&mut conn, new_flag) {
-                    log::error!(
-                        "Failed to persist player flag for {}: {}",
-                        steamid.to_u64(),
-                        e
-                    );
-                }
-            } else {
-                // Remove the flag
-                if let Err(e) = queries::remove_player_flag(
-                    &mut conn,
-                    steamid.to_u64() as i64,
-                    &flag_type,
-                    &source,
-                ) {
-                    log::error!(
-                        "Failed to remove player flag for {}: {}",
-                        steamid.to_u64(),
-                        e
-                    );
-                }
-            }
-        }
     }
 
     fn apply_rules_to_lobby(&mut self) {
@@ -192,37 +165,7 @@ impl Tf2bdThread {
                 .ruleset_handler
                 .get_player_marking(&player.steamid)
                 .cloned();
-            self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data.clone()));
-
-            // Persist flags from ruleset to database
-            if let Some(player_info) = &data
-                && let Ok(mut conn) = self.db.get()
-            {
-                let current_time = Utc::now().timestamp();
-
-                for attribute in &player_info.attributes {
-                    let flag_type = format!("{:?}", attribute);
-                    // Get the source from file_info if available, otherwise use filename
-                    let source = FILENAME.to_string();
-
-                    let new_flag = NewPlayerFlag {
-                        steam_id: player.steamid.to_u64() as i64,
-                        flag_type,
-                        source,
-                        first_seen: current_time,
-                        last_seen: current_time,
-                        notified: false,
-                    };
-
-                    if let Err(e) = queries::upsert_player_flag(&mut conn, new_flag) {
-                        log::debug!(
-                            "Failed to persist player flag for {}: {}",
-                            player.steamid.to_u64(),
-                            e
-                        );
-                    }
-                }
-            }
+            self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data));
         }
     }
 

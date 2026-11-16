@@ -16,7 +16,7 @@ The following larger parts are in TF2Monitor:
 
 - **RCON**: Sends `g15_dumpplayer` to TF2 periodically. Also listens to votekick messages and sends those to TF2.
 
-- **TF2BD**: Listens to Lobby data and enriches it with the usual TF2BD markings such as Cheater, Toxic etc. Stores those markings in a `playerlist.json` file in the project root.
+- **TF2BD**: Listens to Lobby data and enriches it with the usual TF2BD markings such as Cheater, Toxic etc. Reads and writes markings in `appdata.sqlite`, with `playerlist.json` maintained as an export. Existing file markings are imported once.
 
 - **Ban data**: Downloads manifest and verified community snapshots from a fixed `tf2-ban-data` GitHub release, at most once per 24 hours automatically. Stores snapshots and update state in `data/ban-data/bans.sqlite`; the Tools menu can request a manual check.
 
@@ -88,7 +88,7 @@ sequenceDiagram
 
 ## Enrich Lobby data with Cheater etc markings
 
-This info is currently stored in the `playerlist.json` file.
+The database is authoritative for player markings. TF2BD caches committed database state for lobby updates and exports all marked players to `playerlist.json` on startup and after edits. Initial import merges legacy file markings once; the migration marker and file metadata are stored in SQLite. Removing a marking deletes all source copies. Export failures are retried without rolling back database changes.
 
 ```mermaid
 sequenceDiagram

@@ -343,23 +343,24 @@ pub fn get_all_player_flags(
         .load::<PlayerFlag>(conn)
 }
 
-/// Remove a player flag.
+/// Remove a player marking from every source, including legacy JSON imports.
 pub fn remove_player_flag(
     conn: &mut SqliteConnection,
     steam_id: i64,
     flag_type: &str,
-    source: &str,
 ) -> Result<(), diesel::result::Error> {
     use player_flags::dsl;
 
-    diesel::delete(
-        player_flags::table.filter(
-            dsl::steam_id
-                .eq(steam_id)
-                .and(dsl::flag_type.eq(flag_type))
-                .and(dsl::source.eq(source)),
-        ),
-    )
+    diesel::delete(player_flags::table.filter(dsl::steam_id.eq(steam_id).and(
+        dsl::flag_type.eq_any([
+            flag_type,
+            if flag_type == "Toxic" {
+                "Racist"
+            } else {
+                flag_type
+            },
+        ]),
+    )))
     .execute(conn)?;
     Ok(())
 }

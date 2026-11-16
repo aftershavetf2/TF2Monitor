@@ -159,7 +159,7 @@ fn remove_legacy_sourcebans(conn: &mut SqliteConnection) -> QueryResult<()> {
 /// This function uses raw SQL to create tables based on entity definitions.
 /// It creates tables if they don't exist, ensuring the database schema matches
 /// the current entity definitions.
-fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
+pub(crate) fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
     // Create account table
     diesel::sql_query(
         "CREATE TABLE IF NOT EXISTS account (

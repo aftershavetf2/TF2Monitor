@@ -69,7 +69,9 @@ If you change rcon-password or port you need to alter the bat file.
 
 This app can read and write the usual TF2 Bot Detector files but will only use the subset of rules that point out a SteamID and a flag(Cheater, Suspicious, Racist, Exploiter).
 
-Where the `settings.json` file are your markings will be saved in `playerlist.json` whenever a player's flags are changed.
+Player markings are read from and written to `appdata.sqlite`. On the first startup after upgrading, existing `playerlist.json` markings are imported once and merged with markings already in the database. Existing database markings are preserved, including players absent from the JSON file.
+
+`playerlist.json` is an export of the database, refreshed on startup and whenever markings change, including for offline players. File metadata and rules are preserved in the database. Removing a marking removes it from all stored sources. Failed exports are retried without losing database changes. After the initial import, edits to the JSON file are overwritten by the database export.
 
 Right now only one `playerlist.json` file is supported.
 

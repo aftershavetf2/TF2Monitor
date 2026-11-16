@@ -9,6 +9,8 @@ use crate::{
 use eframe::egui::{self, Grid, ScrollArea, TextEdit, Ui};
 use std::collections::{HashMap, HashSet};
 
+const PAGE_SIZE: usize = 50;
+
 const PLAYER_DATABASE_FILTERS: [PlayerAttribute; 6] = [
     PlayerAttribute::Cheater,
     PlayerAttribute::Bot,
@@ -79,11 +81,16 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
 
     ui.add_space(8.0);
 
-    ui.add(
-        TextEdit::singleline(&mut app_win.player_database_search)
-            .hint_text("Filter by name or SteamID64")
-            .desired_width(280.0),
-    );
+    if ui
+        .add(
+            TextEdit::singleline(&mut app_win.player_database_search)
+                .hint_text("Filter by name or SteamID64")
+                .desired_width(280.0),
+        )
+        .changed()
+    {
+        app_win.player_database_page = 0;
+    }
 
     ui.add_space(15.0);
 
@@ -94,6 +101,7 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
                 .checkbox(&mut enabled, format!("{:?}", player_attribute))
                 .changed()
             {
+                app_win.player_database_page = 0;
                 if enabled {
                     app_win.player_database_filters.insert(player_attribute);
                 } else {
@@ -105,6 +113,7 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
         if ui.button("Clear filters").clicked() {
             app_win.player_database_filters.clear();
             app_win.player_database_search.clear();
+            app_win.player_database_page = 0;
         }
     });
 
@@ -115,17 +124,64 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
 
     ui.add(egui::Separator::default().spacing(30.0));
 
+    let page_count = filtered_accounts.len().div_ceil(PAGE_SIZE).max(1);
+    app_win.player_database_page = app_win.player_database_page.min(page_count - 1);
+    ui.horizontal(|ui| {
+        if ui
+            .add_enabled(
+                app_win.player_database_page > 0,
+                egui::Button::new("Previous"),
+            )
+            .clicked()
+        {
+            app_win.player_database_page -= 1;
+        }
+        if ui
+            .add_enabled(
+                app_win.player_database_page + 1 < page_count,
+                egui::Button::new("Next"),
+            )
+            .clicked()
+        {
+            app_win.player_database_page += 1;
+        }
+        ui.label(format!(
+            "Page {} of {}",
+            app_win.player_database_page + 1,
+            page_count
+        ));
+    });
+
+    let start = app_win.player_database_page * PAGE_SIZE;
+    let end = (start + PAGE_SIZE).min(filtered_accounts.len());
     ui.label(format!(
-        "Showing {} of {} players",
+        "Showing {} - {} of {} matching players ({} total)",
+        if filtered_accounts.is_empty() {
+            0
+        } else {
+            start + 1
+        },
+        end,
         filtered_accounts.len(),
         accounts.len()
     ));
 
     ScrollArea::both()
+        .id_salt(("player_database_scroll", app_win.player_database_page))
         .auto_shrink([false, false])
         .show(ui, |ui| {
+            let column_width =
+                ((ui.available_width() - 2.0 * ui.spacing().item_spacing.x) / 3.0).max(180.0);
             Grid::new("player_database_grid")
-                .striped(true)
+                .min_col_width(column_width)
+                .max_col_width(column_width)
+                .with_row_color(|row, _style| {
+                    Some(if row.is_multiple_of(2) {
+                        super::theme::TABLE_ROW_LIGHT
+                    } else {
+                        super::theme::TABLE_ROW_DARK
+                    })
+                })
                 .num_columns(3)
                 .show(ui, |ui| {
                     ui.strong("Name");
@@ -133,7 +189,7 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
                     ui.strong("Flags");
                     ui.end_row();
 
-                    for account in filtered_accounts {
+                    for account in &filtered_accounts[start..end] {
                         let steamid =
                             crate::models::steamid::SteamID::from_u64(account.steam_id as u64);
 

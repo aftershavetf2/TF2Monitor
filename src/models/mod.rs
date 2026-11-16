@@ -43,6 +43,7 @@ pub struct AppWin {
     pub player_database_window_open: bool,
     pub player_database_filters: HashSet<PlayerAttribute>,
     pub player_database_search: String,
+    pub player_database_page: usize,
 
     // Database connection pool
     pub db: Arc<DbPool>,
@@ -89,6 +90,7 @@ impl AppWin {
             player_database_window_open: false,
             player_database_filters: HashSet::from([PlayerAttribute::Cheater]),
             player_database_search: String::new(),
+            player_database_page: 0,
             db,
         }
     }
