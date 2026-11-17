@@ -50,6 +50,16 @@ Add these launch options to TF2:
 --usercon +developer 1 +contimes 0 +ip 0.0.0.0 +net_start +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -g15 
 ```
 
+## Common Problems
+
+### No `tf/console.log` file?
+
+It seems TF2 doesn't automatically create the log file these days. You have to enter this command in the TF2 console window:
+
+```
++con_logfile "console.log" 
+```
+
 # What about VAC?
 
 This application does not:
