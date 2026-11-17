@@ -5,25 +5,18 @@
 An application to be run along when you are playing Team Fortress 2.
 
 - View public info about the players you play with:
-
-  - Steam account creating time
-  - Buttons with links to popular sites such as SteamHistory.net and SteamCommunity.com for each player
-  - Number of TF2 hours
-  - VAC and Game bans
-  - Steam friends list
-  - SourceBans reputation information
-
-- Get the chat in TF2 translated into English
-
 - Mark players with flags (Cheater, Bot, Suspicious, etc.) and save them to `playerlist.json`
-
 - Automatically votekick cheaters and bots (configurable in settings)
-
-Players marked are saved in playerlist.json. The format is based on TF2BD file format and Bot category has been added.
 
 # Screenshot
 
+## Scoreboard tab
+
 ![Alt text](/screenshots/TF2Monitor.png?raw=true "TF2Monitor")
+
+## Overview tab
+
+![Alt text](/screenshots/Overview.png?raw=true "Overview")
 
 # Getting Started
 
@@ -51,7 +44,9 @@ To compile it yourself you need to [install Rust](https://www.rust-lang.org/tool
 
 After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and type `cargo run --release` and the application will be compiled and started.
 
-## Start TF2 from the app or from Steam?
+## Configure TF2
+
+Add these launch options to TF2:
 
 Use the `start_tf2.bat` for now.
 
@@ -60,43 +55,8 @@ If you change rcon-password or port you need to alter the bat file.
 `start_tf2.bat`
 
 ```
-"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf_win64.exe" -steam -game tf -usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +sv_rcon_whitelist_address 127.0.0.1  +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console -g15
+--usercon +developer 1 +contimes 0 +ip 0.0.0.0 +net_start +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -g15 
 ```
-
-# Player Markings and Reputation
-
-## Player Details
-
-Player Details works for players opened from Player Database even when they are not on the current server. Stored profile data appears immediately; background updates refresh the view after data is saved. Fetching missing Steam data requires a configured Steam API key. Notes and flags remain editable without a server connection.
-
-Current kills, deaths, team, ping, and health come from the active lobby session. When a player leaves, their last match statistics remain visible for that session. Changing sessions clears match statistics but keeps their profile. Kick buttons are available only while the player is present on the current server.
-
-## TF2 Bot Detector files
-
-This app can read and write the usual TF2 Bot Detector files but will only use the subset of rules that point out a SteamID and a flag(Cheater, Suspicious, Racist, Exploiter).
-
-Player markings are read from and written to `appdata.sqlite`. On the first startup after upgrading, existing `playerlist.json` markings are imported once and merged with markings already in the database. Existing database markings are preserved, including players absent from the JSON file.
-
-`playerlist.json` is an export of the database, refreshed on startup and whenever markings change, including for offline players. File metadata and rules are preserved in the database. Removing a marking removes it from all stored sources. Failed exports are retried without losing database changes. After the initial import, edits to the JSON file are overwritten by the database export.
-
-Right now only one `playerlist.json` file is supported.
-
-## SourceBans Integration
-
-The legacy SourceBans scraper and its cached data have been removed. On first startup after upgrading, the app removes `bans`, `ban_sources`, and `account.reputation_fetched` from `appdata.sqlite` and compacts the database. Steam VAC/game bans and player markings are preserved.
-
-Community ban data is now downloaded from GitHub Releases in [tf2-ban-data](https://github.com/aftershavetf2/tf2-ban-data) and stored in `data/ban-data/bans.sqlite`, relative to the working directory (like `appdata.sqlite`). The app discovers the latest release through the public GitHub API, then downloads its manifest and changed community files from that fixed release. No GitHub login is needed.
-
-- Automatic background checks run at most once every 24 hours while the app is running. The last attempt is saved across restarts, including failed checks.
-- **Tools → Check for New Ban Data** checks immediately. Manual attempts reset the same 24-hour interval; checks cannot overlap.
-- The Tools menu displays progress, errors, and the last attempted and successful check times.
-- Downloads are verified against the manifest's compressed and uncompressed sizes and SHA-256 hashes before import. Each community is replaced in a transaction; failures preserve its previous snapshot.
-- Only changed JSON content is downloaded. Temporary gzip files in `data/ban-data/staging/` are deleted after processing.
-- Player lookups work offline against the local database. Successful imports refresh reputations for current players.
-- Player details include active, expired, and removed bans. The SB badge indicates any recorded ban, including expired and removed bans. It includes a warning triangle after the SB text when any ban reason contains `SMAC`, `aimbot`, `exploit`, or `crash` (case-insensitive substring matching); a community ban does not automatically mark a player as a cheater. Export dates have day precision and expiry is evaluated by UTC date.
-- Incomplete community histories and partially downloaded datasets are shown as incomplete. An empty result means no matches in available data.
-
-Run `cargo test` for automated checks. The opt-in `cargo test live_release_import -- --ignored --nocapture` test downloads the public release into a temporary database and verifies that a repeated check skips unchanged files.
 
 # What about VAC?
 
@@ -126,13 +86,9 @@ It fetches player account information from Steam Community and community ban sna
 
 The full source code is available for anyone to inspect.
 
-# Linux support?
+# Linux support
 
-I have not tested it but currently the app does not use any platform specifc API. My intention is that it should work.
-
-The UI uses eframe with the `wgpu` renderer. Linux builds support both X11 and Wayland. Install a working Vulkan driver for your GPU (typically Mesa on Intel/AMD, or the NVIDIA driver). On Windows, wgpu normally uses DirectX 12; on macOS, Metal.
-
-See the [eframe documentation](https://docs.rs/eframe/0.37.0/eframe/#native) for native build prerequisites.
+This app has been developed on both Linux and Windows and works great on both.
 
 # Other projects of interest
 
