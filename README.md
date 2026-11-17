@@ -36,8 +36,6 @@ There are pre-compiled binaries you can use, but you can compile TF2Monitor your
 
 6. Start TF2Monitor again
 
-7. Use a second terminal and run `start_tf2.bat`
-
 ## How to Compile TF2Monitor
 
 To compile it yourself you need to [install Rust](https://www.rust-lang.org/tools/install). Rust 1.95 or newer is required; use the current stable toolchain (`rustup update stable`).
@@ -47,12 +45,6 @@ After that you go to the folder where this `README.md` file is located with a co
 ## Configure TF2
 
 Add these launch options to TF2:
-
-Use the `start_tf2.bat` for now.
-
-If you change rcon-password or port you need to alter the bat file.
-
-`start_tf2.bat`
 
 ```
 --usercon +developer 1 +contimes 0 +ip 0.0.0.0 +net_start +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -g15 
