@@ -13,7 +13,9 @@ pub fn add_player_details_panel(app_win: &mut AppWin, ui: &mut Ui) {
 
     let steamid = app_win.selected_player;
     if steamid.is_none() {
-        ui.label("Select a player to see their details.");
+        ui.centered_and_justified(|ui| {
+            ui.label("Select a player to see their details.");
+        });
         return;
     }
 
