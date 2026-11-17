@@ -175,19 +175,6 @@ pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: St
         } else {
             "Last seen in this session"
         });
-        ui.label(format!(
-            "Kills: {}  Deaths: {}",
-            session.kills, session.deaths
-        ));
-        if live.is_some() {
-            ui.label(format!(
-                "Team: {:?}  Ping: {} ms",
-                session.team, session.ping_ms
-            ));
-            if let Some(health) = session.health {
-                ui.label(format!("Health: {health}"));
-            }
-        }
         add_player_kills(&session.kills_with, ui);
     } else {
         ui.label("Not on the current server");

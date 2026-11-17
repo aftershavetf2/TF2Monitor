@@ -42,9 +42,12 @@ pub(super) fn add_sourceban_row(
 }
 
 pub fn add_reputation(ui: &mut Ui, player: &Player) {
-    add_team_symbol_basic_rep(ui, player);
+    add_steam_ban_badges(ui, player);
     add_flags(ui, player);
+    add_sourceban_badge(ui, player);
+}
 
+pub(super) fn add_sourceban_badge(ui: &mut Ui, player: &Player) {
     // Indicate available ban history; users assess its relevance.
     if let Some(reputation) = &player.reputation
         && !reputation.source_bans.is_empty()
@@ -161,7 +164,7 @@ fn add_flag(ui: &mut Ui, player_attribute: PlayerAttribute) {
     add_badge(ui, text, fgcolor, bgcolor, tooltip);
 }
 
-fn add_team_symbol_basic_rep(ui: &mut Ui, player: &Player) {
+pub(super) fn add_steam_ban_badges(ui: &mut Ui, player: &Player) {
     if let Some(tooltip) = &player.has_vac_bans() {
         add_badge(ui, "VAC", Color32::WHITE, Color32::DARK_RED, tooltip);
     }

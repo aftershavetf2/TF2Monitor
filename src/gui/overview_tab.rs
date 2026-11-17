@@ -1,5 +1,5 @@
 //! Spring layout of the friendships currently present on the server.
-use super::{colors, theme};
+use super::{colors, markings, theme};
 use crate::{
     models::{AppWin, steamid::SteamID},
     tf2::lobby::{Lobby, Player, Team},
@@ -8,7 +8,7 @@ use eframe::egui::{
     self, Align2, Color32, FontId, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, Vec2, vec2,
 };
 
-const CARD_SIZE: Vec2 = vec2(184.0, 54.0);
+const CARD_SIZE: Vec2 = vec2(280.0, 54.0);
 // Bound the extra work in exceptionally dense friendship graphs. The cursor
 // rotates through candidates so every connection is still considered over time.
 const AVOIDANCE_BUDGET: usize = 8192;
@@ -20,6 +20,8 @@ struct Node {
 }
 
 pub struct OverviewState {
+    include_flagged_players: bool,
+    card_size: Vec2,
     nodes: Vec<Node>,
     edges: Vec<(usize, usize)>,
     view: Rect,
@@ -30,6 +32,8 @@ pub struct OverviewState {
 impl Default for OverviewState {
     fn default() -> Self {
         Self {
+            include_flagged_players: true,
+            card_size: CARD_SIZE,
             nodes: Vec::new(),
             edges: Vec::new(),
             view: Rect::NOTHING,
@@ -40,10 +44,13 @@ impl Default for OverviewState {
 }
 
 /// Sort by identity so incoming lobby updates do not shuffle the simulation.
-fn graph(lobby: &Lobby) -> (Vec<&Player>, Vec<(usize, usize)>) {
+fn graph(lobby: &Lobby, include_flagged_players: bool) -> (Vec<&Player>, Vec<(usize, usize)>) {
     let mut players: Vec<_> = lobby.players.iter().collect();
     players.sort_by_key(|player| player.steamid.to_u64());
-    players.retain(|player| players_have_friend(lobby, player));
+    players.retain(|player| {
+        players_have_friend(lobby, player)
+            || (include_flagged_players && is_flagged_or_banned(player))
+    });
     let mut edges = Vec::new();
     for (a, player) in players.iter().enumerate() {
         for (b, other) in players.iter().enumerate().skip(a + 1) {
@@ -53,6 +60,22 @@ fn graph(lobby: &Lobby) -> (Vec<&Player>, Vec<(usize, usize)>) {
         }
     }
     (players, edges)
+}
+
+fn is_flagged_or_banned(player: &Player) -> bool {
+    player
+        .steam_bans
+        .as_ref()
+        .is_some_and(|b| b.vac_banned || b.number_of_game_bans > 0 || b.community_banned)
+        || player
+            .reputation
+            .as_ref()
+            .is_some_and(|r| !r.source_bans.is_empty())
+        || player.player_info.as_ref().is_some_and(|p| {
+            p.attributes
+                .iter()
+                .any(|flag| *flag != crate::tf2bd::models::PlayerAttribute::Cool)
+        })
 }
 
 fn players_have_friend(lobby: &Lobby, player: &Player) -> bool {
@@ -67,6 +90,8 @@ impl OverviewState {
         if self.lobby_id != lobby_id {
             *self = Self {
                 lobby_id: lobby_id.to_owned(),
+                include_flagged_players: self.include_flagged_players,
+                card_size: self.card_size,
                 ..Default::default()
             };
         }
@@ -119,7 +144,7 @@ impl OverviewState {
             .nodes
             .iter()
             .fold(Rect::NOTHING, |bounds, node| {
-                bounds.union(Rect::from_center_size(node.position, CARD_SIZE))
+                bounds.union(Rect::from_center_size(node.position, self.card_size))
             })
             .expand(60.0);
     }
@@ -137,7 +162,7 @@ impl OverviewState {
                 };
                 let mut force = direction * (1_500_000.0 / distance.powi(2)).min(1800.0);
                 // Keep the rectangular player cards apart, even in dense groups.
-                let overlap = CARD_SIZE + Vec2::splat(22.0) - delta.abs();
+                let overlap = self.card_size + Vec2::splat(22.0) - delta.abs();
                 if overlap.x > 0.0 && overlap.y > 0.0 {
                     force += if overlap.x < overlap.y {
                         vec2(if delta.x >= 0.0 { 1.0 } else { -1.0 }, 0.0) * overlap.x * 80.0
@@ -151,7 +176,7 @@ impl OverviewState {
         }
         for &(a, b) in &self.edges {
             let delta = self.nodes[b].position - self.nodes[a].position;
-            let force = delta.normalized() * (delta.length() - 235.0) * 3.0;
+            let force = delta.normalized() * (delta.length() - (self.card_size.x + 51.0)) * 3.0;
             forces[a] += force;
             forces[b] -= force;
         }
@@ -201,7 +226,7 @@ impl OverviewState {
                 continue;
             }
             let center = self.nodes[obstacle].position;
-            let bounds = Rect::from_center_size(center, CARD_SIZE).expand(14.0);
+            let bounds = Rect::from_center_size(center, self.card_size).expand(14.0);
             let Some((entry, exit)) = segment_rect_interval(start, start + delta, bounds) else {
                 continue;
             };
@@ -210,7 +235,7 @@ impl OverviewState {
             let normal = vec2(-delta.y, delta.x).normalized();
             let distance = (center - closest).dot(normal);
             // Projection of the rectangular card onto the line's normal.
-            let clearance = normal.abs().dot(CARD_SIZE * 0.5) + 16.0;
+            let clearance = normal.abs().dot(self.card_size * 0.5) + 16.0;
             let side = if distance < 0.0 { -1.0 } else { 1.0 };
             let force = normal * side * ((clearance - distance.abs()) * 16.0).clamp(0.0, 1800.0);
             forces[obstacle] += force;
@@ -313,23 +338,42 @@ fn crossing(a: Pos2, b: Pos2, c: Pos2, d: Pos2) -> Option<(f32, f32)> {
 }
 
 pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
-    let (players, edges) = graph(&app_win.lobby);
-    let state = &mut app_win.overview;
-    state.sync(&players, edges, &app_win.lobby.lobby_id);
+    let mut fit_requested = false;
     ui.horizontal_wrapped(|ui| {
-        ui.label(format!(
-            "{} players · {} friendships",
-            players.len(),
-            state.edges.len()
-        ));
-        if ui.button("Fit to view").clicked() && !players.is_empty() {
-            state.fit();
-        }
-        ui.weak("Drag players to rearrange · drag background to pan · scroll to zoom");
+        fit_requested = ui.button("Fit to view").clicked();
+        ui.add_space(12.0);
+        ui.scope(|ui| {
+            let label = "Include flagged or banned players";
+            let text = ui.painter().layout_no_wrap(
+                label.into(), egui::TextStyle::Button.resolve(ui.style()), Color32::WHITE,
+            );
+            ui.set_max_width(text.size().x + 42.0);
+            egui::containers::menu::menu_style(ui.style_mut());
+            super::menu_item::checkbox(ui, &mut app_win.overview.include_flagged_players, label)
+                .on_hover_text("Also show players without friend connections who have negative flags, Steam bans, or SourceBans history.");
+        });
     });
+    let (players, edges) = graph(&app_win.lobby, app_win.overview.include_flagged_players);
+    let card_width = players
+        .iter()
+        .map(|player| required_card_width(ui, player))
+        .fold(CARD_SIZE.x, f32::max);
+    let state = &mut app_win.overview;
+    let size_changed = state.card_size.x != card_width;
+    state.card_size.x = card_width;
+    state.sync(&players, edges, &app_win.lobby.lobby_id);
+    if (fit_requested || size_changed) && !players.is_empty() {
+        state.fit();
+    }
+    // The scene is a sublayer above this UI, so its nodes cover the help text.
+    paint_canvas_help(ui, ui.available_rect_before_wrap());
     if players.is_empty() {
         ui.centered_and_justified(|ui| {
-            ui.weak("No friendships found among players on this server yet.");
+            ui.weak(if state.include_flagged_players {
+                "No friendships or flagged or banned players found on this server yet."
+            } else {
+                "No friendships found among players on this server yet."
+            });
         });
         return;
     }
@@ -339,13 +383,22 @@ pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
     let mut dragged = None;
     let mut view = state.view;
     egui::Scene::new()
+        .scroll_zooms(true)
         .zoom_range(0.05..=2.0)
         .show(ui, &mut view, |ui| {
             let painter = ui.painter().clone();
             let edge_stroke = Stroke::new(1.5_f32, theme::TEXT.gamma_multiply(0.65));
             for &(a, b) in &state.edges {
-                let start = card_edge(state.nodes[a].position, state.nodes[b].position);
-                let end = card_edge(state.nodes[b].position, state.nodes[a].position);
+                let start = card_edge(
+                    state.nodes[a].position,
+                    state.nodes[b].position,
+                    state.card_size,
+                );
+                let end = card_edge(
+                    state.nodes[b].position,
+                    state.nodes[a].position,
+                    state.card_size,
+                );
                 let delta = end - start;
                 if delta.dot(state.nodes[b].position - state.nodes[a].position) > 0.0 {
                     // Steam friendship is mutual: show arrowheads at both ends.
@@ -356,7 +409,7 @@ pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
             }
             for (index, player) in players.iter().enumerate() {
                 let node = &mut state.nodes[index];
-                let rect = Rect::from_center_size(node.position, CARD_SIZE);
+                let rect = Rect::from_center_size(node.position, state.card_size);
                 ui.expand_to_include_rect(rect.expand(30.0));
                 let response = ui.interact(
                     rect,
@@ -412,20 +465,7 @@ pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
                         theme::TEXT,
                     );
                 }
-                let mut text = egui::text::LayoutJob::simple_singleline(
-                    player.name.clone(),
-                    FontId::proportional(13.0),
-                    theme::TEXT,
-                );
-                text.wrap.max_width = CARD_SIZE.x - 62.0;
-                text.wrap.max_rows = 1;
-                text.wrap.break_anywhere = true;
-                let galley = painter.layout_job(text);
-                painter.galley(
-                    egui::pos2(rect.left() + 53.0, rect.center().y - galley.size().y / 2.0),
-                    galley,
-                    theme::TEXT,
-                );
+                paint_player_label(ui, player, rect);
             }
         });
     state.view = view;
@@ -443,9 +483,85 @@ pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
     }
 }
 
-fn card_edge(center: Pos2, toward: Pos2) -> Pos2 {
+fn paint_canvas_help(ui: &Ui, canvas: Rect) {
+    let mut job = egui::text::LayoutJob::simple(
+        "Drag players to rearrange\nDrag background to pan\nScroll to zoom".into(),
+        FontId::proportional(11.0),
+        theme::muted_text(),
+        (canvas.width() - 24.0).max(1.0),
+    );
+    job.halign = egui::Align::RIGHT;
+    let painter = ui
+        .painter()
+        .with_clip_rect(canvas.intersect(ui.clip_rect()));
+    let text = painter.layout_job(job);
+    painter.galley(
+        canvas.max - Vec2::splat(12.0) - text.size(),
+        text,
+        theme::muted_text(),
+    );
+}
+
+fn required_card_width(ui: &mut Ui, player: &Player) -> f32 {
+    // Keep enough room for a readable name even when every badge is present.
+    (53.0 + 96.0 + ui.spacing().item_spacing.x + player_badge_width(ui, player) + 8.0)
+        .max(CARD_SIZE.x)
+}
+
+fn player_badge_width(ui: &mut Ui, player: &Player) -> f32 {
+    let mut measure = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt(("overview_badges_measure", player.steamid.to_u64()))
+            .max_rect(Rect::from_min_size(Pos2::ZERO, vec2(1000.0, CARD_SIZE.y)))
+            .layout(egui::Layout::left_to_right(egui::Align::Center))
+            .sizing_pass()
+            .invisible(),
+    );
+    markings::add_reputation(&mut measure, player);
+    measure.min_size().x
+}
+
+fn paint_player_label(ui: &mut Ui, player: &Player, card: Rect) {
+    let content = Rect::from_min_max(
+        egui::pos2(card.left() + 53.0, card.top()),
+        egui::pos2(card.right() - 8.0, card.bottom()),
+    );
+    let badge_width = player_badge_width(ui, player);
+    let gap = if badge_width > 0.0 {
+        ui.spacing().item_spacing.x
+    } else {
+        0.0
+    };
+    let mut text = egui::text::LayoutJob::simple_singleline(
+        player.name.clone(),
+        FontId::proportional(13.0),
+        theme::TEXT,
+    );
+    text.wrap.max_width = (content.width() - badge_width - gap).max(1.0);
+    text.wrap.max_rows = 1;
+    text.wrap.break_anywhere = true;
+    let galley = ui.painter().layout_job(text);
+    let badge_left = content.left() + galley.size().x + gap;
+    ui.painter().galley(
+        egui::pos2(content.left(), card.center().y - galley.size().y / 2.0),
+        galley,
+        theme::TEXT,
+    );
+    let mut badges = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt(("overview_badges", player.steamid.to_u64()))
+            .max_rect(Rect::from_min_max(
+                egui::pos2(badge_left, content.top()),
+                content.max,
+            ))
+            .layout(egui::Layout::left_to_right(egui::Align::Center)),
+    );
+    markings::add_reputation(&mut badges, player);
+}
+
+fn card_edge(center: Pos2, toward: Pos2, card_size: Vec2) -> Pos2 {
     let direction = toward - center;
-    let half = CARD_SIZE * 0.5 + Vec2::splat(5.0);
+    let half = card_size * 0.5 + Vec2::splat(5.0);
     let scale = (half.x / direction.x.abs().max(0.001)).min(half.y / direction.y.abs().max(0.001));
     center + direction * scale
 }
@@ -479,7 +595,7 @@ mod tests {
     #[test]
     fn only_current_players_with_friends_are_shown_once_including_private_profiles() {
         let mut lobby = lobby();
-        let (players, edges) = graph(&lobby);
+        let (players, edges) = graph(&lobby, false);
         assert_eq!(
             players
                 .iter()
@@ -491,13 +607,251 @@ mod tests {
         assert!(players[1].friends.is_none());
         lobby.players.remove(1);
         // Even if the friendship cache hasn't refreshed, departed players disappear.
-        assert!(graph(&lobby).0.is_empty());
+        assert!(graph(&lobby, false).0.is_empty());
+    }
+
+    fn bans(vac: bool, game: bool) -> crate::tf2::steamapi::SteamPlayerBan {
+        crate::tf2::steamapi::SteamPlayerBan {
+            steamid: SteamID::from_u64(3),
+            community_banned: false,
+            vac_banned: vac,
+            number_of_vac_bans: u32::from(vac),
+            days_since_last_ban: 10,
+            number_of_game_bans: u32::from(game),
+        }
+    }
+
+    fn reputation(warning: bool) -> crate::reputation::Reputation {
+        let mut record = crate::ban_data::tests::ban();
+        record.reason = Some(if warning { "Cheating" } else { "Spam" }.into());
+        crate::reputation::Reputation {
+            steamid: SteamID::from_u64(5),
+            complete: true,
+            source_bans: vec![crate::reputation::SourceBan {
+                source: "Test".into(),
+                record,
+            }],
+        }
+    }
+
+    #[test]
+    fn optional_filter_adds_isolated_flagged_and_banned_players_without_false_friendships() {
+        use crate::tf2bd::models::{PlayerAttribute, PlayerInfo};
+        let mut lobby = lobby();
+        lobby.players[2].steam_bans = Some(bans(true, false));
+        lobby.players[3].steam_bans = Some(bans(false, true));
+        lobby.players[4].reputation = Some(reputation(false));
+        for (id, flag) in [(6, PlayerAttribute::Cool), (7, PlayerAttribute::Cheater)] {
+            lobby.players.push(Player {
+                steamid: SteamID::from_u64(id),
+                player_info: Some(PlayerInfo {
+                    attributes: vec![flag],
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+        }
+        assert_eq!(graph(&lobby, false).0.len(), 2);
+        let (players, edges) = graph(&lobby, true);
+        assert_eq!(
+            players
+                .iter()
+                .map(|p| p.steamid.to_u64())
+                .collect::<Vec<_>>(),
+            [1, 2, 3, 4, 5, 7]
+        );
+        assert_eq!(edges, [(0, 1)]);
+        let mut state = OverviewState {
+            include_flagged_players: true,
+            ..Default::default()
+        };
+        state.sync(&players, edges, "new session");
+        assert!(state.include_flagged_players);
+    }
+
+    #[test]
+    fn shared_ban_badges_follow_name_only_when_present_and_fit_inside_card() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        for flags in 0..8 {
+            for warning in [false, true] {
+                let player = Player {
+                    steamid: SteamID::from_u64(1),
+                    name: "A very long player name that needs to truncate".into(),
+                    steam_bans: Some(bans(flags & 1 != 0, flags & 2 != 0)),
+                    reputation: (flags & 4 != 0).then(|| reputation(warning)),
+                    ..Default::default()
+                };
+                let card = Rect::from_min_size(egui::pos2(20.0, 20.0), CARD_SIZE);
+                let output = super::super::tests::run_ui(
+                    &ctx,
+                    egui::RawInput {
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(500.0, 200.0))),
+                        ..Default::default()
+                    },
+                    |root| {
+                        egui::CentralPanel::default()
+                            .show(root, |ui| paint_player_label(ui, &player, card));
+                    },
+                );
+                let texts: Vec<_> = output
+                    .shapes
+                    .iter()
+                    .filter_map(|s| match &s.shape {
+                        egui::Shape::Text(t) => Some(t),
+                        _ => None,
+                    })
+                    .collect();
+                let badges: Vec<_> = texts
+                    .iter()
+                    .filter(|t| ["VAC", "GB", "SB"].contains(&t.galley.text()))
+                    .collect();
+                assert_eq!(
+                    badges.iter().map(|t| t.galley.text()).collect::<Vec<_>>(),
+                    [
+                        (flags & 1 != 0, "VAC"),
+                        (flags & 2 != 0, "GB"),
+                        (flags & 4 != 0, "SB")
+                    ]
+                    .into_iter()
+                    .filter_map(|(show, label)| show.then_some(label))
+                    .collect::<Vec<_>>()
+                );
+                let name = texts[0];
+                if flags == 0 {
+                    assert!(name.galley.size().x > 150.0);
+                }
+                let mut right = name.pos.x + name.galley.size().x;
+                for badge in badges {
+                    assert!(badge.pos.x > right, "Name and badges must not overlap");
+                    right = badge.pos.x + badge.galley.size().x;
+                    assert!(
+                        right <= card.right() - 8.0,
+                        "Badges must fit inside the card"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn all_markings_share_grid_badges_and_leave_room_for_name() {
+        use crate::tf2bd::models::{PlayerAttribute::*, PlayerInfo};
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let player = Player {
+            steamid: SteamID::from_u64(1),
+            name: "A long player name with every marking".into(),
+            steam_bans: Some(bans(true, true)),
+            reputation: Some(reputation(true)),
+            player_info: Some(PlayerInfo {
+                attributes: vec![Cool, Cheater, Bot, Suspicious, Toxic, Exploiter],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let mut card = Rect::NOTHING;
+        let output = super::super::tests::run_ui(
+            &ctx,
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(800.0, 200.0))),
+                ..Default::default()
+            },
+            |root| {
+                egui::CentralPanel::default().show(root, |ui| {
+                    let width = required_card_width(ui, &player);
+                    card = Rect::from_min_size(egui::pos2(20.0, 20.0), vec2(width, CARD_SIZE.y));
+                    paint_player_label(ui, &player, card);
+                });
+            },
+        );
+        assert!(card.width() > CARD_SIZE.x);
+        let texts: Vec<_> = output
+            .shapes
+            .iter()
+            .filter_map(|s| match &s.shape {
+                egui::Shape::Text(t) => Some(t),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            texts
+                .iter()
+                .skip(1)
+                .map(|t| t.galley.text())
+                .collect::<Vec<_>>(),
+            ["VAC", "GB", "★", "C", "B", "S", "T", "E", "SB"]
+        );
+        assert!(texts[0].galley.size().x >= 80.0);
+        for pair in texts.windows(2) {
+            assert!(pair[0].pos.x + pair[0].galley.size().x < pair[1].pos.x);
+        }
+        assert!(
+            texts.last().unwrap().pos.x + texts.last().unwrap().galley.size().x
+                < card.right() - 8.0
+        );
+    }
+
+    #[test]
+    fn canvas_help_stays_in_bottom_right_and_is_painted_below_nodes() {
+        let mut app = crate::models::player_profile::test_app();
+        app.lobby = lobby();
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let mut previous_corner = None;
+        for frame in 0..2 {
+            if frame == 1 {
+                app.overview.view = app.overview.view.translate(vec2(90.0, -70.0));
+            }
+            let mut expected = Pos2::ZERO;
+            let output = super::super::tests::run_ui(
+                &ctx,
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1000.0, 700.0))),
+                    ..Default::default()
+                },
+                |root| {
+                    egui::CentralPanel::default().show(root, |ui| {
+                        expected = ui.max_rect().max - Vec2::splat(12.0);
+                        show(&mut app, ui);
+                    });
+                },
+            );
+            let (help_index, help) = output
+                .shapes
+                .iter()
+                .enumerate()
+                .find_map(|(index, s)| match &s.shape {
+                    egui::Shape::Text(t) if t.galley.text().contains("Scroll to zoom") => {
+                        Some((index, t))
+                    }
+                    _ => None,
+                })
+                .unwrap();
+            let corner = help.pos + help.galley.size();
+            assert!(corner.distance(expected) < 0.1);
+            if let Some(previous) = previous_corner {
+                assert!(corner.distance(previous) < 0.1);
+            }
+            previous_corner = Some(corner);
+            let node_index = output
+                .shapes
+                .iter()
+                .position(
+                    |s| matches!(&s.shape, egui::Shape::Text(t) if t.galley.text() == "Player 1"),
+                )
+                .unwrap();
+            assert!(
+                help_index < node_index,
+                "Scene nodes must be painted over the fixed help text"
+            );
+        }
     }
 
     #[test]
     fn spring_layout_stays_finite_separates_cards_and_preserves_positions_on_refresh() {
         let lobby = lobby();
-        let (players, edges) = graph(&lobby);
+        let (players, edges) = graph(&lobby, false);
         let mut state = OverviewState::default();
         state.sync(&players, edges.clone(), "server");
         for _ in 0..1200 {
