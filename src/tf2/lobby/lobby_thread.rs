@@ -276,7 +276,8 @@ impl LobbyThread {
                 .join(", ")
         );
 
-        lobby.lobby_id = Local::now().format("%Y-%m-%d").to_string();
+        lobby.session_id += 1;
+        lobby.lobby_id = format!("{}:{}", now.to_rfc3339(), lobby.session_id);
 
         lobby.players.clear();
         lobby.chat.clear();
@@ -458,6 +459,22 @@ impl LobbyThread {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn new_lobbies_have_distinct_sessions_even_on_the_same_day() {
+        let settings = AppSettings::default();
+        let bus = Arc::new(Mutex::new(AppBus::new(settings.self_steamid64)));
+        let mut worker = LobbyThread::new(&settings, &bus);
+        let initial = worker.shared_lobby.get();
+        worker.new_lobby();
+        let first = worker.shared_lobby.get();
+        worker.new_lobby();
+        let second = worker.shared_lobby.get();
+        assert!(initial.session_id < first.session_id);
+        assert!(first.session_id < second.session_id);
+        assert_ne!(initial.lobby_id, first.lobby_id);
+        assert_ne!(first.lobby_id, second.lobby_id);
+    }
 
     #[test]
     fn chat_translation_follows_saved_settings_and_live_updates() {

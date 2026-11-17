@@ -1,4 +1,5 @@
 pub mod app_settings;
+pub mod player_profile;
 pub mod steamid;
 
 use self::{app_settings::AppSettings, steamid::SteamID};
@@ -22,6 +23,11 @@ pub struct AppWin {
     pub active_tab: Tab,
     pub overview: OverviewState,
 
+    pub profiles: std::cell::RefCell<HashMap<SteamID, player_profile::PlayerProfile>>,
+    pub profile_events: bus::BusReader<player_profile::ProfileEvent>,
+    pub profile_status: HashMap<SteamID, player_profile::FetchStatus>,
+    pub profile_reputations: HashMap<SteamID, crate::reputation::Reputation>,
+    pub match_snapshots: HashMap<SteamID, player_profile::MatchSnapshot>,
     pub lobby: Lobby,
     pub shared_lobby: SharedLobby,
 
@@ -67,6 +73,8 @@ impl AppWin {
         // Open settings window automatically if configuration is incomplete
         let settings_window_open = !settings.config_is_ok;
 
+        let profile_events = bus.lock().unwrap().profile_events.add_rx();
+        let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
         Self {
             bus: Arc::clone(bus),
 
@@ -74,8 +82,13 @@ impl AppWin {
             active_tab: Tab::default(),
             overview: OverviewState::default(),
 
+            profiles: Default::default(),
+            profile_events,
+            profile_status: HashMap::new(),
+            profile_reputations: HashMap::new(),
+            match_snapshots: HashMap::new(),
             lobby: Lobby::new(settings.self_steamid64),
-            shared_lobby: bus.lock().unwrap().shared_lobby.clone(),
+            shared_lobby,
             self_steamid: settings.self_steamid64,
             selected_player: None,
             open_player_details_windows: Vec::new(),
@@ -95,6 +108,19 @@ impl AppWin {
         }
     }
 
+    pub fn player_profile(
+        &self,
+        steamid: SteamID,
+    ) -> Result<player_profile::PlayerProfile, Box<dyn std::error::Error>> {
+        if let Some(profile) = self.profiles.borrow().get(&steamid) {
+            return Ok(profile.clone());
+        }
+        let mut conn = self.db.get()?;
+        let profile = player_profile::PlayerProfile::load(&mut conn, steamid)?;
+        self.profiles.borrow_mut().insert(steamid, profile.clone());
+        Ok(profile)
+    }
+
     pub fn updated_settings(&mut self) {
         log::info!("Saving and broadcasting updated settings");
 
@@ -111,7 +137,37 @@ impl AppWin {
 
     pub fn get_latest_lobby(&mut self) {
         // Get a copy of the current lobby state
-        self.lobby = self.shared_lobby.get();
+        let lobby = self.shared_lobby.get();
+        if self.lobby.session_id != lobby.session_id {
+            self.match_snapshots.clear();
+        }
+        for player in &lobby.players {
+            self.match_snapshots.insert(
+                player.steamid,
+                player_profile::MatchSnapshot::new(lobby.session_id, player),
+            );
+        }
+        self.lobby = lobby;
+        while let Ok(event) = self.profile_events.try_recv() {
+            match event {
+                player_profile::ProfileEvent::Changed(id) => {
+                    self.profiles.borrow_mut().remove(&id);
+                }
+                player_profile::ProfileEvent::FetchStatus(id, status) => {
+                    self.profile_status.insert(id, status);
+                }
+                player_profile::ProfileEvent::Reputation(value) => {
+                    self.profile_reputations.insert(value.steamid, value);
+                }
+            }
+        }
+        let mut bus = self.bus.lock().unwrap();
+        bus.profile_requests = self
+            .open_player_details_windows
+            .iter()
+            .copied()
+            .chain(self.selected_player)
+            .collect();
     }
 
     /// The selected player is who is shown in the player details panel.

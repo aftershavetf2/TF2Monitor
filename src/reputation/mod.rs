@@ -102,18 +102,34 @@ pub fn start(
                     generation = current;
                 }
                 let players = lobby.get().players;
-                let present: HashSet<_> = players.iter().map(|player| player.steamid).collect();
+                let requested = bus.lock().unwrap().profile_requests.clone();
+                let present: HashSet<_> = players
+                    .iter()
+                    .map(|player| player.steamid)
+                    .chain(requested)
+                    .collect();
                 sent.retain(|steamid| present.contains(steamid));
-                for player in players {
-                    if sent.contains(&player.steamid) && player.reputation.is_some() {
+                for steamid in present {
+                    if sent.contains(&steamid)
+                        && players
+                            .iter()
+                            .find(|p| p.steamid == steamid)
+                            .is_none_or(|p| p.reputation.is_some())
+                    {
                         continue;
                     }
-                    match lookup(&mut conn, player.steamid) {
+                    match lookup(&mut conn, steamid) {
                         Ok(Some(reputation)) => {
-                            bus.lock().unwrap().steamapi_bus.broadcast(
+                            let mut bus = bus.lock().unwrap();
+                            bus.profile_events.broadcast(
+                                crate::models::player_profile::ProfileEvent::Reputation(
+                                    reputation.clone(),
+                                ),
+                            );
+                            bus.steamapi_bus.broadcast(
                                 crate::tf2::steamapi::SteamApiMsg::Reputation(reputation),
                             );
-                            sent.insert(player.steamid);
+                            sent.insert(steamid);
                         }
                         Ok(None) => {}
                         Err(error) => log::warn!("Local ban lookup failed: {error}"),

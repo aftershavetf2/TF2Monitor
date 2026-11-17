@@ -43,7 +43,8 @@ pub struct SteamApi {
 #[derive(Debug, Clone, Deserialize)]
 pub struct SteamApiPlayer {
     pub steamid: String,
-    // pub personaname: String,
+    #[serde(default)]
+    pub personaname: String,
     pub communityvisibilitystate: u8,
     // profileurl: String,
     pub avatar: String,

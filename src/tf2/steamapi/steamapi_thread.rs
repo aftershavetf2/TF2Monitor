@@ -18,9 +18,10 @@ use crate::{
 };
 use chrono::Utc;
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
     thread::{self, sleep},
+    time::{Duration, Instant},
 };
 
 /// Start the background thread for the rcon module
@@ -39,6 +40,11 @@ pub struct SteamApiThread {
     shared_lobby: crate::tf2::lobby::shared_lobby::SharedLobby,
     steam_api: SteamApi,
     db: DbPool,
+    profile_dirty: std::cell::RefCell<HashSet<SteamID>>,
+    detail_targets: HashMap<SteamID, Player>,
+    detail_started: HashMap<SteamID, Instant>,
+    detail_attempted: HashMap<SteamID, Instant>,
+    detail_status: HashMap<SteamID, crate::models::player_profile::FetchStatus>,
 }
 
 impl SteamApiThread {
@@ -50,6 +56,11 @@ impl SteamApiThread {
             shared_lobby,
             steam_api: SteamApi::new(settings),
             db: db.clone(),
+            profile_dirty: Default::default(),
+            detail_targets: HashMap::new(),
+            detail_started: HashMap::new(),
+            detail_attempted: HashMap::new(),
+            detail_status: HashMap::new(),
         }
     }
 
@@ -64,24 +75,163 @@ impl SteamApiThread {
     }
 
     fn send(&mut self, msg: SteamApiMsg) {
+        // Background fetch targets are separate from real server participants.
+        for target in self.detail_targets.values_mut() {
+            match &msg {
+                SteamApiMsg::PlayerSummary(info) if info.steamid == target.steamid => {
+                    target.steam_info = Some(info.clone())
+                }
+                SteamApiMsg::FriendsList(id, value) if *id == target.steamid => {
+                    target.friends = Some(value.clone())
+                }
+                SteamApiMsg::Tf2Playtime(id, value) if *id == target.steamid => {
+                    target.tf2_play_minutes = value.clone()
+                }
+                SteamApiMsg::SteamBans(id, value) if *id == target.steamid => {
+                    target.steam_bans = Some(value.clone())
+                }
+                SteamApiMsg::ProfileComments(id, value) if *id == target.steamid => {
+                    target.profile_comments = Some(value.clone())
+                }
+                _ => {}
+            }
+        }
         self.bus.lock().unwrap().steamapi_bus.broadcast(msg);
     }
 
+    fn detail_state(&mut self, id: SteamID, status: crate::models::player_profile::FetchStatus) {
+        if self.detail_status.get(&id) != Some(&status) {
+            self.detail_status.insert(id, status.clone());
+            self.bus.lock().unwrap().profile_events.broadcast(
+                crate::models::player_profile::ProfileEvent::FetchStatus(id, status),
+            );
+        }
+    }
+
+    fn persisted<T>(&self, id: SteamID, result: diesel::QueryResult<T>) -> diesel::QueryResult<T> {
+        if result.is_ok() {
+            self.profile_dirty.borrow_mut().insert(id);
+            self.bus
+                .lock()
+                .unwrap()
+                .profile_events
+                .broadcast(crate::models::player_profile::ProfileEvent::Changed(id));
+        } else {
+            self.bus.lock().unwrap().profile_events.broadcast(
+                crate::models::player_profile::ProfileEvent::FetchStatus(
+                    id,
+                    crate::models::player_profile::FetchStatus::Failed,
+                ),
+            );
+        }
+        result
+    }
+
     fn get_latest_lobby(&mut self) {
-        // To fetch additional info from Steam Web Api a key is needed
+        use crate::models::player_profile::FetchStatus;
+        let requested = self.bus.lock().unwrap().profile_requests.clone();
+        self.profile_dirty
+            .borrow_mut()
+            .retain(|id| requested.contains(id));
+        self.detail_targets.retain(|id, _| requested.contains(id));
+        self.detail_started.retain(|id, _| requested.contains(id));
+        self.detail_attempted.retain(|id, _| requested.contains(id));
+        self.detail_status.retain(|id, _| requested.contains(id));
+        for id in &requested {
+            self.detail_started.entry(*id).or_insert_with(Instant::now);
+            if !self.detail_targets.contains_key(id) {
+                let name = self
+                    .db
+                    .get()
+                    .ok()
+                    .and_then(|mut conn| {
+                        queries::get_account_by_steam_id(&mut conn, id.to_u64() as i64)
+                            .ok()
+                            .flatten()
+                    })
+                    .map_or_else(|| id.to_u64().to_string(), |a| a.name);
+                self.detail_targets.insert(
+                    *id,
+                    Player {
+                        steamid: *id,
+                        name,
+                        ..Default::default()
+                    },
+                );
+            }
+        }
         if !self.steam_api.has_key() {
-            // log::warn!("Steam API key is not set, skipping Steam API fetch");
+            for id in &requested {
+                self.detail_state(*id, FetchStatus::Unavailable);
+            }
             return;
         }
-
-        // Get a copy of the current lobby state
-        let lobby = self.shared_lobby.get();
+        let mut lobby = self.shared_lobby.get();
+        for id in &requested {
+            if !self.detail_status.contains_key(id) {
+                self.detail_state(*id, FetchStatus::Loading);
+            }
+            if lobby.get_player(None, Some(*id)).is_none()
+                && self
+                    .detail_attempted
+                    .get(id)
+                    .is_none_or(|at| at.elapsed() >= Duration::from_secs(5))
+            {
+                lobby.players.push(self.detail_targets[id].clone());
+                self.detail_attempted.insert(*id, Instant::now());
+            }
+        }
+        lobby
+            .players
+            .sort_by_key(|p| !requested.contains(&p.steamid));
         self.fetch_summaries(&lobby);
         self.fetch_steam_bans(&lobby);
         self.fetch_friends(&lobby);
         self.fetch_playtimes(&lobby);
         self.fetch_comments(&lobby);
         self.approximate_account_ages(&lobby);
+        for id in requested {
+            let player = self
+                .shared_lobby
+                .get()
+                .get_player(None, Some(id))
+                .cloned()
+                .unwrap_or_else(|| self.detail_targets[&id].clone());
+            let ready = player.steam_info.is_some()
+                && player.steam_bans.is_some()
+                && player.friends.is_some()
+                && player.tf2_play_minutes != Tf2PlayMinutes::Loading
+                && player.profile_comments.is_some();
+            let changed = self.profile_dirty.borrow_mut().remove(&id);
+            if ready && (changed || self.detail_status.get(&id) == Some(&FetchStatus::Loading)) {
+                // Responses can arrive before persistence, or persistence can fail.
+                // Only committed, complete data may end the loading state successfully.
+                let complete = self
+                    .db
+                    .get()
+                    .ok()
+                    .and_then(|mut conn| {
+                        crate::models::player_profile::PlayerProfile::load(&mut conn, id).ok()
+                    })
+                    .is_some_and(|p| {
+                        p.steam_info.is_some()
+                            && p.bans.is_some()
+                            && p.friends.is_some()
+                            && p.comments.is_some()
+                            && p.playtime != Tf2PlayMinutes::Loading
+                    });
+                self.detail_state(
+                    id,
+                    if complete {
+                        FetchStatus::Ready
+                    } else {
+                        FetchStatus::Failed
+                    },
+                );
+            } else if !ready && self.detail_started[&id].elapsed() > Duration::from_secs(30) {
+                self.detail_state(id, FetchStatus::Failed);
+            }
+        }
     }
 
     fn fetch_summaries(&mut self, lobby: &Lobby) {
@@ -94,6 +244,7 @@ impl SteamApiThread {
                 if let Ok(mut conn) = self.db.get()
                     && let Ok(Some(account)) =
                         queries::get_account_by_steam_id(&mut conn, player.steamid.to_u64() as i64)
+                    && account.last_updated > 0
                 {
                     let is_outdated =
                         current_time - account.last_updated > DB_CACHE_TTL_ACCOUNT_SECONDS;
@@ -140,6 +291,13 @@ impl SteamApiThread {
         {
             for info in infos {
                 if let Some(steamid) = SteamID::from_u64_string(&info.steamid) {
+                    let fetched_name = if info.personaname.is_empty() {
+                        lobby
+                            .get_player(None, Some(steamid))
+                            .map_or_else(|| steamid.to_u64().to_string(), |p| p.name.clone())
+                    } else {
+                        info.personaname.clone()
+                    };
                     let public_profile = matches!(info.communityvisibilitystate, 3);
                     let account_age = info.get_account_age();
 
@@ -158,17 +316,11 @@ impl SteamApiThread {
 
                     // Persist to database
                     if let Ok(mut conn) = self.db.get() {
-                        // Find the player name from the lobby
-                        let player_name = lobby
-                            .get_player(None, Some(steamid))
-                            .map(|p| p.name.clone())
-                            .unwrap_or_else(|| String::from("Unknown"));
-
                         let created_date = account_age.map(|dt| dt.timestamp());
 
                         let new_account = NewAccount {
                             steam_id: steamid.to_u64() as i64,
-                            name: player_name,
+                            name: fetched_name,
                             created_date,
                             avatar_thumb_url: info.avatar_thumb.clone(),
                             avatar_full_url: info.avatar_full.clone(),
@@ -180,7 +332,9 @@ impl SteamApiThread {
                             steam_bans_last_fetched: None,
                         };
 
-                        if let Err(e) = queries::upsert_account(&mut conn, new_account) {
+                        if let Err(e) =
+                            self.persisted(steamid, queries::upsert_account(&mut conn, new_account))
+                        {
                             log::error!("Failed to persist account {}: {}", steamid.to_u64(), e);
                         }
                     }
@@ -292,7 +446,13 @@ impl SteamApiThread {
                                 unfriend_date: None,
                             };
 
-                            if let Err(e) = queries::upsert_friendship(&mut conn, new_friendship) {
+                            if let Err(e) = self.persisted(
+                                *friend_steamid,
+                                self.persisted(
+                                    steamid,
+                                    queries::upsert_friendship(&mut conn, new_friendship),
+                                ),
+                            ) {
                                 log::error!(
                                     "Failed to persist friendship {}->{}: {}",
                                     steamid.to_u64(),
@@ -303,10 +463,13 @@ impl SteamApiThread {
                         }
 
                         // Update friends_fetched timestamp
-                        if let Err(e) = queries::update_account_friends_fetched(
-                            &mut conn,
-                            steamid.to_u64() as i64,
-                            current_time,
+                        if let Err(e) = self.persisted(
+                            steamid,
+                            queries::update_account_friends_fetched(
+                                &mut conn,
+                                steamid.to_u64() as i64,
+                                current_time,
+                            ),
                         ) {
                             log::error!(
                                 "Failed to update friends_fetched for {}: {}",
@@ -425,7 +588,9 @@ impl SteamApiThread {
                             last_updated: current_time,
                         };
 
-                        if let Err(e) = queries::upsert_playtime(&mut conn, new_playtime) {
+                        if let Err(e) = self
+                            .persisted(steamid, queries::upsert_playtime(&mut conn, new_playtime))
+                        {
                             log::error!(
                                 "Failed to persist playtime for {}: {}",
                                 steamid.to_u64(),
@@ -434,10 +599,13 @@ impl SteamApiThread {
                         }
 
                         // Update playtimes_fetched timestamp
-                        if let Err(e) = queries::update_account_playtimes_fetched(
-                            &mut conn,
-                            steamid.to_u64() as i64,
-                            current_time,
+                        if let Err(e) = self.persisted(
+                            steamid,
+                            queries::update_account_playtimes_fetched(
+                                &mut conn,
+                                steamid.to_u64() as i64,
+                                current_time,
+                            ),
                         ) {
                             log::error!(
                                 "Failed to update playtimes_fetched for {}: {}",
@@ -464,7 +632,9 @@ impl SteamApiThread {
                             last_updated: current_time,
                         };
 
-                        if let Err(e) = queries::upsert_playtime(&mut conn, new_playtime) {
+                        if let Err(e) = self
+                            .persisted(steamid, queries::upsert_playtime(&mut conn, new_playtime))
+                        {
                             log::error!(
                                 "Failed to persist playtime for {}: {}",
                                 steamid.to_u64(),
@@ -473,10 +643,13 @@ impl SteamApiThread {
                         }
 
                         // Update playtimes_fetched timestamp
-                        if let Err(e) = queries::update_account_playtimes_fetched(
-                            &mut conn,
-                            steamid.to_u64() as i64,
-                            current_time,
+                        if let Err(e) = self.persisted(
+                            steamid,
+                            queries::update_account_playtimes_fetched(
+                                &mut conn,
+                                steamid.to_u64() as i64,
+                                current_time,
+                            ),
                         ) {
                             log::error!(
                                 "Failed to update playtimes_fetched for {}: {}",
@@ -508,6 +681,9 @@ impl SteamApiThread {
             }
         }
 
+        if bans_to_fetch.is_empty() {
+            return;
+        }
         if let Some(bans) = self.steam_api.get_bans(bans_to_fetch) {
             let current_time = Utc::now().timestamp();
 
@@ -529,7 +705,9 @@ impl SteamApiThread {
                         economy_ban: String::from("none"), // Default value, Steam API doesn't provide this in our struct
                     };
 
-                    if let Err(e) = queries::upsert_steam_bans(&mut conn, &new_ban) {
+                    if let Err(e) =
+                        self.persisted(ban.steamid, queries::upsert_steam_bans(&mut conn, &new_ban))
+                    {
                         log::error!(
                             "Failed to persist steam bans for {}: {}",
                             ban.steamid.to_u64(),
@@ -537,10 +715,13 @@ impl SteamApiThread {
                         );
                     } else {
                         // Update the steam_bans_last_fetched timestamp for this account
-                        if let Err(e) = queries::update_steam_bans_last_fetched(
-                            &mut conn,
-                            ban.steamid.to_u64() as i64,
-                            current_time,
+                        if let Err(e) = self.persisted(
+                            ban.steamid,
+                            queries::update_steam_bans_last_fetched(
+                                &mut conn,
+                                ban.steamid.to_u64() as i64,
+                                current_time,
+                            ),
                         ) {
                             log::debug!(
                                 "Failed to update steam_bans_last_fetched for {}: {}",
@@ -743,16 +924,21 @@ impl SteamApiThread {
                                 deleted_date: None,
                             };
 
-                            if let Err(e) = queries::insert_comment(&mut conn, new_comment) {
+                            if let Err(e) = self
+                                .persisted(steamid, queries::insert_comment(&mut conn, new_comment))
+                            {
                                 log::debug!("Comment already exists or error: {}", e);
                             }
                         }
 
                         // Update comments_fetched timestamp
-                        if let Err(e) = queries::update_account_comments_fetched(
-                            &mut conn,
-                            steamid.to_u64() as i64,
-                            current_time,
+                        if let Err(e) = self.persisted(
+                            steamid,
+                            queries::update_account_comments_fetched(
+                                &mut conn,
+                                steamid.to_u64() as i64,
+                                current_time,
+                            ),
                         ) {
                             log::error!(
                                 "Failed to update comments_fetched for {}: {}",
@@ -770,5 +956,71 @@ impl SteamApiThread {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod profile_tests {
+    use super::*;
+    use crate::models::player_profile::{FetchStatus, ProfileEvent, seed_account, test_app};
+
+    #[test]
+    fn open_database_profiles_become_fetch_targets_without_becoming_lobby_players() {
+        let mut app = test_app();
+        let id = SteamID::from_u64(crate::models::steamid::MIN_STEAMID64 + 1);
+        seed_account(&app, id, "Offline profile");
+        app.open_player_details_window(id);
+        app.get_latest_lobby();
+        let mut settings = app.app_settings.clone();
+        settings.steam_api_key.clear();
+        let mut worker = SteamApiThread::new(&settings, &app.bus, &app.db);
+        worker.get_latest_lobby(); // No key: must not perform network requests.
+        assert!(worker.detail_targets.contains_key(&id));
+        assert!(app.shared_lobby.get().players.is_empty());
+        worker.send(SteamApiMsg::Tf2Playtime(
+            id,
+            Tf2PlayMinutes::PlayMinutes(600),
+        ));
+        assert_eq!(
+            worker.detail_targets[&id].tf2_play_minutes,
+            Tf2PlayMinutes::PlayMinutes(600)
+        );
+        assert!(app.shared_lobby.get().players.is_empty());
+        app.get_latest_lobby();
+        assert_eq!(app.profile_status[&id], FetchStatus::Unavailable);
+        app.open_player_details_windows.clear();
+        app.get_latest_lobby();
+        worker.get_latest_lobby();
+        assert!(!worker.detail_targets.contains_key(&id));
+    }
+
+    #[test]
+    fn profile_notifications_follow_successful_database_writes_only() {
+        let app = test_app();
+        let id = SteamID::from_u64(crate::models::steamid::MIN_STEAMID64 + 1);
+        seed_account(&app, id, "Profile");
+        let worker = SteamApiThread::new(&app.app_settings, &app.bus, &app.db);
+        let mut events = app.bus.lock().unwrap().profile_events.add_rx();
+        let mut conn = app.db.get().unwrap();
+        worker
+            .persisted(
+                id,
+                queries::update_account_comments_fetched(&mut conn, id.to_u64() as i64, 123),
+            )
+            .unwrap();
+        assert!(matches!(events.try_recv().unwrap(), ProfileEvent::Changed(value) if value == id));
+        assert_eq!(
+            queries::get_account_by_steam_id(&mut conn, id.to_u64() as i64)
+                .unwrap()
+                .unwrap()
+                .comments_fetched,
+            Some(123)
+        );
+        let failure: diesel::QueryResult<()> = Err(diesel::result::Error::RollbackTransaction);
+        assert!(worker.persisted(id, failure).is_err());
+        assert!(
+            matches!(events.try_recv().unwrap(), ProfileEvent::FetchStatus(value, FetchStatus::Failed) if value == id)
+        );
+        assert!(events.try_recv().is_err());
     }
 }

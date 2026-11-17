@@ -12,6 +12,8 @@ use crate::{
 use bus::Bus;
 
 pub struct AppBus {
+    pub profile_events: Bus<crate::models::player_profile::ProfileEvent>,
+    pub profile_requests: std::collections::HashSet<SteamID>,
     pub ban_data: crate::ban_data::Control,
     pub logfile_bus: Bus<LogLine>,
     pub rcon_bus: Bus<String>,
@@ -40,6 +42,8 @@ impl AppBus {
     pub fn new(self_steamid: crate::models::steamid::SteamID) -> Self {
         let initial_lobby = Lobby::new(self_steamid);
         Self {
+            profile_events: Bus::new(10000),
+            profile_requests: Default::default(),
             ban_data: crate::ban_data::Control::default(),
             logfile_bus: Bus::new(10000),
             rcon_bus: Bus::new(100),

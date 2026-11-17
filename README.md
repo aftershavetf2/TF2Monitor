@@ -65,6 +65,12 @@ If you change rcon-password or port you need to alter the bat file.
 
 # Player Markings and Reputation
 
+## Player Details
+
+Player Details works for players opened from Player Database even when they are not on the current server. Stored profile data appears immediately; background updates refresh the view after data is saved. Fetching missing Steam data requires a configured Steam API key. Notes and flags remain editable without a server connection.
+
+Current kills, deaths, team, ping, and health come from the active lobby session. When a player leaves, their last match statistics remain visible for that session. Changing sessions clears match statistics but keeps their profile. Kick buttons are available only while the player is present on the current server.
+
 ## TF2 Bot Detector files
 
 This app can read and write the usual TF2 Bot Detector files but will only use the subset of rules that point out a SteamID and a flag(Cheater, Suspicious, Racist, Exploiter).

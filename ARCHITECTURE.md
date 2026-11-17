@@ -86,6 +86,14 @@ sequenceDiagram
 
 ```
 
+## Player profiles and match sessions
+
+Player Details resolves persistent profiles by SteamID from `appdata.sqlite`, independently of lobby membership. `PlayerProfile` holds account details, flags, friends, playtime, Steam bans, and cached comments. Notes are stored separately by SteamID. The UI caches profiles and invalidates only the affected profile when a background database write publishes `ProfileEvent::Changed`.
+
+Selected players and open detail windows register profile interests with `AppBus`. SteamAPI prioritizes these players and can fetch an offline profile without inserting it into the real lobby. Missing values remain distinct from confirmed empty results. Local reputation lookups also include open profiles and publish updates after ban imports.
+
+Match information stays in the lobby. A monotonically increasing session ID separates server sessions, including changes on the same day. The UI retains only match statistics for players who leave the current session; switching sessions clears those snapshots while preserving database profiles. Kick controls require current membership and recheck session and server player ID before sending a command.
+
 ## Enrich Lobby data with Cheater etc markings
 
 The database is authoritative for player markings. TF2BD caches committed database state for lobby updates and exports all marked players to `playerlist.json` on startup and after edits. Initial import merges legacy file markings once; the migration marker and file metadata are stored in SQLite. Removing a marking deletes all source copies. Export failures are retried without rolling back database changes.

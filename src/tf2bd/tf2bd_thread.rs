@@ -154,6 +154,9 @@ impl Tf2bdThread {
             );
             return;
         }
+        self.bus.lock().unwrap().profile_events.broadcast(
+            crate::models::player_profile::ProfileEvent::Changed(steamid),
+        );
         let data = self.ruleset_handler.get_player_marking(&steamid);
         self.send(Tf2bdMsg::Tf2bdPlayerMarking(steamid, data.cloned()));
     }
