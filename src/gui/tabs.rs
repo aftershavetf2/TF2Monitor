@@ -12,7 +12,7 @@ impl Tab {
 
     fn label(self) -> &'static str {
         match self {
-            Self::Game => "Game",
+            Self::Game => "Scoreboard",
             Self::Overview => "Overview",
         }
     }
