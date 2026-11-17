@@ -261,6 +261,9 @@ mod tests {
                         Err(error) => panic!("Fixture HTTP server: {error}"),
                     }
                 };
+                // Windows can inherit the listener's nonblocking mode on accepted sockets.
+                // Poll accept, but wait for request headers with the read timeout below.
+                stream.set_nonblocking(false).unwrap();
                 stream
                     .set_read_timeout(Some(Duration::from_secs(5)))
                     .unwrap();
@@ -285,6 +288,25 @@ mod tests {
             }
         });
         (url, handle)
+    }
+
+    #[test]
+    fn fixture_server_waits_for_complete_request_headers() {
+        let (url, server) = server(vec![(200, b"OK".to_vec())]);
+        let mut client =
+            std::net::TcpStream::connect((url.host_str().unwrap(), url.port().unwrap())).unwrap();
+        client
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        client.write_all(b"GET / HTTP/1.1\r\n").unwrap();
+        // Leave the server waiting for the remaining headers, as TCP may do naturally.
+        std::thread::sleep(Duration::from_millis(50));
+        client.write_all(b"Host: localhost\r\n\r\n").unwrap();
+        let mut response = String::new();
+        client.read_to_string(&mut response).unwrap();
+        assert!(response.starts_with("HTTP/1.1 200 "));
+        assert!(response.ends_with("\r\n\r\nOK"));
+        server.join().unwrap();
     }
 
     #[test]
