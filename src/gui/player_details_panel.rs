@@ -69,6 +69,7 @@ pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: St
             "Player with SteamID {} not found.",
             steamid.to_u64()
         ));
+        super::player_notes::show(app_win, ui, steamid);
         return;
     }
     let player = player.unwrap();
@@ -124,6 +125,9 @@ pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: St
     ui.label("");
 
     add_player_flag_editor(app_win, ui, player);
+
+    ui.add_space(12.0);
+    super::player_notes::show(app_win, ui, steamid);
 
     ui.label("");
 

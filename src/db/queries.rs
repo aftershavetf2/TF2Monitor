@@ -446,3 +446,75 @@ pub fn get_community_banned_count(
         .select(count_star())
         .first::<i64>(conn)
 }
+
+/// Personal notes belong to a SteamID, including players outside the current lobby.
+pub fn get_player_note(conn: &mut SqliteConnection, steam_id: i64) -> QueryResult<String> {
+    use super::schema::player_notes::dsl;
+    Ok(dsl::player_notes
+        .find(steam_id)
+        .select(dsl::note)
+        .first::<String>(conn)
+        .optional()?
+        .unwrap_or_default())
+}
+
+pub fn save_player_note(conn: &mut SqliteConnection, steam_id: i64, note: &str) -> QueryResult<()> {
+    use super::schema::player_notes::dsl;
+    if note.is_empty() {
+        diesel::delete(dsl::player_notes.find(steam_id)).execute(conn)?;
+    } else {
+        let values = (
+            dsl::steam_id.eq(steam_id),
+            dsl::note.eq(note),
+            dsl::updated_at.eq(chrono::Utc::now().timestamp()),
+        );
+        diesel::insert_into(dsl::player_notes)
+            .values(values)
+            .on_conflict(dsl::steam_id)
+            .do_update()
+            .set((
+                dsl::note.eq(note),
+                dsl::updated_at.eq(chrono::Utc::now().timestamp()),
+            ))
+            .execute(conn)?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod player_note_tests {
+    use super::*;
+
+    #[test]
+    fn notes_survive_reopening_are_per_player_and_can_be_updated_and_cleared() {
+        let path = std::env::temp_dir().join(format!(
+            "tf2monitor-notes-{}-{}.sqlite",
+            std::process::id(),
+            chrono::Utc::now().timestamp_nanos_opt().unwrap()
+        ));
+        let path_str = path.to_str().unwrap();
+        {
+            let mut conn = SqliteConnection::establish(path_str).unwrap();
+            crate::db::connection::setup_schema(&mut conn).unwrap();
+            assert_eq!(get_player_note(&mut conn, 1).unwrap(), "");
+            save_player_note(&mut conn, 1, "Misstänkt beteende\nAnteckning med åäö 🎮").unwrap();
+            save_player_note(&mut conn, 2, "Another player").unwrap();
+        }
+        {
+            let mut conn = SqliteConnection::establish(path_str).unwrap();
+            // Existing-database startup must preserve notes.
+            crate::db::connection::setup_schema(&mut conn).unwrap();
+            assert_eq!(
+                get_player_note(&mut conn, 1).unwrap(),
+                "Misstänkt beteende\nAnteckning med åäö 🎮"
+            );
+            assert_eq!(get_player_note(&mut conn, 2).unwrap(), "Another player");
+            save_player_note(&mut conn, 1, "Updated reason").unwrap();
+            assert_eq!(get_player_note(&mut conn, 1).unwrap(), "Updated reason");
+            save_player_note(&mut conn, 1, "").unwrap();
+            assert_eq!(get_player_note(&mut conn, 1).unwrap(), "");
+            assert_eq!(get_player_note(&mut conn, 2).unwrap(), "Another player");
+        }
+        std::fs::remove_file(path).unwrap();
+    }
+}

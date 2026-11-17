@@ -14,6 +14,7 @@ pub mod player_class_symbol;
 pub mod player_database_window;
 pub mod player_details_panel;
 pub mod player_flag_editor;
+mod player_notes;
 pub mod player_tooltip;
 pub mod playtime;
 pub mod recently_left;

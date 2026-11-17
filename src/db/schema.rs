@@ -40,6 +40,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    player_notes (steam_id) {
+        steam_id -> BigInt,
+        note -> Text,
+        updated_at -> BigInt,
+    }
+}
+
+diesel::table! {
     player_flags (steam_id, flag_type, source) {
         steam_id -> BigInt,
         flag_type -> Text,
@@ -82,6 +90,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     comments,
     friendship,
     player_flags,
+    player_notes,
     playtime,
     steam_bans,
 );

@@ -177,6 +177,15 @@ pub(crate) fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn st
     )
     .execute(conn)?;
 
+    diesel::sql_query(
+        "CREATE TABLE IF NOT EXISTS player_notes (
+            steam_id INTEGER PRIMARY KEY NOT NULL,
+            note TEXT NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+    )
+    .execute(conn)?;
+
     // Add steam_bans_last_fetched column if it doesn't exist (for existing databases)
     diesel::sql_query("ALTER TABLE account ADD COLUMN steam_bans_last_fetched INTEGER")
         .execute(conn)
