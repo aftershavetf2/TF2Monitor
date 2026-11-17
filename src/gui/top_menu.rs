@@ -4,14 +4,12 @@ use super::{
 };
 use crate::{models::AppWin, tf2bd::models::PlayerAttribute, utils::print_image_data};
 use eframe::egui::{Ui, ViewportCommand};
-use std::process::Command;
 
 /*
 Menu structure:
 
 File
 - Settings...
-- Start TF2
 - Quit
 
 View
@@ -31,13 +29,6 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
     theme::menu_bar().ui(ui, |ui| {
         theme::menu_header(ui, "File", |ui| {
             theme::menu_contents(ui);
-            if menu_item::command(ui, "Start TF2").clicked() {
-                start_tf2(app_win);
-                ui.close();
-            }
-
-            ui.separator();
-
             if menu_item::command_with_keys(ui, "Settings...", &[super::shortcut::command_label(), ","]).clicked() {
                 app_win.settings_window_open = true;
                 ui.close();
@@ -264,39 +255,6 @@ fn source_ban_data_menu(ui: &mut Ui, app_win: &AppWin) {
             .unwrap_or_else(|| "Never".into());
         ui.label(format!("Last checked at: {time}"));
     });
-}
-
-fn start_tf2(app_win: &AppWin) {
-    let exe_path = &app_win.app_settings.exe_filename;
-    let launch_options = &app_win.app_settings.launch_options;
-
-    log::info!("Starting TF2 with exe: {}", exe_path);
-    log::info!("Launch options: {}", launch_options);
-
-    // Build the command with -steam -game tf and then the launch options
-    let mut cmd = Command::new(exe_path);
-    cmd.arg("-steam").arg("-game").arg("tf");
-
-    // Parse and add launch options
-    if !launch_options.is_empty() {
-        // Split launch options by spaces, but be careful with quoted strings
-        let options: Vec<&str> = launch_options.split_whitespace().collect();
-        for option in options {
-            cmd.arg(option);
-        }
-    }
-
-    // Spawn the process
-    match cmd.spawn() {
-        Ok(child) => {
-            log::info!("TF2 started successfully with PID: {:?}", child.id());
-            // Detach the child process so it continues running independently
-            let _ = child;
-        }
-        Err(e) => {
-            log::error!("Failed to start TF2: {}", e);
-        }
-    }
 }
 
 /// App shortcuts are ignored while a text field or modal owns keyboard input.

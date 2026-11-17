@@ -64,7 +64,6 @@ pub struct TempSettings {
     pub rcon_ip: String,
     pub rcon_port: String,
     pub log_filename: String,
-    pub exe_filename: String,
     pub launch_options: String,
 }
 

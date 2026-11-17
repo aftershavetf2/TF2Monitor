@@ -1,6 +1,6 @@
 use crate::models::{
     AppWin, TempSettings,
-    app_settings::{DEFAULT_EXE_FILENAME, DEFAULT_LAUNCH_OPTIONS, DEFAULT_LOG_FILENAME},
+    app_settings::{DEFAULT_LAUNCH_OPTIONS, DEFAULT_LOG_FILENAME},
 };
 use eframe::egui::{self, Grid, Ui};
 
@@ -19,7 +19,6 @@ pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
             rcon_ip: app_win.app_settings.rcon_ip.clone(),
             rcon_port: app_win.app_settings.rcon_port.to_string(),
             log_filename: app_win.app_settings.log_filename.clone(),
-            exe_filename: app_win.app_settings.exe_filename.clone(),
             launch_options: app_win.app_settings.launch_options.clone(),
         });
     }
@@ -167,23 +166,6 @@ fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
 
             ui.end_row();
 
-            // exe_filename
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                ui.label("TF2 Exe Filename:");
-            });
-
-            ui.vertical(|ui| {
-                ui.add(egui::TextEdit::singleline(&mut temp.exe_filename).desired_width(f32::INFINITY));
-                ui.add_space(10.0);
-                if ui.button("Set Default")
-                .on_hover_text("Sets the default filename for the TF2 executable")
-                .clicked() {
-                    temp.exe_filename = DEFAULT_EXE_FILENAME.to_string();
-                }
-            });
-
-            ui.end_row();
-
             // launch_options
             ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.label("Launch Options:");
@@ -233,7 +215,6 @@ fn save_settings(app_win: &mut AppWin, temp: &TempSettings) {
     app_win.app_settings.rcon_ip = temp.rcon_ip.clone();
     app_win.app_settings.rcon_port = rcon_port;
     app_win.app_settings.log_filename = temp.log_filename.clone();
-    app_win.app_settings.exe_filename = temp.exe_filename.clone();
     app_win.app_settings.launch_options = temp.launch_options.clone();
 
     // Also update self_steamid in AppWin

@@ -20,16 +20,8 @@ fn default_party_notifications_for() -> Vec<PlayerAttribute> {
 }
 
 #[cfg(target_os = "windows")]
-pub const DEFAULT_EXE_FILENAME: &str =
-    "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf_win64.exe";
-
-#[cfg(target_os = "windows")]
 pub const DEFAULT_LOG_FILENAME: &str =
     "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2\\tf\\console.log";
-
-#[cfg(target_os = "linux")]
-pub const DEFAULT_EXE_FILENAME: &str =
-    "~/.local/share/Steam/steamapps/common/Team Fortress 2/hl2_linux";
 
 #[cfg(target_os = "linux")]
 pub const DEFAULT_LOG_FILENAME: &str =
@@ -40,7 +32,6 @@ pub const DEFAULT_LAUNCH_OPTIONS: &str = "-usercon -high +developer 1 +contimes 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppSettings {
     pub log_filename: String,
-    pub exe_filename: String,
 
     pub self_steamid64: SteamID,
 
@@ -99,7 +90,6 @@ impl Default for AppSettings {
 
         Self {
             log_filename: get_log_filename(),
-            exe_filename: get_exe_filename(),
 
             self_steamid64,
 
@@ -223,7 +213,7 @@ impl AppSettings {
 //
 // Platform specific functions
 // - Try to find the SteadID for the current user
-// - To get the default log and exe filenames
+// - To get the default log filename
 //
 
 #[cfg(target_os = "windows")]
@@ -231,19 +221,9 @@ fn get_log_filename() -> String {
     r"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf\console.log".to_string()
 }
 
-#[cfg(target_os = "windows")]
-fn get_exe_filename() -> String {
-    r"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf_win64.exe".to_string()
-}
-
 #[cfg(target_os = "linux")]
 fn get_log_filename() -> String {
     DEFAULT_LOG_FILENAME.to_string()
-}
-
-#[cfg(target_os = "linux")]
-fn get_exe_filename() -> String {
-    DEFAULT_EXE_FILENAME.to_string()
 }
 
 /// Get the SteamID for the current user, if possible.
@@ -290,4 +270,25 @@ pub fn get_current_user_steamid() -> Option<SteamID> {
 #[cfg(target_os = "linux")]
 pub fn get_current_user_steamid() -> Option<SteamID> {
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_exe_filename_is_ignored_and_removed_on_save_without_changing_settings() {
+        let mut settings = AppSettings::default();
+        settings.rcon_port = 12345;
+        settings.steam_api_key = "test-key".into();
+        settings.launch_options = "custom launch options".into();
+        let expected = serde_json::to_value(&settings).unwrap();
+        assert!(expected.get("exe_filename").is_none());
+        let mut legacy = expected.clone();
+        legacy["exe_filename"] = serde_json::json!("C:\\Old Steam Folder\\tf_win64.exe");
+        let loaded: AppSettings =
+            serde_json::from_str(&serde_json::to_string(&legacy).unwrap()).unwrap();
+        let saved = serde_json::to_value(&loaded).unwrap();
+        assert_eq!(saved, expected);
+    }
 }
