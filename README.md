@@ -78,7 +78,7 @@ It fetches player account information from Steam Community and community ban sna
 
 The full source code is available for anyone to inspect.
 
-# Linux support
+# Linux and Windows support
 
 This app has been developed on both Linux and Windows and works great on both.
 
