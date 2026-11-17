@@ -406,25 +406,48 @@ mod tests {
             id: 7,
             kills: 9,
             deaths: 2,
+            kills_with: vec![PlayerKill {
+                weapon: "old_session_weapon".into(),
+                crit: false,
+            }],
             ..Default::default()
         });
         app.shared_lobby.set(lobby.clone());
         app.get_latest_lobby();
         let text = render(&app, id);
         assert!(text.contains("Kick Player"));
-        assert!(text.contains("Kills: 9  Deaths: 2"));
+        assert!(text.contains("old session weapon"));
+        assert_eq!(app.match_snapshots[&id].kills, 9);
+        assert_eq!(app.match_snapshots[&id].deaths, 2);
         lobby.players.clear();
         app.shared_lobby.set(lobby.clone());
         app.get_latest_lobby();
         let text = render(&app, id);
         assert!(!text.contains("Kick Player"));
         assert!(text.contains("Last seen in this session"));
-        assert!(text.contains("Kills: 9  Deaths: 2"));
+        assert!(text.contains("old session weapon"));
         lobby.session_id += 1;
         app.shared_lobby.set(lobby);
         app.get_latest_lobby();
         let text = render(&app, id);
-        assert!(!text.contains("Kills: 9"));
+        assert!(!text.contains("old session weapon"));
         assert!(text.contains("Not on the current server"));
+
+        let mut lobby = app.shared_lobby.get();
+        lobby.players.push(Player {
+            steamid: id,
+            id: 12,
+            kills_with: vec![PlayerKill {
+                weapon: "new_session_weapon".into(),
+                crit: true,
+            }],
+            ..Default::default()
+        });
+        app.shared_lobby.set(lobby);
+        app.get_latest_lobby();
+        let text = render(&app, id);
+        assert!(text.contains("Kick Player"));
+        assert!(text.contains("new session weapon (crit)"));
+        assert!(!text.contains("old session weapon"));
     }
 }
