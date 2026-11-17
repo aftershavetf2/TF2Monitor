@@ -81,12 +81,10 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
 
         theme::menu_header(ui, "Actions", |ui| {
             theme::menu_contents(ui);
-            if menu_item::checkbox(ui, &mut app_win.app_settings.translate_chat, "Translate Chat")
-                .menu_tooltip("Translate chat messages to English using Google Translate")
-                .changed()
-            {
-                app_win.updated_settings();
-            }
+            ui.add_enabled_ui(false, |ui| {
+                menu_item::checkbox(ui, &mut app_win.app_settings.translate_chat, "Translate Chat")
+                    .menu_tooltip("Translate chat messages to English using Google Translate");
+            });
 
             ui.separator();
 
