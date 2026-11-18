@@ -104,6 +104,13 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
 
             ui.label("Notify party about joining:");
 
+            if menu_item::checkbox(ui, &mut app_win.app_settings.notify_tf2bd, "TF2BD")
+                .menu_tooltip("Notify your party when a joining player matches the active TF2BD list filters.")
+                .changed()
+            {
+                app_win.updated_settings();
+            }
+
             let player_attributes_to_show = vec![
                 // PlayerAttribute::Cool,
                 PlayerAttribute::Cheater,

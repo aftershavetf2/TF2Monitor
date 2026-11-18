@@ -67,7 +67,8 @@ pub fn run(
     };
 
     let mut app_data = AppWin::new(settings, bus, db);
-    app_data.tf2bd_lists = crate::tf2bd::player_lists::PlayerLists::load();
+    let tf2bd_matches = bus.lock().unwrap().tf2bd_matches.clone();
+    app_data.tf2bd_lists = crate::tf2bd::player_lists::PlayerLists::load(tf2bd_matches);
 
     eframe::run_native(
         "TF2 Monitor",

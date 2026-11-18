@@ -8,7 +8,10 @@ use std::{
     fs,
     io::{self, Read, Write},
     path::{Path, PathBuf},
-    sync::mpsc::{self, Receiver, SyncSender, TryRecvError},
+    sync::{
+        Arc, Mutex,
+        mpsc::{self, Receiver, SyncSender, TryRecvError},
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -206,11 +209,37 @@ pub struct ImportProgress {
     pub errors: Vec<String>,
 }
 
+#[derive(Default)]
+pub struct ListMatches {
+    by_player: HashMap<SteamID, Vec<usize>>,
+    titles: Vec<String>,
+}
+
+impl ListMatches {
+    pub fn titles_for(&self, steamid: SteamID) -> impl Iterator<Item = &str> {
+        self.by_player
+            .get(&steamid)
+            .into_iter()
+            .flatten()
+            .map(|&index| self.titles[index].as_str())
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct SharedMatches(Arc<Mutex<Arc<ListMatches>>>);
+
+impl SharedMatches {
+    pub fn snapshot(&self) -> Arc<ListMatches> {
+        self.0.lock().unwrap().clone()
+    }
+}
+
 pub struct PlayerLists {
     directory: PathBuf,
     settings: Settings,
     lists: Vec<CachedList>,
-    matches: HashMap<SteamID, Vec<usize>>,
+    matches: Arc<ListMatches>,
+    shared_matches: SharedMatches,
     downloads: Option<Receiver<DownloadResult>>,
     next_auto_check: Instant,
     pub import: ImportProgress,
@@ -223,7 +252,8 @@ impl Default for PlayerLists {
             directory: PathBuf::from(DIRECTORY),
             settings: Settings::default(),
             lists: Vec::new(),
-            matches: HashMap::new(),
+            matches: Arc::default(),
+            shared_matches: SharedMatches::default(),
             downloads: None,
             next_auto_check: Instant::now(),
             import: ImportProgress::default(),
@@ -233,13 +263,14 @@ impl Default for PlayerLists {
 }
 
 impl PlayerLists {
-    pub fn load() -> Self {
-        Self::load_from(PathBuf::from(DIRECTORY))
+    pub fn load(shared_matches: SharedMatches) -> Self {
+        Self::load_from(PathBuf::from(DIRECTORY), shared_matches)
     }
 
-    fn load_from(directory: PathBuf) -> Self {
+    fn load_from(directory: PathBuf, shared_matches: SharedMatches) -> Self {
         let mut manager = Self {
             directory,
+            shared_matches,
             ..Self::default()
         };
         manager.settings = match manager.read_settings() {
@@ -369,7 +400,10 @@ impl PlayerLists {
     }
 
     fn rebuild_matches(&mut self) {
-        self.matches.clear();
+        let mut matches = ListMatches {
+            by_player: HashMap::new(),
+            titles: self.summaries().map(|list| list.title.to_owned()).collect(),
+        };
         for (index, (source, cached)) in self.settings.sources.iter().zip(&self.lists).enumerate() {
             if source.enabled
                 && let Some(list) = &cached.data
@@ -379,15 +413,17 @@ impl PlayerLists {
                         .iter()
                         .any(|attr| self.settings.filters.contains(attr))
                     {
-                        self.matches.entry(steamid).or_default().push(index);
+                        matches.by_player.entry(steamid).or_default().push(index);
                     }
                 }
             }
         }
+        self.matches = Arc::new(matches);
+        *self.shared_matches.0.lock().unwrap() = Arc::clone(&self.matches);
     }
 
     pub fn has_match(&self, steamid: SteamID) -> bool {
-        self.matches.contains_key(&steamid)
+        self.matches.by_player.contains_key(&steamid)
     }
 
     pub fn sources_for(
@@ -395,13 +431,14 @@ impl PlayerLists {
         steamid: SteamID,
     ) -> impl Iterator<Item = (&str, &str, Vec<PlayerAttribute>)> {
         self.matches
+            .by_player
             .get(&steamid)
             .into_iter()
             .flatten()
             .map(move |&index| {
                 let source = &self.settings.sources[index];
                 let data = self.lists[index].data.as_ref().unwrap();
-                let title = data.title.as_deref().unwrap_or(&source.filename);
+                let title = self.matches.titles[index].as_str();
                 let attributes = self
                     .settings
                     .filters
@@ -793,7 +830,7 @@ mod tests {
         }
 
         fn open(&self) -> PlayerLists {
-            PlayerLists::load_from(self.0.clone())
+            PlayerLists::load_from(self.0.clone(), SharedMatches::default())
         }
     }
 
@@ -851,11 +888,20 @@ mod tests {
             ]
         );
         assert!(!lists.has_match(SteamID::from_u64(MIN_STEAMID64 + 43)));
+        let shared = lists.shared_matches.clone();
+        assert_eq!(
+            shared.snapshot().titles_for(player).collect::<Vec<_>>(),
+            ["List A", "List B"],
+        );
 
         lists
             .set_filters(vec![PlayerAttribute::Suspicious, PlayerAttribute::Bot])
             .unwrap();
         lists.set_enabled(1, false).unwrap();
+        assert_eq!(
+            shared.snapshot().titles_for(player).collect::<Vec<_>>(),
+            ["List A"],
+        );
         let mut lists = directory.open();
         assert_eq!(
             lists.sources_for(player).collect::<Vec<_>>(),

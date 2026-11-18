@@ -7,7 +7,7 @@ use crate::{
         rcon::G15DumpPlayerOutput,
         steamapi::SteamApiMsg,
     },
-    tf2bd::{Tf2bdMsg, models::PlayerAttribute},
+    tf2bd::{Tf2bdMsg, models::PlayerAttribute, player_lists::SharedMatches},
 };
 use bus::Bus;
 
@@ -20,6 +20,7 @@ pub struct AppBus {
     pub g15_report_bus: Bus<G15DumpPlayerOutput>,
     pub steamapi_bus: Bus<SteamApiMsg>,
     pub tf2bd_bus: Bus<Tf2bdMsg>,
+    pub tf2bd_matches: SharedMatches,
 
     /// The events mostly from the user interface.
     /// Many different parts of the application can listen to these events.
@@ -50,6 +51,7 @@ impl AppBus {
             g15_report_bus: Bus::new(100),
             steamapi_bus: Bus::new(10000),
             tf2bd_bus: Bus::new(10000),
+            tf2bd_matches: SharedMatches::default(),
             app_event_bus: Bus::new(1000),
             shared_lobby: SharedLobby::new(initial_lobby),
         }

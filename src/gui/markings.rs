@@ -14,6 +14,7 @@ pub(super) fn add_sourceban_row(
     ui: &mut Ui,
     ban: &crate::reputation::SourceBan,
     today: chrono::NaiveDate,
+    details_color: Color32,
 ) {
     let font = TextStyle::Body.resolve(ui.style());
     let mut text = egui::text::LayoutJob::default();
@@ -35,7 +36,7 @@ pub(super) fn add_sourceban_row(
         0.0,
         egui::TextFormat {
             font_id: font,
-            color: super::theme::TEXT,
+            color: details_color,
             ..Default::default()
         },
     );
@@ -102,7 +103,7 @@ pub(super) fn add_sourceban_badge(ui: &mut Ui, player: &Player) {
             }
             let today = chrono::Utc::now().date_naive();
             for ban in &reputation.source_bans {
-                add_sourceban_row(ui, ban, today);
+                add_sourceban_row(ui, ban, today, super::theme::TEXT);
             }
         });
     }

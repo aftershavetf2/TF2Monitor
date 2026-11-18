@@ -342,8 +342,9 @@ fn add_player_sourcebans(player: &Player, ui: &mut Ui) {
         ui.label("No bans found in available data");
     }
     let today = chrono::Utc::now().date_naive();
+    let details_color = ui.visuals().weak_text_color();
     for ban in &reputation.source_bans {
-        super::markings::add_sourceban_row(ui, ban, today);
+        super::markings::add_sourceban_row(ui, ban, today, details_color);
     }
 }
 

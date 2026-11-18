@@ -1,4 +1,6 @@
-use super::{Tf2bdMsg, models::PlayerAttribute, ruleset_handler::RulesetHandler};
+use super::{
+    Tf2bdMsg, models::PlayerAttribute, player_lists::SharedMatches, ruleset_handler::RulesetHandler,
+};
 use crate::config::TF2BD_LOOP_DELAY;
 use crate::db::connection::DbPool;
 use crate::{
@@ -47,7 +49,9 @@ struct Tf2bdThread {
     last_lobby_id: String,
     last_vote_time: Instant,
 
-    notifications_send: HashSet<SteamID>,
+    local_notifications_seen: HashSet<SteamID>,
+    tf2bd_matches: SharedMatches,
+    tf2bd_notifications_sent: HashSet<SteamID>,
 }
 
 impl Tf2bdThread {
@@ -58,6 +62,7 @@ impl Tf2bdThread {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
         let app_event_bus_rx = bus.lock().unwrap().app_event_bus.add_rx();
+        let tf2bd_matches = bus.lock().unwrap().tf2bd_matches.clone();
 
         let ruleset_handler = RulesetHandler::new(FILENAME, db)?;
 
@@ -74,7 +79,9 @@ impl Tf2bdThread {
 
             last_vote_time: Instant::now(),
 
-            notifications_send: HashSet::new(),
+            local_notifications_seen: HashSet::new(),
+            tf2bd_matches,
+            tf2bd_notifications_sent: HashSet::new(),
         })
     }
 
@@ -82,7 +89,7 @@ impl Tf2bdThread {
         log::info!("TF2BD background thread started");
 
         loop {
-            self.process_bus();
+            self.process_app_event_bus();
 
             self.ruleset_handler.sync_export();
             self.apply_rules_to_lobby();
@@ -96,20 +103,6 @@ impl Tf2bdThread {
 
     fn send(&self, msg: Tf2bdMsg) {
         self.bus.lock().unwrap().tf2bd_bus.broadcast(msg);
-    }
-
-    fn process_bus(&mut self) {
-        self.get_latest_lobby();
-        self.process_app_event_bus();
-    }
-
-    fn get_latest_lobby(&mut self) {
-        let lobby = self.shared_lobby.get();
-        if self.last_lobby_id != lobby.lobby_id {
-            log::info!("New lobby detected: {}", lobby.lobby_id);
-            self.notifications_send.clear();
-            self.last_lobby_id = lobby.lobby_id.clone();
-        }
     }
 
     fn process_app_event_bus(&mut self) {
@@ -251,49 +244,99 @@ impl Tf2bdThread {
 
     fn send_notifications(&mut self) {
         let lobby = self.shared_lobby.get();
+        if self.last_lobby_id != lobby.lobby_id {
+            log::info!("New lobby detected: {}", lobby.lobby_id);
+            self.local_notifications_seen.clear();
+            self.tf2bd_notifications_sent.clear();
+            self.last_lobby_id = lobby.lobby_id.clone();
+        }
+
+        let matches = self
+            .app_settings
+            .notify_tf2bd
+            .then(|| self.tf2bd_matches.snapshot());
+
         for player in &lobby.players {
-            // Check if we have already informed the party about this player
-            // TODO: Maybe store the list of flags we have informed about and inform about new flags
-            if !self.notifications_send.contains(&player.steamid) {
-                let player_info = self
-                    .ruleset_handler
-                    .get_player_marking(&player.steamid)
-                    .cloned();
-                if let Some(player_info) = player_info {
-                    log::info!("Player attributes: {:?}", player_info.attributes);
-                    log::info!(
-                        "Settings attributes: {:?}",
-                        self.app_settings.party_notifications_for
-                    );
+            let local_flags = if !self.local_notifications_seen.contains(&player.steamid)
+                && let Some(info) = self.ruleset_handler.get_player_marking(&player.steamid)
+            {
+                self.local_notifications_seen.insert(player.steamid);
+                info.attributes
+                    .iter()
+                    .any(|attr| self.app_settings.party_notifications_for.contains(attr))
+                    .then_some(info.attributes.as_slice())
+            } else {
+                None
+            };
 
-                    let shall_inform_party = player_info
-                        .attributes
-                        .iter()
-                        .any(|attr| self.app_settings.party_notifications_for.contains(attr));
-
-                    if shall_inform_party {
-                        log::info!(
-                            "Informing party about flags {:?} on player {}",
-                            player_info.attributes,
-                            player.name
-                        );
-
-                        let cmd = format!(
-                            "say_party \"Player {} is marked as {:?}\"",
-                            player.name, player_info.attributes
-                        );
-                        self.bus.lock().unwrap().send_rcon_cmd(cmd.as_str());
-                    } else {
-                        log::info!(
-                            "Not informing party about flags {:?} on player {}",
-                            player_info.attributes,
-                            player.name
-                        );
-                    }
-
-                    self.notifications_send.insert(player.steamid);
+            let source_titles = if let Some(matches) = &matches
+                && !self.tf2bd_notifications_sent.contains(&player.steamid)
+            {
+                let titles: Vec<_> = matches.titles_for(player.steamid).collect();
+                if !titles.is_empty() {
+                    self.tf2bd_notifications_sent.insert(player.steamid);
                 }
+                titles
+            } else {
+                Vec::new()
+            };
+
+            if let Some(command) = party_notification(&player.name, local_flags, &source_titles) {
+                self.bus.lock().unwrap().send_rcon_cmd(&command);
             }
         }
+    }
+}
+
+fn party_notification(
+    player_name: &str,
+    local_flags: Option<&[PlayerAttribute]>,
+    source_titles: &[&str],
+) -> Option<String> {
+    if local_flags.is_none() && source_titles.is_empty() {
+        return None;
+    }
+    let mut message = format!("Player {player_name}");
+    if !source_titles.is_empty() {
+        message.push_str(&format!(" matched TF2BD: {}", source_titles.join(", ")));
+    }
+    if let Some(flags) = local_flags {
+        if !source_titles.is_empty() {
+            message.push_str(" and");
+        }
+        message.push_str(&format!(" is marked as {flags:?}"));
+    }
+
+    // Names come from the game server and remote lists; keep them inside one chat command.
+    let message = message.replace(
+        |c: char| c.is_control() || matches!(c, '"' | ';' | '\\' | '\u{2028}' | '\u{2029}'),
+        " ",
+    );
+    Some(format!("say_party \"{message}\""))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn party_notifications_include_tf2bd_list_names() {
+        assert_eq!(
+            party_notification("Example", None, &["List A", "List B"]).as_deref(),
+            Some(r#"say_party "Player Example matched TF2BD: List A, List B""#),
+        );
+        assert_eq!(
+            party_notification("Example", Some(&[PlayerAttribute::Bot]), &["List A"]).as_deref(),
+            Some(r#"say_party "Player Example matched TF2BD: List A and is marked as [Bot]""#),
+        );
+        assert_eq!(party_notification("Example", None, &[]), None);
+    }
+
+    #[test]
+    fn party_notification_keeps_untrusted_names_inside_the_chat_message() {
+        assert_eq!(
+            party_notification("Example\";\n", None, &["List\\A\r"]).as_deref(),
+            Some(r#"say_party "Player Example    matched TF2BD: List A ""#),
+        );
     }
 }
