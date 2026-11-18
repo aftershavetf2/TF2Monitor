@@ -1,5 +1,5 @@
 use crate::tf2::{lobby::Player, steamapi::SteamProfileComment};
-use eframe::egui::{self, Color32, OpenUrl, RichText, ScrollArea, Sense, Ui};
+use eframe::egui::{self, Color32, OpenUrl, RichText, Sense, Ui};
 
 pub fn add_profile_comments(player: &Player, ui: &mut Ui) {
     ui.vertical(|ui| {
@@ -7,15 +7,9 @@ pub fn add_profile_comments(player: &Player, ui: &mut Ui) {
 
         if let Some(comments) = &player.profile_comments {
             ui.push_id("comments", |ui| {
-                // Wrapped comment bodies have variable heights, so lay out complete entries.
-                ScrollArea::vertical()
-                    .stick_to_bottom(false)
-                    .auto_shrink(false)
-                    .show(ui, |ui| {
-                        for (index, comment) in comments.iter().enumerate() {
-                            ui.push_id(index, |ui| add_comment_row(ui, comment));
-                        }
-                    });
+                for (index, comment) in comments.iter().enumerate() {
+                    ui.push_id(index, |ui| add_comment_row(ui, comment));
+                }
             });
         } else {
             ui.label("Loading comments...");
@@ -50,10 +44,7 @@ fn add_comment_row(ui: &mut Ui, row: &SteamProfileComment) {
                             .wrap()
                             .sense(Sense::click()),
                     );
-                    ui.add(
-                        egui::Label::new(RichText::new(&row.comment).color(super::theme::TEXT))
-                            .wrap(),
-                    );
+                    add_comment_body(ui, &row.comment);
                     name
                 })
                 .inner;
@@ -70,10 +61,107 @@ fn add_comment_row(ui: &mut Ui, row: &SteamProfileComment) {
     });
 }
 
+fn is_text_art(text: &str) -> bool {
+    text.lines().count() >= 3
+        && text
+            .chars()
+            .filter(|c| matches!(c, '\u{2500}'..='\u{259f}' | '\u{2800}'..='\u{28ff}'))
+            .take(8)
+            .count()
+            >= 8
+}
+
+fn add_comment_body(ui: &mut Ui, text: &str) {
+    if !is_text_art(text) {
+        ui.add(egui::Label::new(RichText::new(text).color(super::theme::TEXT)).wrap());
+        return;
+    }
+
+    // Drawings depend on their original rows and spacing. Fit the entire drawing
+    // to the text column rather than wrapping it or introducing another scroll area.
+    let width = ui.available_width().max(1.0);
+    let mut size = egui::TextStyle::Monospace.resolve(ui.style()).size;
+    let mut galley = ui.painter().layout_no_wrap(
+        text.into(),
+        egui::FontId::monospace(size),
+        super::theme::TEXT,
+    );
+    for _ in 0..3 {
+        if galley.size().x <= width {
+            break;
+        }
+        size *= width / galley.size().x * 0.98;
+        galley = ui.painter().layout_no_wrap(
+            text.into(),
+            egui::FontId::monospace(size),
+            super::theme::TEXT,
+        );
+    }
+    ui.add(egui::Label::new(galley).extend());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::steamid::SteamID;
+
+    #[test]
+    fn unicode_drawing_keeps_its_rows_and_fits_narrow_and_wide_panels() {
+        let drawing = include_str!("testdata/new_year_comment.txt");
+        assert!(is_text_art(drawing));
+        assert!(!is_text_art("Hello!\nNice game.\nSee you soon."));
+        for width in [220.0, 300.0, 700.0] {
+            let ctx = egui::Context::default();
+            super::super::theme::install(&ctx);
+            let output = super::super::tests::run_ui(
+                &ctx,
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(width, 800.0),
+                    )),
+                    ..Default::default()
+                },
+                |root| {
+                    egui::CentralPanel::default().show(root, |ui| {
+                        add_comment_row(
+                            ui,
+                            &SteamProfileComment {
+                                name: "Artist".into(),
+                                avatar_thumb: String::new(),
+                                steamid: SteamID::from_u64(1),
+                                comment: drawing.into(),
+                            },
+                        );
+                        ui.label("Next comment");
+                    });
+                },
+            );
+            let texts: Vec<_> = output
+                .shapes
+                .iter()
+                .filter_map(|shape| match &shape.shape {
+                    egui::Shape::Text(text) => Some(text),
+                    _ => None,
+                })
+                .collect();
+            let art = texts
+                .iter()
+                .find(|text| text.galley.text() == drawing)
+                .unwrap();
+            assert_eq!(art.galley.rows.len(), drawing.lines().count());
+            assert_eq!(
+                art.galley.job.sections[0].format.font_id.family,
+                egui::FontFamily::Monospace
+            );
+            assert!(art.pos.x + art.galley.size().x <= width - 8.0);
+            let next = texts
+                .iter()
+                .find(|text| text.galley.text() == "Next comment")
+                .unwrap();
+            assert!(next.pos.y >= art.pos.y + art.galley.size().y);
+        }
+    }
 
     #[test]
     fn comments_wrap_below_author_and_before_next_entry() {

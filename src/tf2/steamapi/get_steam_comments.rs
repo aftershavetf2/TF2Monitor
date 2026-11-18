@@ -60,7 +60,7 @@ fn parse_comments(html: &str) -> Vec<SteamProfileComment> {
             .trim()
             .to_string();
         let avatar_thumb = comment
-            .select(&scraper::Selector::parse(".commentthread_comment_avatar img").unwrap())
+            .select(&scraper::Selector::parse(".commentthread_comment_avatar a img").unwrap())
             .next()
             .and_then(|image| image.value().attr("src"))
             .map(|url| {
@@ -161,7 +161,10 @@ mod tests {
         let comments = parse_comments(
             r#"
             <div class="commentthread_comment">
-                <div class="commentthread_comment_avatar"><a><img src="//avatars.steamstatic.com/example.jpg"></a></div>
+                <div class="commentthread_comment_avatar">
+                    <div class="profile_avatar_frame"><picture><img src="https://example.com/frame.png"></picture></div>
+                    <a><img src="//avatars.steamstatic.com/example.jpg"></a>
+                </div>
                 <a class="commentthread_author_link" data-miniprofile="123">Example Player</a>
                 <div class="commentthread_comment_text">Hello &amp; welcome!</div>
             </div>
