@@ -12,6 +12,8 @@ const CARD_SIZE: Vec2 = vec2(280.0, 54.0);
 // Bound the extra work in exceptionally dense friendship graphs. The cursor
 // rotates through candidates so every connection is still considered over time.
 const AVOIDANCE_BUDGET: usize = 8192;
+const NODE_REPULSION_RANGE: f32 = 160.0;
+const NODE_REPULSION_STRENGTH: f32 = 600.0;
 
 struct Node {
     steamid: SteamID,
@@ -161,6 +163,19 @@ impl OverviewState {
                     delta / distance
                 };
                 let mut force = direction * (1_500_000.0 / distance.powi(2)).min(1800.0);
+                // Extra repulsion independent of springs. Measure from card
+                // edges so wide cards also have breathing room. Fade to zero
+                // smoothly instead of pushing distant groups further apart.
+                let gap = (delta.abs() - self.card_size).max(Vec2::ZERO);
+                let strength = (1.0 - gap.length() / NODE_REPULSION_RANGE)
+                    .clamp(0.0, 1.0)
+                    .powi(2);
+                let outward = if gap.length_sq() > 0.01 {
+                    vec2(gap.x * delta.x.signum(), gap.y * delta.y.signum()).normalized()
+                } else {
+                    direction
+                };
+                force += outward * NODE_REPULSION_STRENGTH * strength;
                 // Keep the rectangular player cards apart, even in dense groups.
                 let overlap = self.card_size + Vec2::splat(22.0) - delta.abs();
                 if overlap.x > 0.0 && overlap.y > 0.0 {
@@ -922,6 +937,60 @@ mod tests {
             edges,
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn unconnected_nodes_repel_without_springs_and_leave_space_between_card_edges() {
+        for width in [CARD_SIZE.x, CARD_SIZE.x + 200.0] {
+            let positions = [
+                egui::pos2(-(width + 51.0) / 2.0, 0.0),
+                egui::pos2((width + 51.0) / 2.0, 0.0),
+            ];
+            let mut isolated = positioned_graph(&positions, vec![]);
+            let mut friends = positioned_graph(&positions, vec![(0, 1)]);
+            isolated.card_size.x = width;
+            friends.card_size.x = width;
+            isolated.step(1.0 / 60.0, None);
+            friends.step(1.0 / 60.0, None);
+            assert!(isolated.nodes[1].velocity.x > 0.0);
+            assert!(isolated.nodes[0].velocity.x < 0.0);
+            assert!((isolated.nodes[0].velocity + isolated.nodes[1].velocity).length() < 0.001);
+            for _ in 0..1200 {
+                isolated.step(1.0 / 60.0, None);
+                friends.step(1.0 / 60.0, None);
+            }
+            let isolated_gap = isolated.nodes[1].position.x - isolated.nodes[0].position.x - width;
+            let friends_gap = friends.nodes[1].position.x - friends.nodes[0].position.x - width;
+            assert!(isolated_gap > 100.0, "width={width}, gap={isolated_gap}");
+            assert!(isolated_gap > friends_gap + 25.0);
+        }
+    }
+
+    #[test]
+    fn disjoint_friend_groups_keep_a_visible_gap() {
+        let mut state = positioned_graph(
+            &[
+                egui::pos2(-170.0, -45.0),
+                egui::pos2(170.0, -45.0),
+                egui::pos2(-170.0, 45.0),
+                egui::pos2(170.0, 45.0),
+            ],
+            vec![(0, 1), (2, 3)],
+        );
+        for _ in 0..1800 {
+            state.step(1.0 / 60.0, None);
+        }
+        let bounds = |a: usize, b: usize| {
+            Rect::from_center_size(state.nodes[a].position, state.card_size).union(
+                Rect::from_center_size(state.nodes[b].position, state.card_size),
+            )
+        };
+        let first = bounds(0, 1);
+        let second = bounds(2, 3);
+        assert!(
+            !first.expand(30.0).intersects(second.expand(30.0)),
+            "Friend groups should stay visibly separated: {first:?}, {second:?}"
+        );
     }
 
     #[test]
