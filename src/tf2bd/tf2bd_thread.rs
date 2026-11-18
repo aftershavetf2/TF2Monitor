@@ -6,7 +6,7 @@ use crate::db::connection::DbPool;
 use crate::{
     appbus::{AppBus, AppEventMsg},
     models::{app_settings::AppSettings, steamid::SteamID},
-    tf2::lobby::{Lobby, Player, Team},
+    tf2::lobby::{Lobby, Player, Team, player_attribute_description},
 };
 use bus::BusReader;
 use std::{
@@ -269,19 +269,22 @@ impl Tf2bdThread {
                 None
             };
 
-            let source_titles = if let Some(matches) = &matches
+            let source_matches = if let Some(matches) = &matches
                 && !self.tf2bd_notifications_sent.contains(&player.steamid)
             {
-                let titles: Vec<_> = matches.titles_for(player.steamid).collect();
-                if !titles.is_empty() {
+                let sources: Vec<_> = matches
+                    .sources_for(player.steamid)
+                    .map(|(title, _, attributes)| (title, attributes))
+                    .collect();
+                if !sources.is_empty() {
                     self.tf2bd_notifications_sent.insert(player.steamid);
                 }
-                titles
+                sources
             } else {
                 Vec::new()
             };
 
-            if let Some(command) = party_notification(&player.name, local_flags, &source_titles) {
+            if let Some(command) = party_notification(&player.name, local_flags, &source_matches) {
                 self.bus.lock().unwrap().send_rcon_cmd(&command);
             }
         }
@@ -291,17 +294,30 @@ impl Tf2bdThread {
 fn party_notification(
     player_name: &str,
     local_flags: Option<&[PlayerAttribute]>,
-    source_titles: &[&str],
+    source_matches: &[(&str, Vec<PlayerAttribute>)],
 ) -> Option<String> {
-    if local_flags.is_none() && source_titles.is_empty() {
+    if local_flags.is_none() && source_matches.is_empty() {
         return None;
     }
     let mut message = format!("Player {player_name}");
-    if !source_titles.is_empty() {
-        message.push_str(&format!(" matched TF2BD: {}", source_titles.join(", ")));
+    if !source_matches.is_empty() {
+        let sources = source_matches
+            .iter()
+            .map(|(title, attributes)| {
+                let title = title_without_date(title);
+                let labels = attributes
+                    .iter()
+                    .map(|&attribute| player_attribute_description(attribute).1)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{title} ({labels})")
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        message.push_str(&format!(" matched TF2BD: {sources}"));
     }
     if let Some(flags) = local_flags {
-        if !source_titles.is_empty() {
+        if !source_matches.is_empty() {
             message.push_str(" and");
         }
         message.push_str(&format!(" is marked as {flags:?}"));
@@ -315,19 +331,51 @@ fn party_notification(
     Some(format!("say_party \"{message}\""))
 }
 
+fn title_without_date(title: &str) -> &str {
+    if let Some((name, suffix)) = title.rsplit_once(" - ") {
+        let suffix = suffix.trim();
+        if chrono::NaiveDate::parse_from_str(suffix, "%Y-%m-%d").is_ok()
+            || chrono::NaiveDateTime::parse_from_str(suffix, "%Y-%m-%d %H:%M:%S%.f").is_ok()
+            || chrono::DateTime::parse_from_rfc3339(suffix).is_ok()
+        {
+            return name;
+        }
+    }
+    title
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn party_notifications_include_tf2bd_list_names() {
+    fn party_notifications_include_matching_attributes_per_list_without_timestamp_suffixes() {
+        use PlayerAttribute::{Bot, Cheater, Suspicious};
+
         assert_eq!(
-            party_notification("Example", None, &["List A", "List B"]).as_deref(),
-            Some(r#"say_party "Player Example matched TF2BD: List A, List B""#),
+            party_notification(
+                "Example",
+                None,
+                &[
+                    ("List A - 2026-11-18 11:28:14", vec![Cheater, Suspicious]),
+                    ("List B - EU", vec![Bot]),
+                ],
+            )
+            .as_deref(),
+            Some(
+                r#"say_party "Player Example matched TF2BD: List A (Cheater, Suspicious), List B - EU (Bot)""#
+            ),
         );
         assert_eq!(
-            party_notification("Example", Some(&[PlayerAttribute::Bot]), &["List A"]).as_deref(),
-            Some(r#"say_party "Player Example matched TF2BD: List A and is marked as [Bot]""#),
+            party_notification(
+                "Example",
+                Some(&[Bot]),
+                &[("List A - 2026-11-18", vec![Cheater])]
+            )
+            .as_deref(),
+            Some(
+                r#"say_party "Player Example matched TF2BD: List A (Cheater) and is marked as [Bot]""#
+            ),
         );
         assert_eq!(party_notification("Example", None, &[]), None);
     }
@@ -335,8 +383,13 @@ mod tests {
     #[test]
     fn party_notification_keeps_untrusted_names_inside_the_chat_message() {
         assert_eq!(
-            party_notification("Example\";\n", None, &["List\\A\r"]).as_deref(),
-            Some(r#"say_party "Player Example    matched TF2BD: List A ""#),
+            party_notification(
+                "Example\";\n",
+                None,
+                &[("List\\A\r", vec![PlayerAttribute::Bot])]
+            )
+            .as_deref(),
+            Some(r#"say_party "Player Example    matched TF2BD: List A  (Bot)""#),
         );
     }
 }

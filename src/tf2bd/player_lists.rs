@@ -209,20 +209,47 @@ pub struct ImportProgress {
     pub errors: Vec<String>,
 }
 
+struct MatchedSource {
+    index: usize,
+    attributes: u8,
+}
+
 #[derive(Default)]
 pub struct ListMatches {
-    by_player: HashMap<SteamID, Vec<usize>>,
-    titles: Vec<String>,
+    by_player: HashMap<SteamID, Vec<MatchedSource>>,
+    sources: Vec<(String, String)>,
 }
 
 impl ListMatches {
-    pub fn titles_for(&self, steamid: SteamID) -> impl Iterator<Item = &str> {
+    pub fn sources_for(
+        &self,
+        steamid: SteamID,
+    ) -> impl Iterator<Item = (&str, &str, Vec<PlayerAttribute>)> {
         self.by_player
             .get(&steamid)
             .into_iter()
             .flatten()
-            .map(|&index| self.titles[index].as_str())
+            .map(|matched| {
+                let (title, url) = &self.sources[matched.index];
+                let attributes = ATTRIBUTES
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, &attribute)| {
+                        (matched.attributes & (1 << index) != 0).then_some(attribute)
+                    })
+                    .collect();
+                (title.as_str(), url.as_str(), attributes)
+            })
     }
+}
+
+fn attribute_mask(attributes: &[PlayerAttribute]) -> u8 {
+    ATTRIBUTES
+        .iter()
+        .enumerate()
+        .fold(0, |mask, (index, attribute)| {
+            mask | (u8::from(attributes.contains(attribute)) << index)
+        })
 }
 
 #[derive(Clone, Default)]
@@ -402,18 +429,24 @@ impl PlayerLists {
     fn rebuild_matches(&mut self) {
         let mut matches = ListMatches {
             by_player: HashMap::new(),
-            titles: self.summaries().map(|list| list.title.to_owned()).collect(),
+            sources: self
+                .summaries()
+                .map(|list| (list.title.to_owned(), list.url.to_owned()))
+                .collect(),
         };
+        let filters = attribute_mask(&self.settings.filters);
         for (index, (source, cached)) in self.settings.sources.iter().zip(&self.lists).enumerate() {
             if source.enabled
                 && let Some(list) = &cached.data
             {
                 for (&steamid, attributes) in &list.players {
-                    if attributes
-                        .iter()
-                        .any(|attr| self.settings.filters.contains(attr))
-                    {
-                        matches.by_player.entry(steamid).or_default().push(index);
+                    let attributes = attribute_mask(attributes) & filters;
+                    if attributes != 0 {
+                        matches
+                            .by_player
+                            .entry(steamid)
+                            .or_default()
+                            .push(MatchedSource { index, attributes });
                     }
                 }
             }
@@ -430,24 +463,7 @@ impl PlayerLists {
         &self,
         steamid: SteamID,
     ) -> impl Iterator<Item = (&str, &str, Vec<PlayerAttribute>)> {
-        self.matches
-            .by_player
-            .get(&steamid)
-            .into_iter()
-            .flatten()
-            .map(move |&index| {
-                let source = &self.settings.sources[index];
-                let data = self.lists[index].data.as_ref().unwrap();
-                let title = self.matches.titles[index].as_str();
-                let attributes = self
-                    .settings
-                    .filters
-                    .iter()
-                    .copied()
-                    .filter(|attr| data.players[&steamid].contains(attr))
-                    .collect();
-                (title, source.url.as_str(), attributes)
-            })
+        self.matches.sources_for(steamid)
     }
 
     pub fn busy(&self) -> bool {
@@ -890,8 +906,11 @@ mod tests {
         assert!(!lists.has_match(SteamID::from_u64(MIN_STEAMID64 + 43)));
         let shared = lists.shared_matches.clone();
         assert_eq!(
-            shared.snapshot().titles_for(player).collect::<Vec<_>>(),
-            ["List A", "List B"],
+            shared.snapshot().sources_for(player).collect::<Vec<_>>(),
+            [
+                ("List A", a, vec![PlayerAttribute::Cheater]),
+                ("List B", b, vec![PlayerAttribute::Bot]),
+            ],
         );
 
         lists
@@ -899,8 +918,8 @@ mod tests {
             .unwrap();
         lists.set_enabled(1, false).unwrap();
         assert_eq!(
-            shared.snapshot().titles_for(player).collect::<Vec<_>>(),
-            ["List A"],
+            shared.snapshot().sources_for(player).collect::<Vec<_>>(),
+            [("List A", a, vec![PlayerAttribute::Suspicious])],
         );
         let mut lists = directory.open();
         assert_eq!(
