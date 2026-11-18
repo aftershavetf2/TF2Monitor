@@ -8,12 +8,14 @@ use crate::tf2::steamapi::SteamApiMsg;
 use crate::tf2bd::Tf2bdMsg;
 use crate::{
     appbus::{AppBus, AppEventMsg},
-    models::{app_settings::AppSettings, steamid::SteamID},
+    db::{connection::DbPool, queries},
+    models::{app_settings::AppSettings, player_profile::ProfileEvent, steamid::SteamID},
     tf2::logfile::LogLine,
 };
 use bus::BusReader;
 use chrono::prelude::*;
-use std::collections::HashSet;
+use diesel::Connection;
+use std::collections::{HashMap, HashSet};
 use std::{
     sync::{Arc, Mutex},
     thread::{self, sleep},
@@ -30,20 +32,27 @@ pub struct LobbyThread {
     g15_bus_rx: BusReader<G15DumpPlayerOutput>,
     app_event_bus_rx: BusReader<AppEventMsg>,
     shared_lobby: SharedLobby,
+    bus: Arc<Mutex<AppBus>>,
+    db: DbPool,
+    saved_server_names: HashMap<SteamID, String>,
 
     text_translator: GoogleTranslator,
     translate_chat_enabled: bool,
 }
 
 /// Start the background thread for the lobby module
-pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
-    let mut lobby_thread = LobbyThread::new(settings, bus);
+pub fn start(
+    settings: &AppSettings,
+    bus: &Arc<Mutex<AppBus>>,
+    db: &DbPool,
+) -> thread::JoinHandle<()> {
+    let mut lobby_thread = LobbyThread::new(settings, bus, db);
 
     thread::spawn(move || lobby_thread.run())
 }
 
 impl LobbyThread {
-    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+    pub fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>, db: &DbPool) -> Self {
         let logfile_bus_rx = bus.lock().unwrap().logfile_bus.add_rx();
         let steamapi_bus_rx = bus.lock().unwrap().steamapi_bus.add_rx();
         let tf2bd_bus_rx = bus.lock().unwrap().tf2bd_bus.add_rx();
@@ -60,6 +69,9 @@ impl LobbyThread {
             g15_bus_rx,
             app_event_bus_rx,
             shared_lobby,
+            bus: Arc::clone(bus),
+            db: db.clone(),
+            saved_server_names: HashMap::new(),
 
             text_translator: google_translator,
             translate_chat_enabled: settings.translate_chat,
@@ -144,6 +156,52 @@ impl LobbyThread {
         lobby.recently_left_players.append(&mut players_to_move);
 
         self.shared_lobby.set(lobby);
+        self.saved_server_names
+            .retain(|id, _| g15_steamids.contains(id));
+        if let Err(error) = self.persist_server_names(&g15_dump.players) {
+            log::warn!("Failed to save lobby player names: {error}");
+        }
+    }
+
+    fn persist_server_names(
+        &mut self,
+        players: &[G15PlayerData],
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let names: Vec<_> = players
+            .iter()
+            .filter(|player| {
+                player.steamid.is_valid()
+                    && !player.name.trim().is_empty()
+                    && self.saved_server_names.get(&player.steamid) != Some(&player.name)
+            })
+            .collect();
+        if names.is_empty() {
+            return Ok(());
+        }
+
+        let mut conn = self.db.get()?;
+        let changed = conn.transaction::<_, diesel::result::Error, _>(|conn| {
+            let mut changed = Vec::new();
+            for player in &names {
+                if queries::upsert_server_name(conn, player.steamid.to_u64() as i64, &player.name)?
+                    > 0
+                {
+                    changed.push(player.steamid);
+                }
+            }
+            Ok(changed)
+        })?;
+        for player in names {
+            self.saved_server_names
+                .insert(player.steamid, player.name.clone());
+        }
+        if !changed.is_empty() {
+            let mut bus = self.bus.lock().unwrap();
+            for id in changed {
+                bus.profile_events.broadcast(ProfileEvent::Changed(id));
+            }
+        }
+        Ok(())
     }
 
     fn merge_player_g15_data(lobby_player: &mut Player, player: &G15PlayerData) {
@@ -464,7 +522,8 @@ mod tests {
     fn new_lobbies_have_distinct_sessions_even_on_the_same_day() {
         let settings = AppSettings::default();
         let bus = Arc::new(Mutex::new(AppBus::new(settings.self_steamid64)));
-        let mut worker = LobbyThread::new(&settings, &bus);
+        let app = crate::models::player_profile::test_app();
+        let mut worker = LobbyThread::new(&settings, &bus, &app.db);
         let initial = worker.shared_lobby.get();
         worker.new_lobby();
         let first = worker.shared_lobby.get();
@@ -474,6 +533,72 @@ mod tests {
         assert!(first.session_id < second.session_id);
         assert_ne!(initial.lobby_id, first.lobby_id);
         assert_ne!(first.lobby_id, second.lobby_id);
+    }
+
+    #[test]
+    fn server_name_updates_the_cached_profile_and_survives_steam_refresh() {
+        use crate::{
+            db::entities::NewAccount,
+            models::{player_profile::test_app, steamid::MIN_STEAMID64},
+        };
+
+        let mut app = test_app();
+        let mut worker = LobbyThread::new(&app.app_settings, &app.bus, &app.db);
+        let steamid = SteamID::from_u64(MIN_STEAMID64 + 7);
+        let dump = |name: &str| G15DumpPlayerOutput {
+            players: vec![G15PlayerData {
+                steamid,
+                name: name.into(),
+                ..Default::default()
+            }],
+        };
+        let refresh_steam_profile = || {
+            queries::upsert_account(
+                &mut app.db.get().unwrap(),
+                NewAccount {
+                    steam_id: steamid.to_u64() as i64,
+                    name: "Steam profile name".into(),
+                    avatar_thumb_url: "thumb".into(),
+                    avatar_full_url: "full".into(),
+                    public_profile: true,
+                    last_updated: 1,
+                    created_date: None,
+                    friends_fetched: None,
+                    comments_fetched: None,
+                    playtimes_fetched: None,
+                    steam_bans_last_fetched: None,
+                },
+            )
+            .unwrap();
+        };
+        refresh_steam_profile();
+        assert_eq!(
+            app.player_profile(steamid).unwrap().name,
+            "Steam profile name"
+        );
+
+        worker.process_g15_dump(dump("First server name"));
+        worker.process_g15_dump(dump("Renamed in server"));
+        worker.process_g15_dump(dump(""));
+        worker.process_g15_dump(G15DumpPlayerOutput::default());
+        refresh_steam_profile();
+        app.get_latest_lobby();
+
+        let profile = app.player_profile(steamid).unwrap();
+        assert_eq!(profile.name, "Renamed in server");
+        assert_eq!(profile.steam_info.unwrap().avatar_thumb, "thumb");
+
+        let new_id = SteamID::from_u64(MIN_STEAMID64 + 8);
+        worker.process_g15_dump(G15DumpPlayerOutput {
+            players: vec![G15PlayerData {
+                steamid: new_id,
+                name: "New player".into(),
+                ..Default::default()
+            }],
+        });
+        let profile = app.player_profile(new_id).unwrap();
+        assert_eq!(profile.name, "New player");
+        assert!(profile.steam_info.is_none());
     }
 
     #[test]
@@ -492,7 +617,8 @@ mod tests {
         let saved = serde_json::to_string(&settings).unwrap();
         let mut settings: AppSettings = serde_json::from_str(&saved).unwrap();
         let bus = Arc::new(Mutex::new(AppBus::new(settings.self_steamid64)));
-        let mut lobby_thread = LobbyThread::new(&settings, &bus);
+        let app = crate::models::player_profile::test_app();
+        let mut lobby_thread = LobbyThread::new(&settings, &bus, &app.db);
         assert!(lobby_thread.translate_chat_enabled);
 
         for enabled in [false, true, false] {

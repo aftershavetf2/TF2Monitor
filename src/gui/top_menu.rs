@@ -184,6 +184,11 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             });
             ui.separator();
 
+            if menu_item::command(ui, "TF2BD Player Lists").clicked() {
+                app_win.tf2bd_lists_window.open = true;
+                ui.close();
+            }
+
             if menu_item::command(ui, "DB Statistics").clicked() {
                 app_win.db_statistics_window_open = true;
                 ui.close();

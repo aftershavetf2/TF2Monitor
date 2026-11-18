@@ -1,7 +1,8 @@
 use super::colors::color_for_flag;
 use crate::{
     tf2::lobby::{Player, player_attribute_description},
-    tf2bd::models::PlayerAttribute,
+    models::steamid::SteamID,
+    tf2bd::{models::PlayerAttribute, player_lists::PlayerLists},
 };
 use eframe::egui::{self, Color32, FontId, Response, Sense, TextStyle, Ui};
 
@@ -41,10 +42,39 @@ pub(super) fn add_sourceban_row(
     ui.add(egui::Label::new(text).wrap());
 }
 
-pub fn add_reputation(ui: &mut Ui, player: &Player) {
+pub fn add_reputation(ui: &mut Ui, player: &Player, lists: &PlayerLists) {
     add_steam_ban_badges(ui, player);
     add_flags(ui, player);
     add_sourceban_badge(ui, player);
+    add_tf2bd_badge(ui, player.steamid, lists);
+}
+
+pub fn add_tf2bd_badge(ui: &mut Ui, steamid: SteamID, lists: &PlayerLists) {
+    if lists.has_match(steamid) {
+        colored_box(
+            ui,
+            "TF2BD",
+            Color32::WHITE,
+            Color32::from_rgb(82, 60, 122),
+            FontId::proportional(BADGE_FONT_SIZE),
+        )
+        .on_hover_ui(|ui| add_tf2bd_sources(ui, steamid, lists));
+    }
+}
+
+pub fn add_tf2bd_sources(ui: &mut Ui, steamid: SteamID, lists: &PlayerLists) {
+    ui.set_max_width(420.0);
+    for (title, url, attributes) in lists.sources_for(steamid) {
+        let attributes = attributes
+            .into_iter()
+            .map(|attribute| player_attribute_description(attribute).1)
+            .collect::<Vec<_>>()
+            .join(", ");
+        ui.label(format!("{title}: {attributes}"));
+        // if ui.link(format!("{title}: {attributes}")).clicked() {
+        //     ui.ctx().open_url(egui::OpenUrl::new_tab(url.to_string()));
+        // }
+    }
 }
 
 pub(super) fn add_sourceban_badge(ui: &mut Ui, player: &Player) {

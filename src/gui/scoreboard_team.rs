@@ -117,7 +117,7 @@ pub fn scoreboard_team(
                 let info_width = (team_right - ui.cursor().left()).max(0.0);
                 wrapped_cell(ui, info_width, |ui| {
                     header_label(ui, &mut headings, "Info")
-                        .on_hover_text("Last weapon used, reputation (SourceBans) and flags");
+                        .on_hover_text("Last weapon used, bans, flags, and TF2BD list matches");
                 });
 
                 end_padded_row(
@@ -255,7 +255,7 @@ pub fn scoreboard_team(
                                     show_empty_value(ui);
                                 }
                             }
-                            add_reputation(ui, player);
+                            add_reputation(ui, player, &app_win.tf2bd_lists);
                         });
                     });
 
@@ -378,7 +378,7 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                     let response =
                         super::theme::image(ui, eframe::egui::Image::new(&steam_info.avatar_thumb))
                             .on_hover_cursor(CursorIcon::Help)
-                            .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
+                            .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player, &app_win.tf2bd_lists));
 
                     if response.clicked() {
                         app_win.set_selected_player(player.steamid);
@@ -400,7 +400,7 @@ fn add_player_name(app_win: &mut AppWin, ui: &mut Ui, player: &Player) {
                 let response = ui
                     .colored_label(name_color, player.name.clone())
                     .on_hover_cursor(CursorIcon::Default)
-                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
+                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player, &app_win.tf2bd_lists));
 
                 if response.clicked() {
                     app_win.set_selected_player(player.steamid);

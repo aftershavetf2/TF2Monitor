@@ -1,6 +1,6 @@
 use super::{
     colors::{CHAT_BLU_COLOR, CHAT_RED_COLOR},
-    markings::add_flags,
+    markings::{add_flags, add_tf2bd_badge},
 };
 use crate::{
     models::AppWin,
@@ -43,6 +43,8 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
 
             add_flags(ui, player);
         }
+
+        add_tf2bd_badge(ui, chat_row.steamid, &app_win.tf2bd_lists);
 
         let color = match team {
             Team::Blue => CHAT_BLU_COLOR,

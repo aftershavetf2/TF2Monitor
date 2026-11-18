@@ -51,6 +51,9 @@ pub struct AppWin {
     pub player_database_search: String,
     pub player_database_page: usize,
 
+    pub tf2bd_lists: crate::tf2bd::player_lists::PlayerLists,
+    pub tf2bd_lists_window: crate::gui::tf2bd_lists_window::ListsWindow,
+
     // Database connection pool
     pub db: Arc<DbPool>,
 }
@@ -103,6 +106,8 @@ impl AppWin {
             player_database_filters: HashSet::from([PlayerAttribute::Cheater]),
             player_database_search: String::new(),
             player_database_page: 0,
+            tf2bd_lists: Default::default(),
+            tf2bd_lists_window: Default::default(),
             db,
         }
     }

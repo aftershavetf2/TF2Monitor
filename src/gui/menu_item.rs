@@ -1,5 +1,5 @@
 //! Full-row menu targets with a shared icon gutter and shortcut column.
-use eframe::egui::{self, Color32, Response, Sense, Stroke, StrokeKind, Ui};
+use eframe::egui::{self, Color32, Response, Sense, StrokeKind, Ui};
 
 fn row(ui: &mut Ui, label: &str, selected: Option<bool>, keys: &[&str]) -> Response {
     let text = ui.painter().layout_no_wrap(
@@ -29,25 +29,27 @@ fn row(ui: &mut Ui, label: &str, selected: Option<bool>, keys: &[&str]) -> Respo
     };
     let icon = egui::Rect::from_center_size(
         egui::pos2(rect.left() + 17.0, rect.center().y),
-        egui::vec2(14.0, 14.0),
+        egui::Vec2::splat(super::theme::CHECKBOX_SIZE),
     );
     if let Some(checked) = selected {
+        let frame = super::theme::checkbox_frame(color);
         ui.painter().rect(
             icon,
-            2.0,
-            super::theme::CONTROL,
-            Stroke::new(1.0_f32, color),
+            frame.corner_radius,
+            frame.fill,
+            frame.stroke,
             StrokeKind::Inside,
         );
         if checked {
-            let check = icon.shrink(3.0);
+            let check =
+                icon.shrink((super::theme::CHECKBOX_SIZE - super::theme::CHECKMARK_SIZE) / 2.0);
             ui.painter().add(egui::Shape::line(
                 vec![
                     check.left_center(),
                     check.center_bottom(),
                     check.right_top(),
                 ],
-                Stroke::new(1.5_f32, Color32::WHITE),
+                super::theme::CHECKMARK_STROKE,
             ));
         }
     }

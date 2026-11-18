@@ -1,3 +1,4 @@
+use super::theme;
 use crate::{
     db::{
         entities::{Account, PlayerFlag},
@@ -97,10 +98,7 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
     ui.horizontal_wrapped(|ui| {
         for player_attribute in PLAYER_DATABASE_FILTERS {
             let mut enabled = app_win.player_database_filters.contains(&player_attribute);
-            if ui
-                .checkbox(&mut enabled, format!("{:?}", player_attribute))
-                .changed()
-            {
+            if theme::flag_checkbox(ui, &mut enabled, player_attribute).changed() {
                 app_win.player_database_page = 0;
                 if enabled {
                     app_win.player_database_filters.insert(player_attribute);
@@ -205,7 +203,10 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
                             app_win.open_player_details_window(steamid);
                         }
 
-                        ui.label(format_flags(flags_by_steamid.get(&account.steam_id)));
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(format_flags(flags_by_steamid.get(&account.steam_id)));
+                            super::markings::add_tf2bd_badge(ui, steamid, &app_win.tf2bd_lists);
+                        });
                         ui.end_row();
                     }
                 });

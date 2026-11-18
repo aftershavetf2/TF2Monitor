@@ -13,6 +13,7 @@ diesel::table! {
         comments_fetched -> Nullable<BigInt>,
         playtimes_fetched -> Nullable<BigInt>,
         steam_bans_last_fetched -> Nullable<BigInt>,
+        name_from_server -> Bool,
     }
 }
 

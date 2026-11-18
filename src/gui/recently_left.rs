@@ -20,12 +20,12 @@ pub fn add_recently_left_players(app_win: &mut AppWin, ui: &mut Ui) {
             // ui.horizontal_wrapped(|ui| {
             if let Some(steam_info) = &player.steam_info {
                 super::theme::image(ui, eframe::egui::Image::new(&steam_info.avatar_thumb))
-                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player));
+                    .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player, &app_win.tf2bd_lists));
             }
 
             if ui
                 .label(player.name.as_str())
-                .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player))
+                .on_hover_ui_at_pointer(|ui| add_player_tooltip(ui, player, &app_win.tf2bd_lists))
                 .clicked()
             {
                 app_win.set_selected_player(player.steamid);

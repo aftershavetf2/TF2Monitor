@@ -10,7 +10,7 @@ pub struct Account {
     /// SteamID64 of account (Primary Key)
     pub steam_id: i64,
 
-    /// Account name (max 32 visible characters, UTF-8)
+    /// Last observed server name, or the Steam profile name before the first observation.
     pub name: String,
 
     /// UnixTime when account was created, approximated if private (nullable)
@@ -39,6 +39,8 @@ pub struct Account {
 
     /// UnixTime when steam bans (VAC/Game bans) was last fetched (nullable)
     pub steam_bans_last_fetched: Option<i64>,
+
+    pub name_from_server: bool,
 }
 
 #[derive(Clone, Debug, Insertable, AsChangeset)]

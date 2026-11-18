@@ -387,6 +387,57 @@ fn menu_rows_share_text_column_and_checkbox_has_one_click_target() {
 }
 
 #[test]
+fn native_and_menu_checkboxes_share_the_theme_frame() {
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let output = run_ui(&ctx, input(vec![], 1.0, false, false), |root_ui| {
+        egui::CentralPanel::default().show(root_ui, |ui| {
+            ui.checkbox(&mut true, "Dialog checkbox");
+            menu_item::checkbox(ui, &mut true, "Menu checkbox");
+        });
+    });
+    let frames: Vec<_> = output
+        .shapes
+        .iter()
+        .filter_map(|shape| match &shape.shape {
+            egui::Shape::Rect(rect) if rect.rect.size() == egui::Vec2::splat(theme::CHECKBOX_SIZE) => {
+                Some((rect.fill, rect.stroke, rect.corner_radius))
+            }
+            _ => None,
+        })
+        .collect();
+    let frame = theme::checkbox_frame(egui::Color32::WHITE);
+    assert_eq!(frames, [(frame.fill, frame.stroke, frame.corner_radius); 2]);
+}
+
+#[test]
+fn flag_checkboxes_keep_their_attribute_colors() {
+    use crate::tf2bd::models::PlayerAttribute::{Bot, Cheater};
+
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let output = run_ui(&ctx, input(vec![], 1.0, false, false), |root_ui| {
+        egui::CentralPanel::default().show(root_ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                theme::flag_checkbox(ui, &mut true, Cheater);
+                theme::flag_checkbox(ui, &mut false, Bot);
+            });
+        });
+    });
+    let colors: Vec<_> = output
+        .shapes
+        .iter()
+        .filter_map(|shape| match &shape.shape {
+            egui::Shape::Rect(rect) if rect.rect.size() == egui::Vec2::splat(18.0) => {
+                Some((rect.stroke.color, rect.fill))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(colors, [Cheater, Bot].map(super::colors::color_for_flag));
+}
+
+#[test]
 fn shortcut_commands_respect_editor_and_modal_focus() {
     for (editor, modal) in [(false, false), (true, false), (false, true)] {
         let ctx = egui::Context::default();

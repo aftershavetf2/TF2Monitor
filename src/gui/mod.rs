@@ -24,6 +24,7 @@ pub mod settings_window;
 pub mod shortcut;
 pub mod tabs;
 pub mod theme;
+pub mod tf2bd_lists_window;
 pub mod title_bar;
 pub mod top_menu;
 pub mod ui_utils;
@@ -65,7 +66,8 @@ pub fn run(
         ..Default::default()
     };
 
-    let app_data = AppWin::new(settings, bus, db);
+    let mut app_data = AppWin::new(settings, bus, db);
+    app_data.tf2bd_lists = crate::tf2bd::player_lists::PlayerLists::load();
 
     eframe::run_native(
         "TF2 Monitor",
@@ -84,6 +86,7 @@ impl eframe::App for AppWin {
     fn ui(&mut self, root_ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = &root_ui.ctx().clone();
         self.get_latest_lobby();
+        self.tf2bd_lists.poll();
 
         self.friendship_positions.clear();
 
@@ -125,6 +128,7 @@ impl eframe::App for AppWin {
 
         // Show player database window if open
         show_player_database_window(self, ctx);
+        tf2bd_lists_window::show(self, ctx);
 
         // Show separate player detail windows
         show_player_details_windows(self, ctx);

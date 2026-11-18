@@ -191,6 +191,25 @@ pub(crate) fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn st
         .execute(conn)
         .ok(); // Ignore error if column already exists
 
+    conn.immediate_transaction(|conn| {
+        use diesel::{
+            dsl::{select, sql},
+            sql_types::Bool,
+        };
+
+        let exists = select(sql::<Bool>(
+            "EXISTS(SELECT 1 FROM pragma_table_info('account') WHERE name = 'name_from_server')",
+        ))
+        .get_result::<bool>(conn)?;
+        if !exists {
+            diesel::sql_query(
+                "ALTER TABLE account ADD COLUMN name_from_server INTEGER NOT NULL DEFAULT 0",
+            )
+            .execute(conn)?;
+        }
+        Ok::<(), diesel::result::Error>(())
+    })?;
+
     // Create friendship table
     diesel::sql_query(
         "CREATE TABLE IF NOT EXISTS friendship (

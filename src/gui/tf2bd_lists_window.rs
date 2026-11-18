@@ -1,0 +1,269 @@
+use super::theme;
+use crate::{
+    models::AppWin, tf2::lobby::player_attribute_description, tf2bd::player_lists::ATTRIBUTES,
+};
+use eframe::egui::{self, ScrollArea, Ui};
+
+// Public TF2BD exports listed by SteamHistory, plus the check.tf export.
+const KNOWN_LISTS: &[(&str, &str)] = &[
+    (
+        "TF2BD Official List",
+        "https://raw.githubusercontent.com/PazerOP/tf2_bot_detector/master/staging/cfg/playerlist.official.json",
+    ),
+    ("TF2BD Trusted List", "https://trusted.roto.lol/v1/steamids"),
+    (
+        "Vorobey-HackerPolice",
+        "https://raw.githubusercontent.com/AveraFox/Tom/refs/heads/main/playerlist.vorobey-hackerpolice.json",
+    ),
+    ("check.tf", "https://api.check.tf/v1/playerlist"),
+    (
+        "H0xton1337 NaughtyList",
+        "https://raw.githubusercontent.com/H0xton1337/naughtylist-/main/playerlist.naughtylist.json",
+    ),
+    (
+        "Milenko List",
+        "https://raw.githubusercontent.com/incontestableness/milenko-lists/master/playerlist.milenko-cumulative.json",
+    ),
+    (
+        "minein4 ShitList",
+        "https://raw.githubusercontent.com/minein4/Shitlist/main/playerlist.shitlist.json",
+    ),
+    (
+        "sleepylist",
+        "https://raw.githubusercontent.com/surepy/tf2db-sleepy-list/main/playerlist.sleepy.json",
+    ),
+    (
+        "sleepylist — Bots",
+        "https://raw.githubusercontent.com/surepy/tf2db-sleepy-list/main/playerlist.sleepy-bots.merged.json",
+    ),
+    (
+        "sleepylist — NoProof",
+        "https://raw.githubusercontent.com/surepy/tf2db-sleepy-list/main/playerlist.sleepy-no-proof.json",
+    ),
+    (
+        "wget List",
+        "https://gist.githubusercontent.com/wgetJane/0bc01bd46d7695362253c5a2fa49f2e9/raw/playerlist.biglist.json",
+    ),
+];
+
+#[derive(Default)]
+pub struct ListsWindow {
+    pub open: bool,
+    url: String,
+    known_list: Option<usize>,
+    error: Option<String>,
+}
+
+pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
+    let window = &mut app_win.tf2bd_lists_window;
+    if !window.open {
+        return;
+    }
+
+    theme::window(ctx, "TF2BD Player Lists")
+        .open(&mut window.open)
+        .default_width(620.0)
+        .show(ctx, |ui| {
+            let lists = &mut app_win.tf2bd_lists;
+            if let Some(error) = &lists.load_error {
+                show_error(ui, &format!("Could not load list settings: {error}"));
+                return;
+            }
+
+            ui.add_enabled_ui(!lists.busy(), |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    let selected_name = window
+                        .known_list
+                        .map_or("Choose a known list", |index| KNOWN_LISTS[index].0);
+                    egui::ComboBox::from_id_salt("known_tf2bd_lists")
+                        .selected_text(selected_name)
+                        .width(260.0)
+                        .show_ui(ui, |ui| {
+                            for (index, &(name, url)) in KNOWN_LISTS.iter().enumerate() {
+                                if lists.has_source_url(url) {
+                                    ui.add_enabled(
+                                        false,
+                                        egui::Button::selectable(false, format!("{name} (added)")),
+                                    );
+                                } else {
+                                    ui.selectable_value(&mut window.known_list, Some(index), name)
+                                        .on_hover_text(url);
+                                }
+                            }
+                        });
+                    let selected_url = window
+                        .known_list
+                        .map(|index| KNOWN_LISTS[index].1)
+                        .filter(|url| !lists.has_source_url(url));
+                    if ui
+                        .add_enabled(selected_url.is_some(), egui::Button::new("Add"))
+                        .clicked()
+                        && let Some(url) = selected_url
+                    {
+                        window.error = lists.add_from_url(url).err();
+                    }
+
+                    let urls = KNOWN_LISTS.iter().map(|&(_, url)| url);
+                    let has_missing = urls.clone().any(|url| !lists.has_source_url(url));
+                    if ui
+                        .add_enabled(has_missing && !lists.busy(), egui::Button::new("Add All"))
+                        .clicked()
+                    {
+                        window.error = lists.add_from_urls(urls).err();
+                    }
+                });
+            });
+
+            ui.separator();
+
+            let busy = lists.busy();
+            let has_lists = lists.summaries().next().is_some();
+            ui.horizontal(|ui| {
+                ui.add_enabled_ui(!busy, |ui| {
+                    let response = ui.add(
+                        egui::TextEdit::singleline(&mut window.url)
+                            .hint_text("Player list URL")
+                            .desired_width(280.0),
+                    );
+                    let submit =
+                        response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                    if ui
+                        .add_enabled(
+                            !window.url.trim().is_empty(),
+                            egui::Button::new("Add from URL"),
+                        )
+                        .clicked()
+                        || (submit && !window.url.trim().is_empty())
+                    {
+                        match lists.add_from_url(&window.url) {
+                            Ok(()) => {
+                                window.error = None;
+                                window.url.clear();
+                            }
+                            Err(error) => window.error = Some(error),
+                        }
+                    }
+                });
+                if ui
+                    .add_enabled(!busy && has_lists, egui::Button::new("Update"))
+                    .clicked()
+                {
+                    window.error = lists.update_all().err();
+                }
+            });
+            let import = &lists.import;
+            if import.total > 0 {
+                let completed = import.added + import.errors.len();
+                if completed < import.total && lists.busy() {
+                    ui.label(format!("Importing lists… {completed}/{}", import.total));
+                } else {
+                    ui.label(format!("Added {} of {} lists.", import.added, import.total));
+                }
+                if !import.errors.is_empty() {
+                    egui::CollapsingHeader::new(format!(
+                        "Failed imports ({})",
+                        import.errors.len()
+                    ))
+                    .default_open(import.total == 1)
+                    .show(ui, |ui| {
+                        for error in &import.errors {
+                            show_error(ui, error);
+                        }
+                    });
+                }
+            }
+            if let Some(error) = &window.error {
+                show_error(ui, error);
+            }
+
+            ui.separator();
+            ui.label("Show TF2BD badges for");
+            let mut filters = lists.filters().to_vec();
+            let mut filters_changed = false;
+            ui.horizontal_wrapped(|ui| {
+                for attribute in ATTRIBUTES {
+                    let mut selected = filters.contains(&attribute);
+                    if ui
+                        .checkbox(&mut selected, player_attribute_description(attribute).1)
+                        .changed()
+                    {
+                        filters_changed = true;
+                        if selected {
+                            filters.push(attribute);
+                        } else {
+                            filters.retain(|&value| value != attribute);
+                        }
+                    }
+                }
+            });
+            if filters_changed {
+                filters.sort_by_key(|attribute| {
+                    ATTRIBUTES.iter().position(|value| value == attribute)
+                });
+                window.error = lists.set_filters(filters).err();
+            }
+
+            ui.separator();
+            if !has_lists {
+                ui.weak("No player lists added.");
+            }
+            let mut change_enabled = None;
+            let mut remove = None;
+            ScrollArea::vertical().max_height(440.0).show(ui, |ui| {
+                for (index, list) in lists.summaries().enumerate() {
+                    ui.push_id(list.filename, |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.add_enabled(!busy, egui::Button::new("Remove")).clicked() {
+                                remove = Some(index);
+                            }
+                            ui.with_layout(
+                                egui::Layout::left_to_right(egui::Align::Center),
+                                |ui| {
+                                    ui.add(
+                                        egui::Label::new(
+                                            egui::RichText::new(list.title)
+                                                .heading()
+                                                .color(theme::TEXT),
+                                        )
+                                        .wrap(),
+                                    );
+                                },
+                            );
+                        });
+                        let mut enabled = list.enabled;
+                        if ui.checkbox(&mut enabled, "Enabled").changed() {
+                            change_enabled = Some((index, enabled));
+                        }
+                        ui.hyperlink(list.url);
+                        if let Some((players, counts)) = list.counts {
+                            ui.label(format!("{players} unique SteamIDs"));
+                            ui.horizontal_wrapped(|ui| {
+                                for (attribute, &count) in ATTRIBUTES.iter().zip(counts) {
+                                    ui.label(format!(
+                                        "{} {count}",
+                                        player_attribute_description(*attribute).1
+                                    ));
+                                }
+                            });
+                        }
+                        if list.failed {
+                            show_error(ui, list.status);
+                        } else if !list.status.is_empty() {
+                            ui.label(list.status);
+                        }
+                        ui.separator();
+                    });
+                }
+            });
+            if let Some((index, enabled)) = change_enabled {
+                window.error = lists.set_enabled(index, enabled).err();
+            }
+            if let Some(index) = remove {
+                window.error = lists.remove(index).err();
+            }
+        });
+}
+
+fn show_error(ui: &mut Ui, error: &str) {
+    ui.colored_label(ui.visuals().error_fg_color, error);
+}

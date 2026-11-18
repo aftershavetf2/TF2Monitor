@@ -8,3 +8,4 @@ playerlist - Copy.json
 *.sqlite*
 
 /data/ban-data/
+/data/tf2bd/

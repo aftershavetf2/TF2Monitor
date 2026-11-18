@@ -3,6 +3,7 @@ use super::{colors, markings, theme};
 use crate::{
     models::{AppWin, steamid::SteamID},
     tf2::lobby::{Lobby, Player, Team},
+    tf2bd::player_lists::PlayerLists,
 };
 use eframe::egui::{
     self, Align2, Color32, FontId, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, Vec2, vec2,
@@ -46,12 +47,17 @@ impl Default for OverviewState {
 }
 
 /// Sort by identity so incoming lobby updates do not shuffle the simulation.
-fn graph(lobby: &Lobby, include_flagged_players: bool) -> (Vec<&Player>, Vec<(usize, usize)>) {
+fn graph<'a>(
+    lobby: &'a Lobby,
+    include_flagged_players: bool,
+    lists: &PlayerLists,
+) -> (Vec<&'a Player>, Vec<(usize, usize)>) {
     let mut players: Vec<_> = lobby.players.iter().collect();
     players.sort_by_key(|player| player.steamid.to_u64());
     players.retain(|player| {
         players_have_friend(lobby, player)
-            || (include_flagged_players && is_flagged_or_banned(player))
+            || (include_flagged_players
+                && (is_flagged_or_banned(player) || lists.has_match(player.steamid)))
     });
     let mut edges = Vec::new();
     for (a, player) in players.iter().enumerate() {
@@ -357,21 +363,17 @@ pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
     ui.horizontal_wrapped(|ui| {
         fit_requested = ui.button("Fit to view").clicked();
         ui.add_space(12.0);
-        ui.scope(|ui| {
-            let label = "Include flagged or banned players";
-            let text = ui.painter().layout_no_wrap(
-                label.into(), egui::TextStyle::Button.resolve(ui.style()), Color32::WHITE,
-            );
-            ui.set_max_width(text.size().x + 42.0);
-            egui::containers::menu::menu_style(ui.style_mut());
-            super::menu_item::checkbox(ui, &mut app_win.overview.include_flagged_players, label)
-                .on_hover_text("Also show players without friend connections who have negative flags, Steam bans, or SourceBans history.");
-        });
+        ui.checkbox(
+            &mut app_win.overview.include_flagged_players,
+            "Include flagged or banned players",
+        )
+        .on_hover_text("Also show players without friend connections who have negative flags, Steam bans, SourceBans history, or TF2BD list matches.");
     });
-    let (players, edges) = graph(&app_win.lobby, app_win.overview.include_flagged_players);
+    let lists = &app_win.tf2bd_lists;
+    let (players, edges) = graph(&app_win.lobby, app_win.overview.include_flagged_players, lists);
     let card_width = players
         .iter()
-        .map(|player| required_card_width(ui, player))
+        .map(|player| required_card_width(ui, player, lists))
         .fold(CARD_SIZE.x, f32::max);
     let state = &mut app_win.overview;
     let size_changed = state.card_size.x != card_width;
@@ -480,7 +482,7 @@ pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
                         theme::TEXT,
                     );
                 }
-                paint_player_label(ui, player, rect);
+                paint_player_label(ui, player, rect, lists);
             }
         });
     state.view = view;
@@ -517,13 +519,13 @@ fn paint_canvas_help(ui: &Ui, canvas: Rect) {
     );
 }
 
-fn required_card_width(ui: &mut Ui, player: &Player) -> f32 {
+fn required_card_width(ui: &mut Ui, player: &Player, lists: &PlayerLists) -> f32 {
     // Keep enough room for a readable name even when every badge is present.
-    (53.0 + 96.0 + ui.spacing().item_spacing.x + player_badge_width(ui, player) + 8.0)
+    (53.0 + 96.0 + ui.spacing().item_spacing.x + player_badge_width(ui, player, lists) + 8.0)
         .max(CARD_SIZE.x)
 }
 
-fn player_badge_width(ui: &mut Ui, player: &Player) -> f32 {
+fn player_badge_width(ui: &mut Ui, player: &Player, lists: &PlayerLists) -> f32 {
     let mut measure = ui.new_child(
         egui::UiBuilder::new()
             .id_salt(("overview_badges_measure", player.steamid.to_u64()))
@@ -532,16 +534,16 @@ fn player_badge_width(ui: &mut Ui, player: &Player) -> f32 {
             .sizing_pass()
             .invisible(),
     );
-    markings::add_reputation(&mut measure, player);
+    markings::add_reputation(&mut measure, player, lists);
     measure.min_size().x
 }
 
-fn paint_player_label(ui: &mut Ui, player: &Player, card: Rect) {
+fn paint_player_label(ui: &mut Ui, player: &Player, card: Rect, lists: &PlayerLists) {
     let content = Rect::from_min_max(
         egui::pos2(card.left() + 53.0, card.top()),
         egui::pos2(card.right() - 8.0, card.bottom()),
     );
-    let badge_width = player_badge_width(ui, player);
+    let badge_width = player_badge_width(ui, player, lists);
     let gap = if badge_width > 0.0 {
         ui.spacing().item_spacing.x
     } else {
@@ -571,7 +573,7 @@ fn paint_player_label(ui: &mut Ui, player: &Player, card: Rect) {
             ))
             .layout(egui::Layout::left_to_right(egui::Align::Center)),
     );
-    markings::add_reputation(&mut badges, player);
+    markings::add_reputation(&mut badges, player, lists);
 }
 
 fn card_edge(center: Pos2, toward: Pos2, card_size: Vec2) -> Pos2 {
@@ -610,7 +612,7 @@ mod tests {
     #[test]
     fn only_current_players_with_friends_are_shown_once_including_private_profiles() {
         let mut lobby = lobby();
-        let (players, edges) = graph(&lobby, false);
+        let (players, edges) = graph(&lobby, false, &PlayerLists::default());
         assert_eq!(
             players
                 .iter()
@@ -622,7 +624,7 @@ mod tests {
         assert!(players[1].friends.is_none());
         lobby.players.remove(1);
         // Even if the friendship cache hasn't refreshed, departed players disappear.
-        assert!(graph(&lobby, false).0.is_empty());
+        assert!(graph(&lobby, false, &PlayerLists::default()).0.is_empty());
     }
 
     fn bans(vac: bool, game: bool) -> crate::tf2::steamapi::SteamPlayerBan {
@@ -666,8 +668,8 @@ mod tests {
                 ..Default::default()
             });
         }
-        assert_eq!(graph(&lobby, false).0.len(), 2);
-        let (players, edges) = graph(&lobby, true);
+        assert_eq!(graph(&lobby, false, &PlayerLists::default()).0.len(), 2);
+        let (players, edges) = graph(&lobby, true, &PlayerLists::default());
         assert_eq!(
             players
                 .iter()
@@ -706,7 +708,7 @@ mod tests {
                     },
                     |root| {
                         egui::CentralPanel::default()
-                            .show(root, |ui| paint_player_label(ui, &player, card));
+                            .show(root, |ui| paint_player_label(ui, &player, card, &PlayerLists::default()));
                     },
                 );
                 let texts: Vec<_> = output
@@ -774,9 +776,9 @@ mod tests {
             },
             |root| {
                 egui::CentralPanel::default().show(root, |ui| {
-                    let width = required_card_width(ui, &player);
+                    let width = required_card_width(ui, &player, &PlayerLists::default());
                     card = Rect::from_min_size(egui::pos2(20.0, 20.0), vec2(width, CARD_SIZE.y));
-                    paint_player_label(ui, &player, card);
+                    paint_player_label(ui, &player, card, &PlayerLists::default());
                 });
             },
         );
@@ -866,7 +868,7 @@ mod tests {
     #[test]
     fn spring_layout_stays_finite_separates_cards_and_preserves_positions_on_refresh() {
         let lobby = lobby();
-        let (players, edges) = graph(&lobby, false);
+        let (players, edges) = graph(&lobby, false, &PlayerLists::default());
         let mut state = OverviewState::default();
         state.sync(&players, edges.clone(), "server");
         for _ in 0..1200 {

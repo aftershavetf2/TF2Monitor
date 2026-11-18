@@ -76,9 +76,7 @@ pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: St
     };
     let live = app_win.lobby.get_player(None, Some(steamid));
     let mut display = profile.display_player();
-    if profile.steam_info.is_none()
-        && let Some(live) = live
-    {
+    if let Some(live) = live.filter(|player| !player.name.trim().is_empty()) {
         display.name = live.name.clone();
     }
     display.reputation = app_win
@@ -163,6 +161,12 @@ pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: St
 
     ui.label("");
 
+    if app_win.tf2bd_lists.has_match(steamid) {
+        ui.heading("TF2BD");
+        ui.scope(|ui| super::markings::add_tf2bd_sources(ui, steamid, &app_win.tf2bd_lists));
+        ui.add_space(12.0);
+    }
+
     add_player_sourcebans(player, ui);
 
     ui.label("");
@@ -193,6 +197,13 @@ pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: St
 }
 
 fn player_window_title(app_win: &AppWin, steamid: SteamID) -> String {
+    if let Some(live) = app_win
+        .lobby
+        .get_player(None, Some(steamid))
+        .filter(|player| !player.name.trim().is_empty())
+    {
+        return format!("Player Details - {}", live.name);
+    }
     let name = app_win
         .player_profile(steamid)
         .map(|p| p.name)

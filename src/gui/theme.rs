@@ -1,8 +1,12 @@
 //! Shared interface fonts, colors, and widget styling. Painting colors stay in the document model.
 use std::sync::Arc;
 
+use super::colors::color_for_flag;
+use crate::{tf2::lobby::player_attribute_description, tf2bd::models::PlayerAttribute};
 use eframe::egui::{
     self, Color32, FontData, FontDefinitions, FontFamily, FontId, Stroke, TextStyle,
+    theme::{DefaultStyle, StyleProvider},
+    widget_style::{CheckboxStyle, SeparatorStyle, StyleArgs, WidgetState},
 };
 
 const INTER_REGULAR: &[u8] = include_bytes!("../../assets/fonts/inter/Inter-Regular.ttf");
@@ -20,11 +24,20 @@ pub(super) const TABLE_ROW_LIGHT: Color32 = Color32::from_rgb(0x41, 0x3C, 0x36);
 pub(super) const TABLE_ROW_DARK: Color32 = Color32::from_rgb(0x2E, 0x29, 0x23);
 const POPUP: Color32 = PANEL;
 pub const CONTROL: Color32 = Color32::from_gray(49);
+pub(super) const CHECKBOX_SIZE: f32 = 14.0;
+const FLAG_CHECKBOX_SIZE: f32 = 18.0;
+const PLAYER_FLAG_TAG: &str = "tf2monitor_player_flag";
+pub(super) const CHECKMARK_SIZE: f32 = 8.0;
+pub(super) const CHECKMARK_STROKE: Stroke = Stroke {
+    width: 1.5,
+    color: Color32::WHITE,
+};
 const ACCENT: Color32 = Color32::from_rgb(55, 142, 240);
 const BUTTON: Color32 = Color32::from_rgb(29, 86, 153);
 pub const HOVER: Color32 = Color32::from_rgb(42, 118, 202);
 const PRESSED: Color32 = Color32::from_rgb(23, 69, 125);
 pub const BORDER: Color32 = Color32::from_gray(66);
+const SEPARATOR: Color32 = Color32::from_gray(100);
 pub(super) const TEXT: Color32 = Color32::from_gray(230);
 const MUTED_TEXT: Color32 = Color32::from_gray(166);
 pub const SELECTION: Color32 = Color32::from_rgb(36, 104, 180);
@@ -182,6 +195,64 @@ pub(crate) fn install(ctx: &egui::Context) {
     // Keep the painting workspace neutral and consistent across OS appearances.
     ctx.set_theme(egui::ThemePreference::Dark);
     ctx.set_style_of(egui::Theme::Dark, style);
+    ctx.replace_widget_theme::<CheckboxStyle>(WidgetTheme);
+    ctx.replace_widget_theme::<SeparatorStyle>(WidgetTheme);
+}
+
+pub(super) fn checkbox_frame(border: Color32) -> egui::Frame {
+    egui::Frame::new()
+        .fill(CONTROL)
+        .stroke(Stroke::new(1.0, border))
+        .corner_radius(2)
+}
+
+pub(super) fn flag_checkbox(
+    ui: &mut egui::Ui,
+    checked: &mut bool,
+    attribute: PlayerAttribute,
+) -> egui::Response {
+    let (_, label) = player_attribute_description(attribute);
+    let info = egui::UiStackInfo::default().with_tag_value(PLAYER_FLAG_TAG, attribute);
+    ui.scope_builder(egui::UiBuilder::new().ui_stack_info(info), |ui| {
+        ui.checkbox(checked, egui::RichText::new(label).color(Color32::WHITE))
+    })
+    .inner
+}
+
+struct WidgetTheme;
+
+impl StyleProvider<CheckboxStyle> for WidgetTheme {
+    fn style(&mut self, args: &StyleArgs<'_>) -> CheckboxStyle {
+        let mut style: CheckboxStyle = DefaultStyle.style(args);
+        if let Some(&attribute) = args
+            .stack
+            .tags()
+            .get_downcast::<PlayerAttribute>(PLAYER_FLAG_TAG)
+        {
+            let (foreground, background) = color_for_flag(attribute);
+            style.checkbox_size = FLAG_CHECKBOX_SIZE;
+            style.checkbox_frame.fill = background;
+            if matches!(args.state, WidgetState::Inactive | WidgetState::Hovered) {
+                style.checkbox_frame.stroke.color = foreground;
+                style.check_stroke.color = foreground;
+            }
+            return style;
+        }
+        let color = args.style.visuals.widgets.state(args.state).fg_stroke.color;
+        style.checkbox_frame = checkbox_frame(color);
+        style.checkbox_size = CHECKBOX_SIZE;
+        style.check_size = CHECKMARK_SIZE;
+        style.check_stroke = CHECKMARK_STROKE;
+        style
+    }
+}
+
+impl StyleProvider<SeparatorStyle> for WidgetTheme {
+    fn style(&mut self, args: &StyleArgs<'_>) -> SeparatorStyle {
+        let mut style: SeparatorStyle = DefaultStyle.style(args);
+        style.stroke.color = SEPARATOR;
+        style
+    }
 }
 
 fn semibold(size: f32) -> FontId {

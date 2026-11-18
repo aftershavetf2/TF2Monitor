@@ -1,9 +1,9 @@
-use crate::tf2::lobby::Player;
+use crate::{tf2::lobby::Player, tf2bd::player_lists::PlayerLists};
 use eframe::egui::{Image, Ui};
 
-use super::{markings::add_flags, playtime::add_playtime};
+use super::{markings, playtime::add_playtime};
 
-pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
+pub fn add_player_tooltip(ui: &mut Ui, player: &Player, lists: &PlayerLists) {
     ui.heading(format!("{} ({})", player.name, player.id));
 
     // ui.heading(format!("({}) {}", player.id, &player.name));
@@ -37,5 +37,11 @@ pub fn add_player_tooltip(ui: &mut Ui, player: &Player) {
         ui.label("No Steam bans");
     }
 
-    add_flags(ui, player);
+    ui.horizontal_wrapped(|ui| {
+        markings::add_flags(ui, player);
+        markings::add_tf2bd_badge(ui, player.steamid, lists);
+    });
+    if lists.has_match(player.steamid) {
+        markings::add_tf2bd_sources(ui, player.steamid, lists);
+    }
 }

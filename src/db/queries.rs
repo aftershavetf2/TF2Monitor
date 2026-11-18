@@ -102,7 +102,10 @@ pub fn upsert_account(
         .on_conflict(account::steam_id)
         .do_update()
         .set((
-            dsl::name.eq(&new_account.name),
+            dsl::name.eq(
+                diesel::dsl::case_when(dsl::name_from_server, dsl::name)
+                    .otherwise(diesel::upsert::excluded(dsl::name)),
+            ),
             dsl::created_date.eq(&new_account.created_date),
             dsl::avatar_thumb_url.eq(&new_account.avatar_thumb_url),
             dsl::avatar_full_url.eq(&new_account.avatar_full_url),
@@ -113,6 +116,32 @@ pub fn upsert_account(
         ))
         .execute(conn)?;
     Ok(())
+}
+
+/// Save a name seen in the lobby without marking its Steam profile as fetched.
+pub fn upsert_server_name(
+    conn: &mut SqliteConnection,
+    steam_id: i64,
+    name: &str,
+) -> QueryResult<usize> {
+    use account::dsl;
+    use diesel::query_dsl::methods::FilterDsl;
+
+    diesel::insert_into(account::table)
+        .values((
+            dsl::steam_id.eq(steam_id),
+            dsl::name.eq(name),
+            dsl::name_from_server.eq(true),
+            dsl::avatar_thumb_url.eq(""),
+            dsl::avatar_full_url.eq(""),
+            dsl::public_profile.eq(false),
+            dsl::last_updated.eq(0),
+        ))
+        .on_conflict(dsl::steam_id)
+        .do_update()
+        .set((dsl::name.eq(name), dsl::name_from_server.eq(true)))
+        .filter(dsl::name.ne(name).or(dsl::name_from_server.eq(false)))
+        .execute(conn)
 }
 
 /// Insert or update a friendship record.
