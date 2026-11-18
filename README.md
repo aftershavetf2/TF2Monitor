@@ -42,6 +42,16 @@ To compile it yourself you need to [install Rust](https://www.rust-lang.org/tool
 
 After that you go to the folder where this `README.md` file is located with a command line/terminal prompt and type `cargo run --release` and the application will be compiled and started.
 
+### Publish a release from VS Code
+
+With Python 3 and Git available, commit the changes you want to release and open the repository in VS Code.
+Run **Tasks: Run Task** from the Command Palette and choose **Release: Bump patch and publish**.
+The task bumps the patch version in `Cargo.toml` and `Cargo.lock`, commits it, and pushes the current branch and matching `v<version>` tag to `origin`.
+The Rust (Windows) workflow runs the tests, builds the Windows ZIP, and publishes it to GitHub Releases.
+
+If the push fails after the version commit, rerun the task after resolving the Git error to retry the same version.
+If the tag was pushed and the build failed, rerun the workflow in GitHub Actions.
+
 ## Configure TF2
 
 Add these launch options to TF2:

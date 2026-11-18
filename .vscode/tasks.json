@@ -7,6 +7,19 @@
       "problemMatcher": ["$rustc"],
       "group": "build",
       "label": "rust: cargo build"
+    },
+    {
+      "label": "Release: Bump patch and publish",
+      "type": "process",
+      "command": "python3",
+      "windows": {
+        "command": "python"
+      },
+      "args": ["scripts/release.py"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     }
   ]
 }

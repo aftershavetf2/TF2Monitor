@@ -1,7 +1,9 @@
 name: Rust (Windows)
 
 on:
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch: # Manual build
+  push:
+    tags: ['v*']
   release:
     types: [created] # Trigger on manually created release
 
@@ -24,29 +26,29 @@ jobs:
   release:
     needs: build
     runs-on: windows-latest
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
     permissions:
       contents: write
 
     steps:
       - uses: actions/checkout@v6
 
-      - name: Build release
-        run: cargo build --release
-
-      - name: Extract version from Cargo.toml
-        id: version
+      - name: Read and validate release version
         shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || (github.ref_type == 'tag' && github.ref_name) || '' }}
         run: |
-          $content = Get-Content Cargo.toml -Raw
-          if ($content -match 'version\s*=\s*"([^"]+)"') {
-            $version = $matches[1]
-            echo "VERSION=$version" >> $env:GITHUB_ENV
-            echo "Version extracted: $version"
-          } else {
-            Write-Error "Could not extract version from Cargo.toml"
-            exit 1
+          $metadata = cargo metadata --no-deps --locked --format-version 1 | ConvertFrom-Json
+          $version = ($metadata.packages | Where-Object name -eq 'tf2monitor').version
+          if (-not $version) {
+            throw "Could not find the TF2Monitor package version"
           }
+          if ($env:RELEASE_TAG -and $env:RELEASE_TAG -ne "v$version") {
+            throw "Release tag $env:RELEASE_TAG does not match Cargo.toml version $version"
+          }
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Build release
+        run: cargo build --release --locked
 
       - name: Create release archive
         shell: pwsh
@@ -64,11 +66,11 @@ jobs:
           path: ${{ env.ARCHIVE_NAME }}
           retention-days: 30
 
-      - name: Upload to GitHub Release
-        if: github.event_name == 'release'
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' || github.event_name == 'release'
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
           files: ${{ env.ARCHIVE_NAME }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          generate_release_notes: ${{ github.event_name == 'push' }}
+          fail_on_unmatched_files: true
