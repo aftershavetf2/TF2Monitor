@@ -23,6 +23,7 @@ pub(super) const TABLE_ROW_SELF: Color32 = Color32::from_rgb(0x5F, 0x57, 0x4F);
 pub(super) const TABLE_ROW_LIGHT: Color32 = Color32::from_rgb(0x41, 0x3C, 0x36);
 pub(super) const TABLE_ROW_DARK: Color32 = Color32::from_rgb(0x2E, 0x29, 0x23);
 const POPUP: Color32 = PANEL;
+const MENU_FILL: Color32 = Color32::from_rgb(0x43, 0x3E, 0x39);
 pub const CONTROL: Color32 = Color32::from_gray(49);
 pub(super) const CHECKBOX_SIZE: f32 = 14.0;
 const FLAG_CHECKBOX_SIZE: f32 = 18.0;
@@ -299,6 +300,7 @@ pub(super) fn menu_bar() -> egui::MenuBar {
         .config(
             egui::containers::menu::MenuConfig::new().style(|style: &mut egui::Style| {
                 egui::containers::menu::menu_style(style);
+                style.visuals.window_fill = MENU_FILL;
                 style.visuals.widgets.open.weak_bg_fill = HOVER;
                 style.spacing.button_padding = egui::vec2(10.0, 5.0);
                 style.spacing.interact_size.y = 27.0;
