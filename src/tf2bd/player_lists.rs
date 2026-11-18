@@ -1,5 +1,6 @@
 use super::models::PlayerAttribute;
 use crate::models::steamid::{MIN_STEAMID64, SteamID};
+use chrono::Utc;
 use reqwest::{Url, blocking::Client};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -7,14 +8,16 @@ use std::{
     fs,
     io::{self, Read, Write},
     path::{Path, PathBuf},
-    sync::mpsc::{self, Receiver, TryRecvError},
+    sync::mpsc::{self, Receiver, SyncSender, TryRecvError},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 const DIRECTORY: &str = "data/tf2bd";
 const SETTINGS_FILE: &str = "sources.json";
 const MAX_LIST_BYTES: u64 = 64 * 1024 * 1024;
+const UPDATE_INTERVAL_SECONDS: i64 = 24 * 60 * 60;
+const AUTO_CHECK_POLL_INTERVAL: Duration = Duration::from_secs(60);
 
 pub const ATTRIBUTES: [PlayerAttribute; 6] = [
     PlayerAttribute::Cheater,
@@ -30,6 +33,7 @@ struct Source {
     url: String,
     filename: String,
     enabled: bool,
+    last_checked_at: Option<i64>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -174,7 +178,10 @@ struct Download {
 
 enum Request {
     Add(Vec<String>),
-    Update(Vec<UpdateSource>),
+    Update {
+        sources: Vec<(usize, UpdateSource)>,
+        automatic: bool,
+    },
 }
 
 struct UpdateSource {
@@ -184,6 +191,11 @@ struct UpdateSource {
 
 enum DownloadResult {
     Add(String, Result<Download, String>),
+    BeginUpdate {
+        index: usize,
+        automatic: bool,
+        ready: SyncSender<bool>,
+    },
     Update(usize, Result<Download, String>),
 }
 
@@ -200,6 +212,7 @@ pub struct PlayerLists {
     lists: Vec<CachedList>,
     matches: HashMap<SteamID, Vec<usize>>,
     downloads: Option<Receiver<DownloadResult>>,
+    next_auto_check: Instant,
     pub import: ImportProgress,
     pub load_error: Option<String>,
 }
@@ -212,6 +225,7 @@ impl Default for PlayerLists {
             lists: Vec::new(),
             matches: HashMap::new(),
             downloads: None,
+            next_auto_check: Instant::now(),
             import: ImportProgress::default(),
             load_error: None,
         }
@@ -443,23 +457,67 @@ impl PlayerLists {
         Ok(())
     }
 
+    pub fn check_for_updates(&mut self) {
+        let now = Instant::now();
+        if self.load_error.is_some() || self.busy() || now < self.next_auto_check {
+            return;
+        }
+        self.next_auto_check = now + AUTO_CHECK_POLL_INTERVAL;
+        if let Err(error) = self.start_updates(true, Utc::now().timestamp()) {
+            log::warn!("Could not start automatic TF2BD updates: {error}");
+        }
+    }
+
     pub fn update_all(&mut self) -> Result<(), String> {
-        let urls = self
+        self.start_updates(false, Utc::now().timestamp())
+    }
+
+    fn start_updates(&mut self, automatic: bool, now: i64) -> Result<(), String> {
+        let sources: Vec<_> = self
             .settings
             .sources
             .iter()
             .zip(&self.lists)
-            .map(|(source, list)| UpdateSource {
-                import_url: source.url.clone(),
-                update_url: list.data.as_ref().and_then(|data| data.update_url.clone()),
+            .enumerate()
+            .filter(|(_, (source, _))| {
+                !automatic
+                    || (source.enabled
+                        && source.last_checked_at.is_none_or(|checked| {
+                            now.saturating_sub(checked) >= UPDATE_INTERVAL_SECONDS
+                        }))
+            })
+            .map(|(index, (source, list))| {
+                (
+                    index,
+                    UpdateSource {
+                        import_url: source.url.clone(),
+                        update_url: list.data.as_ref().and_then(|data| data.update_url.clone()),
+                    },
+                )
             })
             .collect();
-        self.start_downloads(Request::Update(urls))?;
-        for list in &mut self.lists {
-            list.status = "Waiting for update…".into();
-            list.failed = false;
+        if sources.is_empty() {
+            return Ok(());
+        }
+        let indices: Vec<_> = sources.iter().map(|&(index, _)| index).collect();
+        self.start_downloads(Request::Update { sources, automatic })?;
+        for index in indices {
+            self.lists[index].status = "Waiting for update…".into();
+            self.lists[index].failed = false;
         }
         Ok(())
+    }
+
+    fn record_update_attempt(&mut self, index: usize, automatic: bool) -> Result<bool, String> {
+        if automatic && !self.settings.sources[index].enabled {
+            self.lists[index].status.clear();
+            return Ok(false);
+        }
+        let mut settings = self.settings.clone();
+        settings.sources[index].last_checked_at = Some(Utc::now().timestamp());
+        self.save_settings(settings)?;
+        self.lists[index].status = "Checking for update…".into();
+        Ok(true)
     }
 
     fn start_downloads(&mut self, request: Request) -> Result<(), String> {
@@ -482,15 +540,27 @@ impl PlayerLists {
                         }
                     }
                 }
-                Request::Update(urls) => {
-                    for (index, source) in urls.into_iter().enumerate() {
+                Request::Update { sources, automatic } => {
+                    for (index, source) in sources {
+                        // Persist the attempt before this source starts network I/O.
+                        let (ready, start) = mpsc::sync_channel(1);
                         if sender
-                            .send(DownloadResult::Update(
+                            .send(DownloadResult::BeginUpdate {
                                 index,
-                                download_update(&client, source),
-                            ))
+                                automatic,
+                                ready,
+                            })
                             .is_err()
                         {
+                            break;
+                        }
+                        match start.recv() {
+                            Ok(true) => {}
+                            Ok(false) => continue,
+                            Err(_) => break,
+                        }
+                        let result = download_update(&client, source);
+                        if sender.send(DownloadResult::Update(index, result)).is_err() {
                             break;
                         }
                     }
@@ -511,6 +581,21 @@ impl PlayerLists {
                     Ok(()) => self.import.added += 1,
                     Err(error) => self.import.errors.push(format!("{url}\n{error}")),
                 }
+            }
+            Ok(DownloadResult::BeginUpdate {
+                index,
+                automatic,
+                ready,
+            }) => {
+                let start = match self.record_update_attempt(index, automatic) {
+                    Ok(start) => start,
+                    Err(error) => {
+                        self.lists[index].failed = true;
+                        self.lists[index].status = error;
+                        false
+                    }
+                };
+                let _ = ready.send(start);
             }
             Ok(DownloadResult::Update(index, result)) => {
                 let result = result.and_then(|download| {
@@ -550,6 +635,7 @@ impl PlayerLists {
             url,
             filename,
             enabled: true,
+            last_checked_at: Some(Utc::now().timestamp()),
         });
         if let Err(error) = self.save_settings(settings) {
             if let Err(cleanup) = fs::remove_file(&path) {
@@ -853,6 +939,76 @@ mod tests {
             [(existing.as_str(), false), (new.as_str(), true)]
         );
         server.join().unwrap();
+    }
+
+    #[test]
+    fn automatic_updates_throttle_each_active_source_even_after_failure_and_restart() {
+        let directory = TestDirectory::new();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let active = format!("{origin}/active.json");
+        let disabled = format!("{origin}/disabled.json");
+        let server = thread::spawn(move || {
+            serve(
+                listener,
+                &[
+                    ("/active.json", A),
+                    ("/disabled.json", A),
+                    ("/active.json", b"not JSON"),
+                    ("/active.json", B),
+                    ("/disabled.json", B),
+                ],
+            );
+        });
+
+        let mut lists = directory.open();
+        lists
+            .add_from_urls([active.as_str(), disabled.as_str()])
+            .unwrap();
+        wait_for_downloads(&mut lists);
+        lists.set_enabled(1, false).unwrap();
+        let mut settings = lists.settings.clone();
+        let last_checked = Utc::now().timestamp() - UPDATE_INTERVAL_SECONDS;
+        settings.sources[0].last_checked_at = Some(last_checked);
+        settings.sources[1].last_checked_at = Some(last_checked);
+        lists.save_settings(settings).unwrap();
+
+        lists
+            .start_updates(true, last_checked + UPDATE_INTERVAL_SECONDS - 1)
+            .unwrap();
+        assert!(!lists.busy());
+        lists.check_for_updates();
+        assert!(lists.busy());
+        wait_for_downloads(&mut lists);
+        assert!(lists.summaries().next().unwrap().failed);
+
+        let mut lists = directory.open();
+        assert!(lists.settings.sources[0].last_checked_at.unwrap() > last_checked);
+        assert_eq!(
+            lists.settings.sources[1].last_checked_at,
+            Some(last_checked)
+        );
+        assert_eq!(fs::read(directory.0.join("active.json")).unwrap(), A);
+        lists.check_for_updates();
+        assert!(!lists.busy());
+
+        lists.update_all().unwrap();
+        wait_for_downloads(&mut lists);
+        let lists = directory.open();
+        assert!(!lists.settings.sources[1].enabled);
+        assert!(lists.settings.sources[1].last_checked_at.unwrap() > last_checked);
+        assert_eq!(fs::read(directory.0.join("active.json")).unwrap(), B);
+        assert_eq!(fs::read(directory.0.join("disabled.json")).unwrap(), B);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn existing_sources_without_a_timestamp_can_be_loaded() {
+        let source: Source = serde_json::from_str(
+            r#"{"url":"https://example.org/playerlist.json","filename":"playerlist.json","enabled":true}"#,
+        )
+        .unwrap();
+        assert!(source.last_checked_at.is_none());
     }
 
     #[test]

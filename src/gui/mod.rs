@@ -87,6 +87,7 @@ impl eframe::App for AppWin {
         let ctx = &root_ui.ctx().clone();
         self.get_latest_lobby();
         self.tf2bd_lists.poll();
+        self.tf2bd_lists.check_for_updates();
 
         self.friendship_positions.clear();
 
