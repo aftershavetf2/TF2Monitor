@@ -426,15 +426,17 @@ mod startup_tests {
         blocker
             .batch_execute("PRAGMA journal_mode = DELETE; BEGIN IMMEDIATE;")
             .unwrap();
+        let mut conn = SqliteConnection::establish(database_url).unwrap();
 
         let release = thread::spawn(move || {
             thread::sleep(Duration::from_millis(300));
             blocker.batch_execute("ROLLBACK").unwrap();
         });
-        let pool = open_pool(database_url);
+        // Exercise the startup retry on its own connection, without pool workers
+        // that can still hold the database open during cleanup on Windows.
+        let wal_setup = enable_wal(&mut conn);
         release.join().unwrap();
-        let pool = pool.unwrap();
-        let mut conn = pool.get().unwrap();
+        wal_setup.unwrap();
         let uses_wal = diesel::select(sql::<Bool>(
             "(SELECT journal_mode = 'wal' FROM pragma_journal_mode)",
         ))
@@ -443,7 +445,6 @@ mod startup_tests {
         assert!(uses_wal);
 
         drop(conn);
-        drop(pool);
         std::fs::remove_file(path).unwrap();
     }
 }
