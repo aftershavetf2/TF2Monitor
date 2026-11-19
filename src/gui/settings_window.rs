@@ -1,227 +1,188 @@
+use super::theme;
 use crate::models::{
     AppWin, TempSettings,
     app_settings::{DEFAULT_LAUNCH_OPTIONS, DEFAULT_LOG_FILENAME},
+    steamid::{MIN_STEAMID64, SteamID},
 };
-use eframe::egui::{self, Grid, Ui};
+use eframe::egui::{self, TextEdit, Ui};
 
-/// Shows the settings window as an egui Window (internal frame)
 pub fn show_settings_window(app_win: &mut AppWin, ctx: &egui::Context) {
     if !app_win.settings_window_open {
         return;
     }
 
-    // Initialize temp settings if not already done
-    if app_win.temp_settings.is_none() {
-        app_win.temp_settings = Some(TempSettings {
-            self_steamid64: app_win.app_settings.self_steamid64.to_u64().to_string(),
-            steam_api_key: app_win.app_settings.steam_api_key.clone(),
-            rcon_password: app_win.app_settings.rcon_password.clone(),
-            rcon_ip: app_win.app_settings.rcon_ip.clone(),
-            rcon_port: app_win.app_settings.rcon_port.to_string(),
-            log_filename: app_win.app_settings.log_filename.clone(),
-            launch_options: app_win.app_settings.launch_options.clone(),
-        });
-    }
-
-    let mut window_open = app_win.settings_window_open;
-
-    let mut should_close = false;
-    let mut should_save = false;
-
-    super::theme::window(ctx, "Settings")
-        .open(&mut window_open)
-        .resizable(true)
-        .default_width(500.0)
-        .show(ctx, |ui| {
-            // Show warning message if configuration is incomplete
-            if !app_win.app_settings.config_is_ok {
-                ui.colored_label(
-                    ui.visuals().warn_fg_color,
-                    "⚠ Configuration is incomplete. Please fill in the required fields below.",
-                );
-                ui.add_space(10.0);
-            }
-
-            if let Some(ref mut temp) = app_win.temp_settings {
-                egui::ScrollArea::vertical()
-                    .max_height((ctx.content_rect().height() - 180.0).max(180.0))
-                    .show(ui, |ui| show_settings_content(ui, temp));
-
-                ui.separator();
-
-                // Buttons at the bottom - aligned to the right
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                    if ui.button("Cancel").clicked() {
-                        should_close = true;
-                    }
-
-                    if ui
-                        .button("Save")
-                        .on_hover_text("Saves the settings to the settings.json file")
-                        .clicked()
-                    {
-                        should_save = true;
-                    }
-                });
-            }
-        });
-
-    // Handle button actions outside the window closure
-    if should_save {
-        if let Some(temp) = app_win.temp_settings.clone() {
-            save_settings(app_win, &temp);
-        }
-        app_win.settings_window_open = false;
-        app_win.temp_settings = None;
-    }
-
-    if should_close {
-        app_win.settings_window_open = false;
-        app_win.temp_settings = None;
-    }
-
-    // Update the window open state (handles X button click)
-    if !window_open {
-        app_win.settings_window_open = false;
-        app_win.temp_settings = None;
-    }
-}
-
-fn show_settings_content(ui: &mut Ui, temp: &mut TempSettings) {
-    use crate::models::steamid::SteamID;
-
-    let info_label_color = super::theme::muted_text();
-
-    Grid::new("settings_grid")
-        .num_columns(2)
-        .spacing([15.0, 16.0])
-        .min_col_width(140.0)
-        .show(ui, |ui| {
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                ui.label("Self SteamID64:");
-            });
-            ui.vertical(|ui| {
-                ui.add(
-                    egui::TextEdit::singleline(&mut temp.self_steamid64).desired_width(f32::INFINITY),
-                );
-
-                ui.add_space(5.0);
-
-                // Show Steam Community link for verification
-                let steamid = if let Some(id) = SteamID::from_u64_string(&temp.self_steamid64) {
-                    id
-                } else if temp.self_steamid64.starts_with("[U:1:") {
-                    SteamID::from_steam_id32(&temp.self_steamid64)
-                } else {
-                    SteamID::from_u64(0)
-                };
-
-                if steamid.is_valid() {
-                    let url = steamid.steam_community_url();
-                    ui.hyperlink_to("View Profile on Steam Community", &url);
-                } else {
-                    ui.label("(Invalid SteamID)");
-                }
-
-                ui.add_space(10.0);
-                ui.colored_label(info_label_color, "Your SteamID64 identifies you on the scoreboard.");
-            });
-            ui.end_row();
-
-            // steam_api_key
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                ui.label("Steam API Key:");
-            });
-
-            ui.vertical(|ui| {
-                ui.add(
-                    egui::TextEdit::singleline(&mut temp.steam_api_key)
-                    .desired_width(f32::INFINITY),
-                );
-                ui.add_space(5.0);
-                ui.hyperlink_to(
-                    "Go to Steam API Key page",
-                    "https://steamcommunity.com/dev/apikey",
-                );
-                ui.add_space(10.0);
-                ui.colored_label(info_label_color, "Your personal Steam API key is required to fetch profile information from Steam Community.");
-            });
-
-            ui.end_row();
-
-            // log_filename
-             ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                ui.label("TF2 Log Filename:");
-            });
-
-            ui.vertical(|ui| {
-                ui.add(egui::TextEdit::singleline(&mut temp.log_filename).desired_width(f32::INFINITY));
-                ui.add_space(10.0);
-                if ui.button("Set Default")
-                .on_hover_text("Sets the default filename for the TF2 log file")
-                .clicked() {
-                    temp.log_filename = DEFAULT_LOG_FILENAME.to_string();
-                }
-            });
-
-            ui.end_row();
-
-            // launch_options
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                ui.label("Launch Options:");
-            });
-
-            ui.vertical(|ui| {
-                ui.add(egui::TextEdit::multiline(&mut temp.launch_options).desired_width(f32::INFINITY).desired_rows(3));
-
-                ui.add_space(10.0);
-
-                if ui.button("Set Default")
-                .on_hover_text("Sets the default launch options")
-                .clicked() {
-                    temp.launch_options = DEFAULT_LAUNCH_OPTIONS.to_string();
-                }
-            });
-
-            ui.end_row();
-        });
-}
-
-fn save_settings(app_win: &mut AppWin, temp: &TempSettings) {
-    use crate::models::steamid::SteamID;
-
-    // Parse and validate the settings
-    let steamid = if let Some(id) = SteamID::from_u64_string(&temp.self_steamid64) {
-        id
-    } else {
-        // Try parsing as SteamID32 format [U:1:xxxxx]
-        if temp.self_steamid64.starts_with("[U:1:") {
-            SteamID::from_steam_id32(&temp.self_steamid64)
-        } else {
-            log::warn!("Invalid SteamID format, keeping old value");
-            app_win.app_settings.self_steamid64
-        }
-    };
-
-    let rcon_port: u16 = temp.rcon_port.parse().unwrap_or_else(|_| {
-        log::warn!("Invalid rcon_port, keeping old value");
-        app_win.app_settings.rcon_port
+    let settings = &app_win.app_settings;
+    let rcon_password_missing = settings.rcon_password.trim().is_empty();
+    let temp = app_win.temp_settings.get_or_insert_with(|| TempSettings {
+        self_steamid64: settings.self_steamid64.to_u64().to_string(),
+        steam_api_key: settings.steam_api_key.clone(),
+        log_filename: settings.log_filename.clone(),
+        launch_options: settings.launch_options.clone(),
     });
 
-    // Update app_settings
+    let mut window_open = true;
+    let mut cancel = false;
+    let mut save_steamid = None;
+    theme::window(ctx, "Settings")
+        .open(&mut window_open)
+        .default_width(500.0)
+        .default_height(520.0)
+        .show(ctx, |ui| {
+            let spacing = ui.spacing().item_spacing.y;
+            let footer_height = ui.spacing().interact_size.y + 2.0 * spacing;
+            let form_height = (ui.available_height() - footer_height).max(0.0);
+            let steamid = theme::vertical_scroll_area_with_gutter(ui)
+                .max_height(form_height)
+                .show(ui, |ui| {
+                    show_settings_content(ui, temp, rcon_password_missing)
+                })
+                .inner;
+
+            ui.add_space(spacing);
+            egui::containers::Sides::new().show(
+                ui,
+                |_| {},
+                |ui| {
+                    if ui
+                        .add_enabled(steamid.is_some(), egui::Button::new("Save"))
+                        .clicked()
+                    {
+                        save_steamid = steamid;
+                    }
+                    cancel = ui.add(theme::secondary_button("Cancel")).clicked();
+                },
+            );
+        });
+
+    if let Some(steamid) = save_steamid
+        && let Some(temp) = app_win.temp_settings.take()
+    {
+        save_settings(app_win, temp, steamid);
+        app_win.settings_window_open = false;
+    } else if cancel || !window_open {
+        app_win.settings_window_open = false;
+        app_win.temp_settings = None;
+    }
+}
+
+fn show_settings_content(
+    ui: &mut Ui,
+    temp: &mut TempSettings,
+    rcon_password_missing: bool,
+) -> Option<SteamID> {
+    theme::section_heading(ui, "Steam");
+    ui.label("Your Steam ID").on_hover_text(
+        "Use the Steam account you play TF2 with. This identifies you on the scoreboard.",
+    );
+    ui.add(TextEdit::singleline(&mut temp.self_steamid64).desired_width(f32::INFINITY));
+    let steamid = parse_steam_id(&temp.self_steamid64);
+    if let Some(steamid) = steamid {
+        ui.hyperlink_to("View Steam Profile", steamid.steam_community_url());
+    } else {
+        ui.colored_label(
+            ui.visuals().error_fg_color,
+            "Enter your SteamID64 or SteamID3 (for example, [U:1:12345]).",
+        );
+    }
+
+    ui.add_space(ui.spacing().item_spacing.y);
+    ui.label("Steam API Key")
+        .on_hover_text("Optional. Enables profile information from Steam Community.");
+    ui.add(TextEdit::singleline(&mut temp.steam_api_key).desired_width(f32::INFINITY));
+    ui.hyperlink_to(
+        "Get a Steam API Key",
+        "https://steamcommunity.com/dev/apikey",
+    );
+
+    ui.add_space(ui.spacing().item_spacing.y);
+    theme::section_heading(ui, "Team Fortress 2");
+    if rcon_password_missing {
+        ui.colored_label(
+            ui.visuals().warn_fg_color,
+            "RCON password is missing. Set rcon_password in settings.json, then restart TF2Monitor.",
+        );
+    }
+
+    field_label_with_default(ui, "Log File", &mut temp.log_filename, DEFAULT_LOG_FILENAME);
+    ui.add(TextEdit::singleline(&mut temp.log_filename).desired_width(f32::INFINITY));
+
+    field_label_with_default(
+        ui,
+        "Launch Options",
+        &mut temp.launch_options,
+        DEFAULT_LAUNCH_OPTIONS,
+    );
+    ui.add(
+        TextEdit::multiline(&mut temp.launch_options)
+            .desired_width(f32::INFINITY)
+            .desired_rows(3),
+    );
+
+    steamid
+}
+
+fn field_label_with_default(ui: &mut Ui, label: &str, value: &mut String, default: &str) {
+    egui::containers::Sides::new().shrink_left().wrap().show(
+        ui,
+        |ui| ui.label(label),
+        |ui| {
+            if ui
+                .add_enabled(value != default, theme::secondary_button("Set Default"))
+                .clicked()
+            {
+                value.replace_range(.., default);
+            }
+        },
+    );
+}
+
+fn parse_steam_id(input: &str) -> Option<SteamID> {
+    let input = input.trim();
+    if let Some(account) = input
+        .strip_prefix("[U:1:")
+        .and_then(|id| id.strip_suffix(']'))
+    {
+        let account = account.parse::<u32>().ok()?;
+        return Some(SteamID::from_u64(MIN_STEAMID64 + u64::from(account)));
+    }
+
+    let id = input.parse::<u64>().ok()?;
+    let range = MIN_STEAMID64..=MIN_STEAMID64 + u64::from(u32::MAX);
+    range.contains(&id).then(|| SteamID::from_u64(id))
+}
+
+fn save_settings(app_win: &mut AppWin, temp: TempSettings, steamid: SteamID) {
     app_win.app_settings.self_steamid64 = steamid;
-    app_win.app_settings.steam_api_key = temp.steam_api_key.clone();
-    app_win.app_settings.rcon_password = temp.rcon_password.clone();
-    app_win.app_settings.rcon_ip = temp.rcon_ip.clone();
-    app_win.app_settings.rcon_port = rcon_port;
-    app_win.app_settings.log_filename = temp.log_filename.clone();
-    app_win.app_settings.launch_options = temp.launch_options.clone();
-
-    // Also update self_steamid in AppWin
+    app_win.app_settings.steam_api_key = temp.steam_api_key;
+    app_win.app_settings.log_filename = temp.log_filename;
+    app_win.app_settings.launch_options = temp.launch_options;
     app_win.self_steamid = steamid;
-
-    // Save and broadcast
     app_win.updated_settings();
+}
 
-    log::info!("Settings updated and saved");
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn steam_id_field_accepts_both_formats_and_rejects_incomplete_input() {
+        let expected = SteamID::from_u64(MIN_STEAMID64 + 12345);
+        assert_eq!(
+            parse_steam_id(&format!("  {}  ", expected.to_u64())),
+            Some(expected)
+        );
+        assert_eq!(parse_steam_id("[U:1:12345]"), Some(expected));
+
+        for invalid in [
+            "",
+            "0",
+            "[U:1:",
+            "[U:1:12345",
+            "[U:1:abc]",
+            "[U:1:4294967296]",
+            "18446744073709551615",
+        ] {
+            assert_eq!(parse_steam_id(invalid), None, "{invalid}");
+        }
+    }
 }

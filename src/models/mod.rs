@@ -59,13 +59,9 @@ pub struct AppWin {
 }
 
 /// Temporary settings used while editing in the settings dialog
-#[derive(Clone)]
 pub struct TempSettings {
     pub self_steamid64: String,
     pub steam_api_key: String,
-    pub rcon_password: String,
-    pub rcon_ip: String,
-    pub rcon_port: String,
     pub log_filename: String,
     pub launch_options: String,
 }

@@ -200,13 +200,8 @@ impl AppSettings {
             return false;
         }
 
-        // Must have Steam API key
-        if self.steam_api_key.is_empty() {
-            return false;
-        }
-
         // Must have RCON password
-        if self.rcon_password.is_empty() {
+        if self.rcon_password.trim().is_empty() {
             return false;
         }
 
@@ -279,6 +274,19 @@ pub fn get_current_user_steamid() -> Option<SteamID> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_steam_api_key_is_optional_for_a_complete_configuration() {
+        let mut settings = AppSettings {
+            self_steamid64: SteamID::from_u64(crate::models::steamid::MIN_STEAMID64 + 1),
+            steam_api_key: String::new(),
+            ..AppSettings::default()
+        };
+        assert!(settings.check_config_is_ok());
+
+        settings.rcon_password.clear();
+        assert!(!settings.check_config_is_ok());
+    }
 
     #[test]
     fn legacy_exe_filename_is_ignored_and_removed_on_save_without_changing_settings() {
