@@ -5,8 +5,9 @@ use super::colors::color_for_flag;
 use crate::{tf2::lobby::player_attribute_description, tf2bd::models::PlayerAttribute};
 use eframe::egui::{
     self, Color32, FontData, FontDefinitions, FontFamily, FontId, Stroke, TextStyle,
+    class::{ClassName, HasClasses as _},
     theme::{DefaultStyle, StyleProvider},
-    widget_style::{CheckboxStyle, SeparatorStyle, StyleArgs, WidgetState},
+    widget_style::{ButtonStyle, CheckboxStyle, SeparatorStyle, StyleArgs, WidgetState},
 };
 
 const INTER_REGULAR: &[u8] = include_bytes!("../../assets/fonts/inter/Inter-Regular.ttf");
@@ -29,6 +30,7 @@ pub const CONTROL: Color32 = Color32::from_gray(49);
 pub(super) const CHECKBOX_SIZE: f32 = 14.0;
 const FLAG_CHECKBOX_SIZE: f32 = 18.0;
 const PLAYER_FLAG_TAG: &str = "tf2monitor_player_flag";
+const SECONDARY_BUTTON: ClassName = ClassName::from_static("tf2monitor:secondary_button");
 pub(super) const CHECKMARK_SIZE: f32 = 8.0;
 pub(super) const CHECKMARK_STROKE: Stroke = Stroke {
     width: 1.5,
@@ -197,8 +199,13 @@ pub(crate) fn install(ctx: &egui::Context) {
     // Keep the painting workspace neutral and consistent across OS appearances.
     ctx.set_theme(egui::ThemePreference::Dark);
     ctx.set_style_of(egui::Theme::Dark, style);
+    ctx.replace_widget_theme::<ButtonStyle>(WidgetTheme);
     ctx.replace_widget_theme::<CheckboxStyle>(WidgetTheme);
     ctx.replace_widget_theme::<SeparatorStyle>(WidgetTheme);
+}
+
+pub(super) fn secondary_button<'a>(label: impl egui::IntoAtoms<'a>) -> egui::Button<'a> {
+    egui::Button::new(label).with_class(SECONDARY_BUTTON)
 }
 
 pub(super) fn checkbox_frame(border: Color32) -> egui::Frame {
@@ -222,6 +229,23 @@ pub(super) fn flag_checkbox(
 }
 
 struct WidgetTheme;
+
+impl StyleProvider<ButtonStyle> for WidgetTheme {
+    fn style(&mut self, args: &StyleArgs<'_>) -> ButtonStyle {
+        let mut style: ButtonStyle = DefaultStyle.style(args);
+        if args.classes.has_class(&SECONDARY_BUTTON) {
+            let frame = &mut style.atom_layout.frame;
+            match args.state {
+                WidgetState::Inactive | WidgetState::Noninteractive => {
+                    frame.fill = Color32::TRANSPARENT;
+                    frame.stroke.color = SEPARATOR;
+                }
+                WidgetState::Hovered | WidgetState::Active => frame.stroke.color = ACCENT,
+            }
+        }
+        style
+    }
+}
 
 impl StyleProvider<CheckboxStyle> for WidgetTheme {
     fn style(&mut self, args: &StyleArgs<'_>) -> CheckboxStyle {
@@ -288,6 +312,17 @@ pub(super) fn modal_frame(ctx: &egui::Context) -> egui::Frame {
 
 pub(super) fn heading_font() -> FontId {
     semibold(17.0)
+}
+
+pub(super) fn section_heading(
+    ui: &mut egui::Ui,
+    text: impl Into<egui::RichText>,
+) -> egui::Response {
+    ui.add(egui::Label::new(text.into().heading().color(TEXT)).wrap())
+}
+
+pub(super) fn card_title(ui: &mut egui::Ui, text: impl Into<egui::RichText>) -> egui::Response {
+    ui.add(egui::Label::new(text.into().font(semibold(15.0)).color(TEXT)).wrap())
 }
 
 pub(super) fn menu_bar() -> egui::MenuBar {

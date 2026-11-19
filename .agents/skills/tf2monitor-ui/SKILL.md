@@ -17,6 +17,8 @@ terminology and layout patterns. Check `src/gui/theme.rs` and
 - Group related information and actions. Use placement, headings, and emphasis
   to make the most important information easy to find. Keep labels short and
   clear, and use tooltips for additional explanation.
+- Use the shared typography roles in `src/gui/theme.rs`. Use `section_heading`
+  for headings at the same level and `card_title` for titles inside cards.
 - Use subtle tonal differences between named theme surfaces to group related
   content and controls. Use cards for self-contained items and compact rows
   where users need to compare values.
