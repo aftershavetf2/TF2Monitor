@@ -18,6 +18,7 @@ const JETBRAINS_MONO_MEDIUM: &[u8] =
     include_bytes!("../../assets/fonts/jetbrains-mono/JetBrainsMono-Medium.ttf");
 
 pub const PANEL: Color32 = Color32::from_rgb(0x36, 0x31, 0x2B);
+pub(super) const CARD_FILL: Color32 = Color32::from_rgb(0x41, 0x3C, 0x36);
 pub(super) const TITLE_BAR: Color32 = Color32::from_rgb(0x26, 0x21, 0x1B);
 pub(super) const TABLE_ROW_SELF: Color32 = Color32::from_rgb(0x5F, 0x57, 0x4F);
 pub(super) const TABLE_ROW_LIGHT: Color32 = Color32::from_rgb(0x41, 0x3C, 0x36);

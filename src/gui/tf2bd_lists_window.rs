@@ -70,6 +70,8 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                 return;
             }
 
+            ui.heading("Add Lists");
+            let source_width = 260.0;
             ui.add_enabled_ui(!lists.busy(), |ui| {
                 ui.horizontal_wrapped(|ui| {
                     let selected_name = window
@@ -77,7 +79,7 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                         .map_or("Choose a known list", |index| KNOWN_LISTS[index].0);
                     egui::ComboBox::from_id_salt("known_tf2bd_lists")
                         .selected_text(selected_name)
-                        .width(260.0)
+                        .width(source_width)
                         .show_ui(ui, |ui| {
                             for (index, &(name, url)) in KNOWN_LISTS.iter().enumerate() {
                                 if lists.has_source_url(url) {
@@ -114,16 +116,12 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                 });
             });
 
-            ui.separator();
-
-            let busy = lists.busy();
-            let has_lists = lists.summaries().next().is_some();
-            ui.horizontal(|ui| {
-                ui.add_enabled_ui(!busy, |ui| {
+            ui.add_enabled_ui(!lists.busy(), |ui| {
+                ui.horizontal_wrapped(|ui| {
                     let response = ui.add(
                         egui::TextEdit::singleline(&mut window.url)
                             .hint_text("Player list URL")
-                            .desired_width(280.0),
+                            .desired_width(source_width),
                     );
                     let submit =
                         response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
@@ -144,12 +142,6 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                         }
                     }
                 });
-                if ui
-                    .add_enabled(!busy && has_lists, egui::Button::new("Update"))
-                    .clicked()
-                {
-                    window.error = lists.update_all().err();
-                }
             });
             let import = &lists.import;
             if import.total > 0 {
@@ -204,56 +196,82 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
             }
 
             ui.separator();
+            let has_lists = lists.summaries().next().is_some();
+            ui.horizontal_wrapped(|ui| {
+                ui.heading("Installed Lists");
+                if ui
+                    .add_enabled(!lists.busy() && has_lists, egui::Button::new("Update All"))
+                    .clicked()
+                {
+                    window.error = lists.update_all().err();
+                }
+            });
             if !has_lists {
                 ui.weak("No player lists added.");
             }
+            let busy = lists.busy();
             let mut change_enabled = None;
             let mut remove = None;
-            ScrollArea::vertical().max_height(440.0).show(ui, |ui| {
-                for (index, list) in lists.summaries().enumerate() {
-                    ui.push_id(list.filename, |ui| {
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.add_enabled(!busy, egui::Button::new("Remove")).clicked() {
-                                remove = Some(index);
-                            }
-                            ui.with_layout(
-                                egui::Layout::left_to_right(egui::Align::Center),
-                                |ui| {
-                                    ui.add(
-                                        egui::Label::new(
-                                            egui::RichText::new(list.title)
-                                                .heading()
-                                                .color(theme::TEXT),
-                                        )
-                                        .wrap(),
-                                    );
-                                },
-                            );
-                        });
-                        let mut enabled = list.enabled;
-                        if ui.checkbox(&mut enabled, "Enabled").changed() {
-                            change_enabled = Some((index, enabled));
-                        }
-                        ui.hyperlink(list.url);
-                        if let Some((players, counts)) = list.counts {
-                            ui.label(format!("{players} unique SteamIDs"));
-                            ui.horizontal_wrapped(|ui| {
-                                for (attribute, &count) in ATTRIBUTES.iter().zip(counts) {
-                                    ui.label(format!(
-                                        "{} {count}",
-                                        player_attribute_description(*attribute).1
-                                    ));
+            ui.scope(|ui| {
+                ui.spacing_mut().scroll.floating = false;
+                ScrollArea::vertical().show(ui, |ui| {
+                    let card = egui::Frame::new()
+                        .fill(theme::CARD_FILL)
+                        .corner_radius(6)
+                        .inner_margin(10);
+                    for (index, list) in lists.summaries().enumerate() {
+                        ui.push_id(list.filename, |ui| {
+                            card.show(ui, |ui| {
+                                ui.allocate_ui_with_layout(
+                                    egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui
+                                            .add_enabled(!busy, egui::Button::new("Remove"))
+                                            .clicked()
+                                        {
+                                            remove = Some(index);
+                                        }
+                                        let mut enabled = list.enabled;
+                                        if ui.checkbox(&mut enabled, "Enabled").changed() {
+                                            change_enabled = Some((index, enabled));
+                                        }
+                                        ui.with_layout(
+                                            egui::Layout::left_to_right(egui::Align::Center),
+                                            |ui| {
+                                                ui.add(
+                                                    egui::Label::new(
+                                                        egui::RichText::new(list.title)
+                                                            .heading()
+                                                            .color(theme::TEXT),
+                                                    )
+                                                    .wrap(),
+                                                );
+                                            },
+                                        );
+                                    },
+                                );
+                                ui.hyperlink(list.url);
+                                if let Some((players, counts)) = list.counts {
+                                    ui.label(format!("{players} unique SteamIDs"));
+                                    ui.horizontal_wrapped(|ui| {
+                                        for (attribute, &count) in ATTRIBUTES.iter().zip(counts) {
+                                            ui.label(format!(
+                                                "{} {count}",
+                                                player_attribute_description(*attribute).1
+                                            ));
+                                        }
+                                    });
+                                }
+                                if list.failed {
+                                    show_error(ui, list.status);
+                                } else if !list.status.is_empty() {
+                                    ui.label(list.status);
                                 }
                             });
-                        }
-                        if list.failed {
-                            show_error(ui, list.status);
-                        } else if !list.status.is_empty() {
-                            ui.label(list.status);
-                        }
-                        ui.separator();
-                    });
-                }
+                        });
+                    }
+                });
             });
             if let Some((index, enabled)) = change_enabled {
                 window.error = lists.set_enabled(index, enabled).err();
