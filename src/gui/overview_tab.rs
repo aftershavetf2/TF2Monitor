@@ -359,16 +359,17 @@ fn crossing(a: Pos2, b: Pos2, c: Pos2, d: Pos2) -> Option<(f32, f32)> {
 }
 
 pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
-    let mut fit_requested = false;
-    ui.horizontal_wrapped(|ui| {
-        fit_requested = ui.button("Fit to view").clicked();
-        ui.add_space(12.0);
-        ui.checkbox(
-            &mut app_win.overview.include_flagged_players,
-            "Include flagged or banned players",
-        )
-        .on_hover_text("Also show players without friend connections who have negative flags, Steam bans, SourceBans history, or TF2BD list matches.");
-    });
+    let (_, fit_requested) = egui::containers::Sides::new().shrink_left().wrap().show(
+        ui,
+        |ui| {
+            ui.checkbox(
+                &mut app_win.overview.include_flagged_players,
+                "Include flagged or banned players",
+            )
+            .on_hover_text("Also show players without friend connections who have negative flags, Steam bans, SourceBans history, or TF2BD list matches.");
+        },
+        |ui| ui.add(theme::secondary_button("Fit to view")).clicked(),
+    );
     let lists = &app_win.tf2bd_lists;
     let (players, edges) = graph(&app_win.lobby, app_win.overview.include_flagged_players, lists);
     let card_width = players

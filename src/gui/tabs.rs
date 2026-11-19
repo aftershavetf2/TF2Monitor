@@ -58,11 +58,11 @@ pub fn handle_shortcuts(active_tab: &mut Tab, ctx: &egui::Context) {
 }
 
 pub fn add_tab_bar(active_tab: &mut Tab, ui: &mut Ui) {
-    ui.horizontal_wrapped(|ui| {
-        for &tab in Tab::ALL {
-            ui.selectable_value(active_tab, tab, tab.label());
-        }
-    });
+    super::theme::tab_bar(
+        ui,
+        active_tab,
+        Tab::ALL.iter().map(|&tab| (tab, tab.label())),
+    );
 }
 
 #[cfg(test)]

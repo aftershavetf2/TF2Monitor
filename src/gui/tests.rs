@@ -42,6 +42,55 @@ fn commands(output: &egui::FullOutput) -> &[ViewportCommand] {
     &output.viewport_output[&egui::ViewportId::ROOT].commands
 }
 
+#[test]
+fn tab_indicator_moves_along_the_baseline_when_switching_views() {
+    use super::tabs::{self, Tab};
+
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut tab = Tab::Game;
+    let mut frame = |events| {
+        let output = run_ui(&ctx, input(events, 1.0, false, false), |root| {
+            egui::CentralPanel::default().show(root, |ui| tabs::add_tab_bar(&mut tab, ui));
+        });
+        (output, tab)
+    };
+    let label_center = |output: &egui::FullOutput, label| {
+        output.shapes.iter().find_map(|shape| match &shape.shape {
+            egui::Shape::Text(text) if text.galley.text() == label => {
+                Some(text.pos + text.galley.size() / 2.0)
+            }
+            _ => None,
+        })
+    };
+    let indicator = |output: &egui::FullOutput, label| {
+        let mut baseline = None;
+        let mut indicator = None;
+        for shape in &output.shapes {
+            if let egui::Shape::LineSegment { points, stroke } = &shape.shape {
+                if points[1].x - points[0].x > 700.0 {
+                    baseline = Some(points[0].y);
+                } else if stroke.width == 2.0 {
+                    indicator = Some(*points);
+                }
+            }
+        }
+        let [left, right] = indicator.expect("The selected tab has an underline");
+        assert_eq!(Some(left.y), baseline);
+        let center = label_center(output, label).unwrap();
+        assert!(left.x < center.x && center.x < right.x);
+    };
+
+    let (output, active) = frame(vec![]);
+    assert_eq!(active, Tab::Game);
+    indicator(&output, "Scoreboard");
+    let overview = label_center(&output, "Overview").unwrap();
+    frame(pointer(overview, true));
+    let (output, active) = frame(pointer(overview, false));
+    assert_eq!(active, Tab::Overview);
+    indicator(&output, "Overview");
+}
+
 fn title_frame(
     ctx: &egui::Context,
     events: Vec<Event>,

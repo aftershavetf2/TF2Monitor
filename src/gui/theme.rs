@@ -31,6 +31,7 @@ pub(super) const CHECKBOX_SIZE: f32 = 14.0;
 pub(super) const COLORED_CHECKBOX_SIZE: f32 = 18.0;
 const PLAYER_FLAG_TAG: &str = "tf2monitor_player_flag";
 const SECONDARY_BUTTON: ClassName = ClassName::from_static("tf2monitor:secondary_button");
+const TAB_BUTTON: ClassName = ClassName::from_static("tf2monitor:tab_button");
 pub(super) const CHECKMARK_SIZE: f32 = 8.0;
 pub(super) const CHECKMARK_STROKE: Stroke = Stroke {
     width: 1.5,
@@ -209,6 +210,43 @@ pub(super) fn secondary_button<'a>(label: impl egui::IntoAtoms<'a>) -> egui::But
     egui::Button::new(label).with_class(SECONDARY_BUTTON)
 }
 
+pub(super) fn tab_bar<'a, T: PartialEq>(
+    ui: &mut egui::Ui,
+    selected: &mut T,
+    tabs: impl IntoIterator<Item = (T, &'a str)>,
+) {
+    let width = ui.available_rect_before_wrap().x_range();
+    let row = ui.horizontal_wrapped(|ui| {
+        let mut indicator = None;
+        for (tab, label) in tabs {
+            let active = *selected == tab;
+            let color = if active { TEXT } else { MUTED_TEXT };
+            let response = ui.add(
+                egui::Button::new(egui::RichText::new(label).color(color))
+                    .selected(active)
+                    .with_class(TAB_BUTTON),
+            );
+            if response.clicked() {
+                *selected = tab;
+                indicator = Some(response.rect);
+            } else if active {
+                indicator = Some(response.rect);
+            }
+        }
+        indicator
+    });
+
+    let painter = ui.painter();
+    painter.hline(
+        width,
+        row.response.rect.bottom(),
+        Stroke::new(1.0, SEPARATOR),
+    );
+    if let Some(rect) = row.inner {
+        painter.hline(rect.x_range(), rect.bottom(), Stroke::new(2.0, ACCENT));
+    }
+}
+
 pub(super) fn checkbox_frame(border: Color32) -> egui::Frame {
     egui::Frame::new()
         .fill(CONTROL)
@@ -259,6 +297,17 @@ impl StyleProvider<ButtonStyle> for WidgetTheme {
                 }
                 WidgetState::Hovered | WidgetState::Active => frame.stroke.color = ACCENT,
             }
+        } else if args.classes.has_class(&TAB_BUTTON) {
+            let frame = &mut style.atom_layout.frame;
+            frame.fill = match args.state {
+                WidgetState::Hovered | WidgetState::Active => CARD_FILL,
+                WidgetState::Inactive | WidgetState::Noninteractive => Color32::TRANSPARENT,
+            };
+            frame.stroke.color = if args.state == WidgetState::Active {
+                ACCENT
+            } else {
+                Color32::TRANSPARENT
+            };
         }
         style
     }

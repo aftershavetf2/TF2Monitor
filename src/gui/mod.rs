@@ -115,7 +115,6 @@ impl eframe::App for AppWin {
 
         egui::CentralPanel::default().show(root_ui, |ui| {
             tabs::add_tab_bar(&mut self.active_tab, ui);
-            ui.separator();
             match self.active_tab {
                 tabs::Tab::Game => game_tab::show(self, ui),
                 tabs::Tab::Overview => overview_tab::show(self, ui),
