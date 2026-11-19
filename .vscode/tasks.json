@@ -20,6 +20,21 @@
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Rust: Top 10 by Cyclomatic Complexity",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "-o",
+        "pipefail",
+        "-c",
+        "rust-code-analysis-cli -m -p src -O json | jq -sr '[.[] | .name as $file\n | .. | objects\n | select(.kind? == \"function\" and .name != null and .name != \"<anonymous>\")\n | {cc: .metrics.cyclomatic.sum, file: $file, line: .start_line, name}]\n | sort_by(-.cc, .file, .line) | .[:10][]\n | [.cc, \"\\(.file):\\(.line)\", .name] | @tsv'"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     }
   ]
 }
