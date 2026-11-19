@@ -8,6 +8,8 @@ description: Build or review TF2Monitor's egui interface, including layout, visu
 Start with the closest existing view or widget in `src/gui`. Reuse its
 terminology and layout patterns. Check `src/gui/theme.rs` and
 `src/gui/ui_utils.rs` for shared styles and helpers.
+Keep recurring UI styling and behavior in a shared helper or component so
+views can reuse the same implementation.
 
 ## Visual design
 
@@ -31,6 +33,9 @@ terminology and layout patterns. Check `src/gui/theme.rs` and
 - Follow existing padding and spacing patterns. Keep related items closer
   together and leave more space between groups. Use dividers where spacing
   alone leaves the boundary unclear.
+- Use the theme's floating scrollbars, as in Player Database. Keep them hidden
+  at rest and reveal them on hover. Use `theme::vertical_scroll_area_with_gutter`
+  when the expanded scrollbar could cover interactive controls.
 
 ## Responsiveness and CPU use
 

@@ -145,6 +145,7 @@ pub(crate) fn install(ctx: &egui::Context) {
     style.spacing.window_margin = egui::Margin::same(24);
     style.spacing.slider_width = 140.0;
     style.spacing.icon_width = 14.0;
+    style.spacing.scroll = egui::style::ScrollStyle::floating();
 
     let mut visuals = egui::Visuals::dark();
     visuals.panel_fill = PANEL;
@@ -320,6 +321,17 @@ pub(super) fn window(ctx: &egui::Context, title: impl Into<String>) -> egui::Win
 pub(super) fn modal_frame(ctx: &egui::Context) -> egui::Frame {
     let style = ctx.global_style();
     egui::Frame::window(&style).inner_margin(style.spacing.window_margin)
+}
+
+pub(super) fn vertical_scroll_area_with_gutter(ui: &egui::Ui) -> egui::ScrollArea {
+    let scroll_style = ui.spacing().scroll;
+    let gutter =
+        (scroll_style.bar_width + scroll_style.bar_inner_margin + scroll_style.bar_outer_margin)
+            .ceil() as i8;
+    egui::ScrollArea::vertical().content_margin(egui::Margin {
+        right: gutter,
+        ..scroll_style.content_margin
+    })
 }
 
 pub(super) fn heading_font() -> FontId {
