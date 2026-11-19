@@ -26,6 +26,11 @@ impl SharedLobby {
         self.lobby.lock().unwrap().clone()
     }
 
+    /// Read the G15 generation without cloning the lobby.
+    pub fn g15_generation(&self) -> u64 {
+        self.lobby.lock().unwrap().g15_generation
+    }
+
     /// Set the lobby state.
     /// Use this when you have modified a copy of the lobby and want to update
     /// the shared state. The lock is only held briefly during the update.

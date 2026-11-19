@@ -122,6 +122,9 @@ impl LobbyThread {
     fn process_g15_dump(&mut self, g15_dump: G15DumpPlayerOutput) {
         let now = Local::now();
         let mut lobby = self.shared_lobby.get();
+        if g15_dump.generation != lobby.g15_generation {
+            return;
+        }
 
         // Merge data from the G15 dump into the lobby
         for player in g15_dump.players.iter() {
@@ -317,13 +320,18 @@ impl LobbyThread {
         // Matchmaking can announce the same session before the map loads.
         // Reset again if players scored on the previous map while waiting.
         if std::mem::take(&mut self.awaiting_map_after_lobby_reset) {
-            let lobby = self.shared_lobby.get();
+            let mut lobby = self.shared_lobby.get();
             let has_scores = lobby
                 .players
                 .iter()
                 .chain(&lobby.recently_left_players)
                 .any(|player| player.kills != 0 || player.deaths != 0);
             if !has_scores {
+                // Even when the score reset is already done, invalidate any G15 data
+                // collected on the previous map while the new one was loading.
+                lobby.g15_generation += 1;
+                lobby.players.clear();
+                self.shared_lobby.set(lobby);
                 return;
             }
         }
@@ -361,6 +369,7 @@ impl LobbyThread {
         );
 
         lobby.session_id += 1;
+        lobby.g15_generation += 1;
         lobby.lobby_id = format!("{}:{}", now.to_rfc3339(), lobby.session_id);
 
         lobby.players.clear();
@@ -617,6 +626,50 @@ mod tests {
     }
 
     #[test]
+    fn map_load_retires_the_g15_roster_and_rejects_queued_reports() {
+        use crate::models::{player_profile::test_app, steamid::MIN_STEAMID64};
+
+        let app = test_app();
+        let mut worker = LobbyThread::new(&app.app_settings, &app.bus, &app.db);
+        let report = |generation, account_id, name: &str| G15DumpPlayerOutput {
+            generation,
+            players: vec![G15PlayerData {
+                steamid: SteamID::from_u64(MIN_STEAMID64 + account_id),
+                name: name.into(),
+                ..Default::default()
+            }],
+        };
+
+        let previous_generation = app.shared_lobby.g15_generation();
+        worker.matchmaking_lobby_created();
+        let announced = app.shared_lobby.get();
+        assert_eq!(announced.g15_generation, previous_generation + 1);
+
+        worker.process_g15_dump(report(previous_generation, 1, "Late lobby report"));
+        assert!(app.shared_lobby.get().players.is_empty());
+        worker.process_g15_dump(report(announced.g15_generation, 1, "Previous map"));
+        assert_eq!(app.shared_lobby.get().players.len(), 1);
+
+        app.bus.lock().unwrap().g15_report_bus.broadcast(report(
+            announced.g15_generation,
+            1,
+            "Queued report",
+        ));
+        worker.map_loaded();
+        let loaded = app.shared_lobby.get();
+        assert_eq!(loaded.session_id, announced.session_id);
+        assert_eq!(loaded.g15_generation, announced.g15_generation + 1);
+        assert!(loaded.players.is_empty());
+
+        worker.process_g15_bus();
+        assert!(app.shared_lobby.get().players.is_empty());
+        worker.process_g15_dump(report(loaded.g15_generation, 2, "Current map"));
+        let lobby = app.shared_lobby.get();
+        assert_eq!(lobby.players.len(), 1);
+        assert_eq!(lobby.players[0].name, "Current map");
+    }
+
+    #[test]
     fn new_lobbies_have_distinct_sessions_even_on_the_same_day() {
         let settings = AppSettings::default();
         let bus = Arc::new(Mutex::new(AppBus::new(settings.self_steamid64)));
@@ -644,6 +697,7 @@ mod tests {
         let mut worker = LobbyThread::new(&app.app_settings, &app.bus, &app.db);
         let steamid = SteamID::from_u64(MIN_STEAMID64 + 7);
         let dump = |name: &str| G15DumpPlayerOutput {
+            generation: 0,
             players: vec![G15PlayerData {
                 steamid,
                 name: name.into(),
@@ -688,6 +742,7 @@ mod tests {
 
         let new_id = SteamID::from_u64(MIN_STEAMID64 + 8);
         worker.process_g15_dump(G15DumpPlayerOutput {
+            generation: 0,
             players: vec![G15PlayerData {
                 steamid: new_id,
                 name: "New player".into(),

@@ -8,6 +8,7 @@ pub mod rcon_thread;
 
 #[derive(Debug, Clone, Default)]
 pub struct G15DumpPlayerOutput {
+    pub generation: u64,
     pub players: Vec<G15PlayerData>,
 }
 

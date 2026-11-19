@@ -10,6 +10,7 @@ use std::collections::HashMap;
 pub struct G15DumpPlayerParser {
     current_players: HashMap<SteamID, PlayerEntry>,
     default_seen_counter: u32,
+    generation: u64,
 }
 
 impl G15DumpPlayerParser {
@@ -17,6 +18,14 @@ impl G15DumpPlayerParser {
         Self {
             current_players: HashMap::new(),
             default_seen_counter: 8,
+            generation: 0,
+        }
+    }
+
+    pub(super) fn begin_generation(&mut self, generation: u64) {
+        if self.generation != generation {
+            self.current_players.clear();
+            self.generation = generation;
         }
     }
 
@@ -47,7 +56,10 @@ impl G15DumpPlayerParser {
             self.current_players.remove(&steamid);
         }
 
-        let mut result = G15DumpPlayerOutput::default();
+        let mut result = G15DumpPlayerOutput {
+            generation: self.generation,
+            players: Vec::new(),
+        };
 
         for (steamid, player) in self.current_players.iter() {
             if !player.is_active() {
@@ -167,6 +179,31 @@ struct DumpData {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn remembers_missing_players_only_within_the_same_generation() {
+        let mut parser = G15DumpPlayerParser::new();
+        let reply = "(playerresource)\n\
+                     m_szName[1] string (Player)\n\
+                     m_bConnected[1] bool (true)\n\
+                     m_bValid[1] bool (true)\n\
+                     m_iAccountID[1] integer (1)";
+        parser.begin_generation(1);
+        assert_eq!(parser.parse(reply).players.len(), 1);
+
+        parser.begin_generation(1);
+        let partial = parser.parse("(playerresource)");
+        assert_eq!(partial.generation, 1);
+        assert_eq!(partial.players.len(), 1);
+
+        parser.begin_generation(2);
+        let partial = parser.parse("(playerresource)");
+        assert_eq!(partial.generation, 2);
+        assert!(partial.players.is_empty());
+        assert_eq!(parser.parse(reply).players.len(), 1);
+    }
+
     // use chrono::prelude::*;
 
     // use steamid::SteamID;

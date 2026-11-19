@@ -1,6 +1,7 @@
 use super::rcon_connection::{RConArgs, RConConnection};
 use crate::config::{RCON_DELAY, RCON_LOOP_DELAY};
 use crate::models::app_settings::AppSettings;
+use crate::tf2::lobby::shared_lobby::SharedLobby;
 use crate::utils::BoxResult;
 use crate::{appbus::AppBus, tf2::rcon::g15_dumpplayer_parser::G15DumpPlayerParser};
 use bus::BusReader;
@@ -20,6 +21,7 @@ pub struct RconThread {
     bus: Arc<Mutex<AppBus>>,
     rcon_args: RConArgs,
     rcon_bus_rx: BusReader<String>,
+    shared_lobby: SharedLobby,
 }
 
 impl RconThread {
@@ -29,12 +31,15 @@ impl RconThread {
         rcon_args.port = settings.rcon_port;
         rcon_args.password.clone_from(&settings.rcon_password);
 
-        let rcon_bus_rx = bus.lock().unwrap().rcon_bus.add_rx();
+        let mut app_bus = bus.lock().unwrap();
+        let rcon_bus_rx = app_bus.rcon_bus.add_rx();
+        let shared_lobby = app_bus.shared_lobby.clone();
 
         Self {
             bus: Arc::clone(bus),
             rcon_args,
             rcon_bus_rx,
+            shared_lobby,
         }
     }
 
@@ -44,31 +49,30 @@ impl RconThread {
         let mut g15_dumpplayer_parser = G15DumpPlayerParser::new();
 
         loop {
-            if let Some(reply) = self.send_rcon_command("g15_dumpplayer") {
-                // let start_time = std::time::Instant::now();
-
-                let parsed_data = g15_dumpplayer_parser.parse(&reply);
-
-                // let stop_time = std::time::Instant::now();
-                // log::info!(
-                //     "Parsing of g15_dumpplayer's {} chars reply took {:?}",
-                //     reply.len(),
-                //     stop_time - start_time
-                // );
-
-                if !parsed_data.players.is_empty() {
-                    // log::info!("Parsed g15_dumpplayer: {:?}", parsed_data);
-                    self.bus
-                        .lock()
-                        .unwrap()
-                        .g15_report_bus
-                        .broadcast(parsed_data);
-                }
-            }
-
+            self.poll_g15(&mut g15_dumpplayer_parser);
             self.process_bus();
 
             sleep(RCON_LOOP_DELAY);
+        }
+    }
+
+    fn poll_g15(&self, parser: &mut G15DumpPlayerParser) {
+        let generation = self.shared_lobby.g15_generation();
+        parser.begin_generation(generation);
+        let Some(reply) = self.send_rcon_command("g15_dumpplayer") else {
+            return;
+        };
+        if self.shared_lobby.g15_generation() != generation {
+            return;
+        }
+
+        let parsed_data = parser.parse(&reply);
+        if !parsed_data.players.is_empty() {
+            self.bus
+                .lock()
+                .unwrap()
+                .g15_report_bus
+                .broadcast(parsed_data);
         }
     }
 
