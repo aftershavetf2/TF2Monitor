@@ -368,7 +368,7 @@ pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
             )
             .on_hover_text("Also show players without friend connections who have negative flags, Steam bans, SourceBans history, or TF2BD list matches.");
         },
-        |ui| ui.add(theme::secondary_button("Fit to view")).clicked(),
+        |ui| ui.add(theme::secondary_button("Fit to View")).clicked(),
     );
     let lists = &app_win.tf2bd_lists;
     let (players, edges) = graph(&app_win.lobby, app_win.overview.include_flagged_players, lists);
