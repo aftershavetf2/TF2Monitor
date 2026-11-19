@@ -5,6 +5,7 @@ use crate::{
         queries::{get_all_accounts, get_all_player_flags},
     },
     models::AppWin,
+    tf2::lobby::player_attribute_description,
     tf2bd::models::PlayerAttribute,
 };
 use eframe::egui::{self, Grid, ScrollArea, TextEdit, Ui};
@@ -78,9 +79,7 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
 
     let flags_by_steamid = group_flags_by_steamid(&player_flags);
 
-    ui.heading("Filters");
-
-    ui.add_space(8.0);
+    theme::section_heading(ui, "Filters");
 
     if ui
         .add(
@@ -92,8 +91,6 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
     {
         app_win.player_database_page = 0;
     }
-
-    ui.add_space(15.0);
 
     ui.horizontal_wrapped(|ui| {
         for player_attribute in PLAYER_DATABASE_FILTERS {
@@ -108,7 +105,12 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
             }
         }
 
-        if ui.button("Clear filters").clicked() {
+        let has_filters = !app_win.player_database_filters.is_empty()
+            || !app_win.player_database_search.is_empty();
+        if ui
+            .add_enabled(has_filters, theme::secondary_button("Clear Filters"))
+            .clicked()
+        {
             app_win.player_database_filters.clear();
             app_win.player_database_search.clear();
             app_win.player_database_page = 0;
@@ -120,52 +122,40 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
         .filter(|account| account_matches_filters(account, &flags_by_steamid, app_win))
         .collect();
 
-    ui.add(egui::Separator::default().spacing(30.0));
+    ui.add_space(ui.spacing().item_spacing.y);
+    theme::section_heading(ui, "Results");
 
-    let page_count = filtered_accounts.len().div_ceil(PAGE_SIZE).max(1);
-    app_win.player_database_page = app_win.player_database_page.min(page_count - 1);
-    ui.horizontal(|ui| {
-        if ui
-            .add_enabled(
-                app_win.player_database_page > 0,
-                egui::Button::new("Previous"),
-            )
-            .clicked()
-        {
-            app_win.player_database_page -= 1;
-        }
-        if ui
-            .add_enabled(
-                app_win.player_database_page + 1 < page_count,
-                egui::Button::new("Next"),
-            )
-            .clicked()
-        {
-            app_win.player_database_page += 1;
-        }
-        ui.label(format!(
-            "Page {} of {}",
-            app_win.player_database_page + 1,
-            page_count
-        ));
-    });
-
-    let start = app_win.player_database_page * PAGE_SIZE;
-    let end = (start + PAGE_SIZE).min(filtered_accounts.len());
-    ui.label(format!(
-        "Showing {} - {} of {} matching players ({} total)",
-        if filtered_accounts.is_empty() {
-            0
+    let matching_count = filtered_accounts.len();
+    if matching_count == 0 {
+        app_win.player_database_page = 0;
+        ui.label(if accounts.is_empty() {
+            "No players in the database."
         } else {
-            start + 1
-        },
-        end,
-        filtered_accounts.len(),
-        accounts.len()
-    ));
+            "No players match your filters."
+        });
+        return;
+    }
+
+    let page_count = matching_count.div_ceil(PAGE_SIZE);
+    let page = app_win.player_database_page.min(page_count - 1);
+    let start = page * PAGE_SIZE;
+    let end = (start + PAGE_SIZE).min(matching_count);
+    let first = start + 1;
+    let total_count = accounts.len();
+    let count = if matching_count == total_count {
+        format!("Showing {first}–{end} of {total_count} players")
+    } else {
+        format!("Showing {first}–{end} of {matching_count} matching players ({total_count} total)")
+    };
+    let (_, selected_page) = egui::containers::Sides::new().shrink_left().wrap().show(
+        ui,
+        |ui| ui.label(count),
+        |ui| show_pagination(ui, page, page_count),
+    );
+    app_win.player_database_page = selected_page;
 
     ScrollArea::both()
-        .id_salt(("player_database_scroll", app_win.player_database_page))
+        .id_salt(("player_database_scroll", page))
         .auto_shrink([false, false])
         .show(ui, |ui| {
             let column_width =
@@ -191,20 +181,18 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
                         let steamid =
                             crate::models::steamid::SteamID::from_u64(account.steam_id as u64);
 
-                        let response = ui.label(&account.name);
-                        if response.double_clicked() {
-                            app_win.set_selected_player(steamid);
-                            app_win.open_player_details_window(steamid);
-                        }
-
-                        let response = ui.label(account.steam_id.to_string());
-                        if response.double_clicked() {
-                            app_win.set_selected_player(steamid);
+                        let name = ui.label(&account.name);
+                        let steam_id = ui.label(account.steam_id.to_string());
+                        if name.double_clicked() || steam_id.double_clicked() {
                             app_win.open_player_details_window(steamid);
                         }
 
                         ui.horizontal_wrapped(|ui| {
-                            ui.label(format_flags(flags_by_steamid.get(&account.steam_id)));
+                            if let Some(flags) = flags_by_steamid.get(&account.steam_id) {
+                                show_player_flags(ui, flags);
+                            } else if !app_win.tf2bd_lists.has_match(steamid) {
+                                ui.weak("—");
+                            }
                             super::markings::add_tf2bd_badge(ui, steamid, &app_win.tf2bd_lists);
                         });
                         ui.end_row();
@@ -213,14 +201,32 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
         });
 }
 
-fn group_flags_by_steamid(player_flags: &[PlayerFlag]) -> HashMap<i64, HashSet<String>> {
+fn show_pagination(ui: &mut Ui, page: usize, page_count: usize) -> usize {
+    if page_count == 1 {
+        return page;
+    }
+
+    let next = ui
+        .add_enabled(page + 1 < page_count, theme::secondary_button("Next"))
+        .clicked();
+    ui.label(format!("Page {} of {page_count}", page + 1));
+    let previous = ui
+        .add_enabled(page > 0, theme::secondary_button("Previous"))
+        .clicked();
+    page + usize::from(next) - usize::from(previous)
+}
+
+fn group_flags_by_steamid(player_flags: &[PlayerFlag]) -> HashMap<i64, HashSet<&str>> {
     let mut grouped = HashMap::new();
 
     for player_flag in player_flags {
         grouped
             .entry(player_flag.steam_id)
             .or_insert_with(HashSet::new)
-            .insert(player_flag.flag_type.clone());
+            .insert(match player_flag.flag_type.as_str() {
+                "Racist" => "Toxic",
+                flag => flag,
+            });
     }
 
     grouped
@@ -228,7 +234,7 @@ fn group_flags_by_steamid(player_flags: &[PlayerFlag]) -> HashMap<i64, HashSet<S
 
 fn account_matches_filters(
     account: &Account,
-    flags_by_steamid: &HashMap<i64, HashSet<String>>,
+    flags_by_steamid: &HashMap<i64, HashSet<&str>>,
     app_win: &AppWin,
 ) -> bool {
     let search_text = app_win.player_database_search.trim();
@@ -256,19 +262,20 @@ fn account_matches_filters(
     app_win
         .player_database_filters
         .iter()
-        .any(|filter| player_flags.contains(&format!("{:?}", filter)))
+        .any(|&filter| player_flags.contains(player_attribute_description(filter).1))
 }
 
-fn format_flags(flags: Option<&HashSet<String>>) -> String {
-    let Some(flags) = flags else {
-        return "-".to_string();
-    };
-
-    if flags.is_empty() {
-        return "-".to_string();
-    }
-
-    let mut flags: Vec<&str> = flags.iter().map(String::as_str).collect();
+fn show_player_flags(ui: &mut Ui, flags: &HashSet<&str>) {
+    let mut flags: Vec<_> = flags.iter().copied().collect();
     flags.sort_unstable();
-    flags.join(", ")
+    for flag in flags {
+        let attribute = PLAYER_DATABASE_FILTERS
+            .into_iter()
+            .find(|&attribute| player_attribute_description(attribute).1 == flag);
+        if let Some(attribute) = attribute {
+            super::markings::add_flag(ui, attribute);
+        } else {
+            ui.label(flag);
+        }
+    }
 }

@@ -103,7 +103,7 @@ impl AppWin {
 
             db_statistics_window_open: false,
             player_database_window_open: false,
-            player_database_filters: HashSet::from([PlayerAttribute::Cheater]),
+            player_database_filters: HashSet::new(),
             player_database_search: String::new(),
             player_database_page: 0,
             tf2bd_lists: Default::default(),

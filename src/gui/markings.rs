@@ -188,7 +188,7 @@ pub fn add_flags(ui: &mut Ui, player: &Player) {
     }
 }
 
-fn add_flag(ui: &mut Ui, player_attribute: PlayerAttribute) {
+pub(super) fn add_flag(ui: &mut Ui, player_attribute: PlayerAttribute) {
     let (fgcolor, bgcolor) = color_for_flag(player_attribute);
 
     let (text, tooltip) = player_attribute_description(player_attribute);

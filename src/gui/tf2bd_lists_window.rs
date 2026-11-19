@@ -2,7 +2,7 @@ use super::theme;
 use crate::{
     models::AppWin, tf2::lobby::player_attribute_description, tf2bd::player_lists::ATTRIBUTES,
 };
-use eframe::egui::{self, ScrollArea, Ui};
+use eframe::egui::{self, Ui};
 
 // Public TF2BD exports listed by SteamHistory, plus the check.tf export.
 const KNOWN_LISTS: &[(&str, &str)] = &[
@@ -219,56 +219,53 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
             let busy = lists.busy();
             let mut change_enabled = None;
             let mut remove = None;
-            ui.scope(|ui| {
-                ui.spacing_mut().scroll.floating = false;
-                ScrollArea::vertical().show(ui, |ui| {
-                    let card = egui::Frame::new()
-                        .fill(theme::CARD_FILL)
-                        .corner_radius(6)
-                        .inner_margin(10);
-                    for (index, list) in lists.summaries().enumerate() {
-                        ui.push_id(list.filename, |ui| {
-                            card.show(ui, |ui| {
-                                ui.allocate_ui_with_layout(
-                                    egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
-                                    egui::Layout::right_to_left(egui::Align::Center),
-                                    |ui| {
-                                        if ui
-                                            .add_enabled(!busy, theme::secondary_button("Remove"))
-                                            .clicked()
-                                        {
-                                            remove = Some(index);
-                                        }
-                                        let mut enabled = list.enabled;
-                                        if ui.checkbox(&mut enabled, "Enabled").changed() {
-                                            change_enabled = Some((index, enabled));
-                                        }
-                                        ui.with_layout(
-                                            egui::Layout::left_to_right(egui::Align::Center),
-                                            |ui| show_list_title(ui, list.title, list.url),
-                                        );
-                                    },
-                                );
-                                if let Some((players, counts)) = list.counts {
-                                    ui.label(format!("{players} unique SteamIDs"));
-                                    ui.horizontal_wrapped(|ui| {
-                                        for (attribute, &count) in ATTRIBUTES.iter().zip(counts) {
-                                            ui.label(format!(
-                                                "{} {count}",
-                                                player_attribute_description(*attribute).1
-                                            ));
-                                        }
-                                    });
-                                }
-                                if list.failed {
-                                    show_error(ui, list.status);
-                                } else if !list.status.is_empty() {
-                                    ui.label(list.status);
-                                }
-                            });
+            theme::vertical_scroll_area_with_gutter(ui).show(ui, |ui| {
+                let card = egui::Frame::new()
+                    .fill(theme::CARD_FILL)
+                    .corner_radius(6)
+                    .inner_margin(10);
+                for (index, list) in lists.summaries().enumerate() {
+                    ui.push_id(list.filename, |ui| {
+                        card.show(ui, |ui| {
+                            ui.allocate_ui_with_layout(
+                                egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui
+                                        .add_enabled(!busy, theme::secondary_button("Remove"))
+                                        .clicked()
+                                    {
+                                        remove = Some(index);
+                                    }
+                                    let mut enabled = list.enabled;
+                                    if ui.checkbox(&mut enabled, "Enabled").changed() {
+                                        change_enabled = Some((index, enabled));
+                                    }
+                                    ui.with_layout(
+                                        egui::Layout::left_to_right(egui::Align::Center),
+                                        |ui| show_list_title(ui, list.title, list.url),
+                                    );
+                                },
+                            );
+                            if let Some((players, counts)) = list.counts {
+                                ui.label(format!("{players} unique SteamIDs"));
+                                ui.horizontal_wrapped(|ui| {
+                                    for (attribute, &count) in ATTRIBUTES.iter().zip(counts) {
+                                        ui.label(format!(
+                                            "{} {count}",
+                                            player_attribute_description(*attribute).1
+                                        ));
+                                    }
+                                });
+                            }
+                            if list.failed {
+                                show_error(ui, list.status);
+                            } else if !list.status.is_empty() {
+                                ui.label(list.status);
+                            }
                         });
-                    }
-                });
+                    });
+                }
             });
             if let Some((index, enabled)) = change_enabled {
                 window.error = lists.set_enabled(index, enabled).err();
