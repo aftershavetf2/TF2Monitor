@@ -70,7 +70,7 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                 return;
             }
 
-            ui.heading("Add Lists");
+            theme::section_heading(ui, "Add Lists");
             let source_width = 260.0;
             ui.add_enabled_ui(!lists.busy(), |ui| {
                 ui.horizontal_wrapped(|ui| {
@@ -108,7 +108,10 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                     let urls = KNOWN_LISTS.iter().map(|&(_, url)| url);
                     let has_missing = urls.clone().any(|url| !lists.has_source_url(url));
                     if ui
-                        .add_enabled(has_missing && !lists.busy(), egui::Button::new("Add All"))
+                        .add_enabled(
+                            has_missing && !lists.busy(),
+                            theme::secondary_button("Add All"),
+                        )
                         .clicked()
                     {
                         window.error = lists.add_from_urls(urls).err();
@@ -168,8 +171,9 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                 show_error(ui, error);
             }
 
-            ui.separator();
-            ui.label("Show TF2BD badges for");
+            let section_spacing = ui.spacing().item_spacing.y;
+            ui.add_space(section_spacing);
+            theme::section_heading(ui, "TF2BD Badges");
             let mut filters = lists.filters().to_vec();
             let mut filters_changed = false;
             ui.horizontal_wrapped(|ui| {
@@ -195,17 +199,23 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                 window.error = lists.set_filters(filters).err();
             }
 
-            ui.separator();
+            ui.add_space(section_spacing);
             let has_lists = lists.summaries().next().is_some();
-            ui.horizontal_wrapped(|ui| {
-                ui.heading("Installed Lists");
-                if ui
-                    .add_enabled(!lists.busy() && has_lists, egui::Button::new("Update All"))
-                    .clicked()
-                {
-                    window.error = lists.update_all().err();
-                }
-            });
+            ui.allocate_ui_with_layout(
+                egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    if ui
+                        .add_enabled(!lists.busy() && has_lists, egui::Button::new("Update All"))
+                        .clicked()
+                    {
+                        window.error = lists.update_all().err();
+                    }
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        theme::section_heading(ui, "Installed Lists");
+                    });
+                },
+            );
             if !has_lists {
                 ui.weak("No player lists added.");
             }
@@ -227,7 +237,7 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                                     egui::Layout::right_to_left(egui::Align::Center),
                                     |ui| {
                                         if ui
-                                            .add_enabled(!busy, egui::Button::new("Remove"))
+                                            .add_enabled(!busy, theme::secondary_button("Remove"))
                                             .clicked()
                                         {
                                             remove = Some(index);
@@ -238,20 +248,10 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                                         }
                                         ui.with_layout(
                                             egui::Layout::left_to_right(egui::Align::Center),
-                                            |ui| {
-                                                ui.add(
-                                                    egui::Label::new(
-                                                        egui::RichText::new(list.title)
-                                                            .heading()
-                                                            .color(theme::TEXT),
-                                                    )
-                                                    .wrap(),
-                                                );
-                                            },
+                                            |ui| show_list_title(ui, list.title, list.url),
                                         );
                                     },
                                 );
-                                ui.hyperlink(list.url);
                                 if let Some((players, counts)) = list.counts {
                                     ui.label(format!("{players} unique SteamIDs"));
                                     ui.horizontal_wrapped(|ui| {
@@ -280,6 +280,56 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                 window.error = lists.remove(index).err();
             }
         });
+}
+
+fn show_list_title(ui: &mut Ui, title: &str, url: &str) {
+    let icon_size = ui.spacing().interact_size.y;
+    let mut title_rect = ui.available_rect_before_wrap();
+    title_rect.max.x =
+        (title_rect.max.x - icon_size - ui.spacing().item_spacing.x).max(title_rect.min.x);
+    ui.scope_builder(egui::UiBuilder::new().max_rect(title_rect), |ui| {
+        theme::card_title(ui, title);
+    });
+
+    let label = "Open list source";
+    let response = ui.add(theme::secondary_button(()).min_size(egui::Vec2::splat(icon_size)));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Link, ui.is_enabled(), label));
+    let response = response
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_ui(|ui| {
+            ui.label(label);
+            ui.label(url);
+        });
+
+    if ui.is_rect_visible(response.rect) {
+        let center = response.rect.center();
+        let point = |x, y| center + egui::vec2(x, y);
+        let stroke = egui::Stroke::new(1.5, ui.style().interact(&response).fg_stroke.color);
+        let painter = ui.painter();
+        painter.line(
+            vec![
+                point(0.0, -4.5),
+                point(-5.5, -4.5),
+                point(-5.5, 5.5),
+                point(4.5, 5.5),
+                point(4.5, 0.0),
+            ],
+            stroke,
+        );
+        painter.line_segment([point(-1.0, 1.0), point(5.5, -5.5)], stroke);
+        painter.line(
+            vec![point(1.0, -5.5), point(5.5, -5.5), point(5.5, -1.0)],
+            stroke,
+        );
+    }
+
+    let new_tab = response.clicked_with_open_in_background();
+    if new_tab || response.clicked() {
+        ui.open_url(egui::OpenUrl {
+            url: url.to_owned(),
+            new_tab,
+        });
+    }
 }
 
 fn show_error(ui: &mut Ui, error: &str) {
