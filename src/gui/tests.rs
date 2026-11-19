@@ -411,7 +411,8 @@ fn native_and_menu_checkboxes_share_the_theme_frame() {
 }
 
 #[test]
-fn flag_checkboxes_keep_their_attribute_colors() {
+fn colored_checkboxes_share_badge_colors_in_dialogs_and_menus() {
+    use super::colors::TF2BD_BADGE_COLORS;
     use crate::tf2bd::models::PlayerAttribute::{Bot, Cheater};
 
     let ctx = egui::Context::default();
@@ -422,19 +423,40 @@ fn flag_checkboxes_keep_their_attribute_colors() {
                 theme::flag_checkbox(ui, &mut true, Cheater);
                 theme::flag_checkbox(ui, &mut false, Bot);
             });
+            menu_item::flag_checkbox(ui, &mut true, "Cheater", Cheater);
+            menu_item::flag_checkbox(ui, &mut false, "Bot", Bot);
+            menu_item::colored_checkbox(ui, &mut true, "TF2BD", TF2BD_BADGE_COLORS);
         });
     });
     let colors: Vec<_> = output
         .shapes
         .iter()
         .filter_map(|shape| match &shape.shape {
-            egui::Shape::Rect(rect) if rect.rect.size() == egui::Vec2::splat(18.0) => {
+            egui::Shape::Rect(rect)
+                if rect.rect.size() == egui::Vec2::splat(theme::COLORED_CHECKBOX_SIZE) =>
+            {
                 Some((rect.stroke.color, rect.fill))
             }
             _ => None,
         })
         .collect();
-    assert_eq!(colors, [Cheater, Bot].map(super::colors::color_for_flag));
+    let [cheater, bot] = [Cheater, Bot].map(super::colors::color_for_flag);
+    let (tf2bd_checkmark, tf2bd_background) = TF2BD_BADGE_COLORS;
+    assert_eq!(
+        colors,
+        [
+            cheater,
+            bot,
+            cheater,
+            bot,
+            (egui::Color32::BLACK, tf2bd_background)
+        ]
+    );
+    assert!(output.shapes.iter().any(|shape| {
+        matches!(&shape.shape, egui::Shape::Path(path)
+            if path.points.len() == 3 && path.stroke == egui::epaint::PathStroke::new(
+                theme::CHECKMARK_STROKE.width, tf2bd_checkmark))
+    }));
 }
 
 #[test]

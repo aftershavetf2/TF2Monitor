@@ -28,7 +28,7 @@ const POPUP: Color32 = PANEL;
 const MENU_FILL: Color32 = Color32::from_rgb(0x43, 0x3E, 0x39);
 pub const CONTROL: Color32 = Color32::from_gray(49);
 pub(super) const CHECKBOX_SIZE: f32 = 14.0;
-const FLAG_CHECKBOX_SIZE: f32 = 18.0;
+pub(super) const COLORED_CHECKBOX_SIZE: f32 = 18.0;
 const PLAYER_FLAG_TAG: &str = "tf2monitor_player_flag";
 const SECONDARY_BUTTON: ClassName = ClassName::from_static("tf2monitor:secondary_button");
 pub(super) const CHECKMARK_SIZE: f32 = 8.0;
@@ -215,6 +215,22 @@ pub(super) fn checkbox_frame(border: Color32) -> egui::Frame {
         .corner_radius(2)
 }
 
+pub(super) fn colored_checkbox_appearance(
+    (foreground, background): (Color32, Color32),
+    state: WidgetState,
+    focus_color: Color32,
+) -> (egui::Frame, Stroke) {
+    let border = if state == WidgetState::Active {
+        focus_color
+    } else {
+        Color32::BLACK
+    };
+    (
+        checkbox_frame(border).fill(background),
+        Stroke::new(CHECKMARK_STROKE.width, foreground),
+    )
+}
+
 pub(super) fn flag_checkbox(
     ui: &mut egui::Ui,
     checked: &mut bool,
@@ -250,25 +266,21 @@ impl StyleProvider<ButtonStyle> for WidgetTheme {
 impl StyleProvider<CheckboxStyle> for WidgetTheme {
     fn style(&mut self, args: &StyleArgs<'_>) -> CheckboxStyle {
         let mut style: CheckboxStyle = DefaultStyle.style(args);
+        let color = args.style.visuals.widgets.state(args.state).fg_stroke.color;
         if let Some(&attribute) = args
             .stack
             .tags()
             .get_downcast::<PlayerAttribute>(PLAYER_FLAG_TAG)
         {
-            let (foreground, background) = color_for_flag(attribute);
-            style.checkbox_size = FLAG_CHECKBOX_SIZE;
-            style.checkbox_frame.fill = background;
-            if matches!(args.state, WidgetState::Inactive | WidgetState::Hovered) {
-                style.checkbox_frame.stroke.color = foreground;
-                style.check_stroke.color = foreground;
-            }
-            return style;
+            style.checkbox_size = COLORED_CHECKBOX_SIZE;
+            (style.checkbox_frame, style.check_stroke) =
+                colored_checkbox_appearance(color_for_flag(attribute), args.state, color);
+        } else {
+            style.checkbox_size = CHECKBOX_SIZE;
+            style.checkbox_frame = checkbox_frame(color);
+            style.check_stroke = CHECKMARK_STROKE;
         }
-        let color = args.style.visuals.widgets.state(args.state).fg_stroke.color;
-        style.checkbox_frame = checkbox_frame(color);
-        style.checkbox_size = CHECKBOX_SIZE;
         style.check_size = CHECKMARK_SIZE;
-        style.check_stroke = CHECKMARK_STROKE;
         style
     }
 }

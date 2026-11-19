@@ -14,6 +14,8 @@ terminology and layout patterns. Check `src/gui/theme.rs` and
 - Keep text, icons, and control states legible against their backgrounds in all
   supported themes. Pair meaningful colors with a label or icon, especially
   for player flags and status indicators.
+- Use the shared `flag_checkbox` helpers in `src/gui/theme.rs` and
+  `src/gui/menu_item.rs` for checkboxes tied to a player flag.
 - Group related information and actions. Use placement, headings, and emphasis
   to make the most important information easy to find. Keep labels short and
   clear, and use tooltips for additional explanation.

@@ -179,10 +179,7 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
             ui.horizontal_wrapped(|ui| {
                 for attribute in ATTRIBUTES {
                     let mut selected = filters.contains(&attribute);
-                    if ui
-                        .checkbox(&mut selected, player_attribute_description(attribute).1)
-                        .changed()
-                    {
+                    if theme::flag_checkbox(ui, &mut selected, attribute).changed() {
                         filters_changed = true;
                         if selected {
                             filters.push(attribute);

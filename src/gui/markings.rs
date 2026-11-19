@@ -1,4 +1,4 @@
-use super::colors::color_for_flag;
+use super::colors::{TF2BD_BADGE_COLORS, color_for_flag};
 use crate::{
     tf2::lobby::{Player, player_attribute_description},
     models::steamid::SteamID,
@@ -52,11 +52,12 @@ pub fn add_reputation(ui: &mut Ui, player: &Player, lists: &PlayerLists) {
 
 pub fn add_tf2bd_badge(ui: &mut Ui, steamid: SteamID, lists: &PlayerLists) {
     if lists.has_match(steamid) {
+        let (foreground, background) = TF2BD_BADGE_COLORS;
         colored_box(
             ui,
             "TF2BD",
-            Color32::WHITE,
-            Color32::from_rgb(82, 60, 122),
+            foreground,
+            background,
             FontId::proportional(BADGE_FONT_SIZE),
         )
         .on_hover_ui(|ui| add_tf2bd_sources(ui, steamid, lists));

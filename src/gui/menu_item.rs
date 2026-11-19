@@ -1,7 +1,15 @@
 //! Full-row menu targets with a shared icon gutter and shortcut column.
+use super::{colors::color_for_flag, theme};
+use crate::tf2bd::models::PlayerAttribute;
 use eframe::egui::{self, Color32, Response, Sense, StrokeKind, Ui};
 
-fn row(ui: &mut Ui, label: &str, selected: Option<bool>, keys: &[&str]) -> Response {
+fn row(
+    ui: &mut Ui,
+    label: &str,
+    selected: Option<bool>,
+    checkbox_colors: Option<(Color32, Color32)>,
+    keys: &[&str],
+) -> Response {
     let text = ui.painter().layout_no_wrap(
         label.into(),
         egui::TextStyle::Button.resolve(ui.style()),
@@ -27,12 +35,22 @@ fn row(ui: &mut Ui, label: &str, selected: Option<bool>, keys: &[&str]) -> Respo
     } else {
         ui.visuals().weak_text_color()
     };
-    let icon = egui::Rect::from_center_size(
-        egui::pos2(rect.left() + 17.0, rect.center().y),
-        egui::Vec2::splat(super::theme::CHECKBOX_SIZE),
-    );
     if let Some(checked) = selected {
-        let frame = super::theme::checkbox_frame(color);
+        let (size, frame, check_stroke) = if let Some(colors) = checkbox_colors {
+            let (frame, stroke) =
+                theme::colored_checkbox_appearance(colors, response.widget_state(), color);
+            (theme::COLORED_CHECKBOX_SIZE, frame, stroke)
+        } else {
+            (
+                theme::CHECKBOX_SIZE,
+                theme::checkbox_frame(color),
+                theme::CHECKMARK_STROKE,
+            )
+        };
+        let icon = egui::Rect::from_center_size(
+            egui::pos2(rect.left() + 17.0, rect.center().y),
+            egui::Vec2::splat(size),
+        );
         ui.painter().rect(
             icon,
             frame.corner_radius,
@@ -41,20 +59,19 @@ fn row(ui: &mut Ui, label: &str, selected: Option<bool>, keys: &[&str]) -> Respo
             StrokeKind::Inside,
         );
         if checked {
-            let check =
-                icon.shrink((super::theme::CHECKBOX_SIZE - super::theme::CHECKMARK_SIZE) / 2.0);
+            let check = icon.shrink((size - theme::CHECKMARK_SIZE) / 2.0);
             ui.painter().add(egui::Shape::line(
                 vec![
                     check.left_center(),
                     check.center_bottom(),
                     check.right_top(),
                 ],
-                super::theme::CHECKMARK_STROKE,
+                check_stroke,
             ));
         }
     }
     ui.painter().galley_with_override_text_color(
-        egui::pos2(icon.right() + 8.0, rect.center().y - text.size().y / 2.0),
+        egui::pos2(rect.left() + 32.0, rect.center().y - text.size().y / 2.0),
         text,
         color,
     );
@@ -73,7 +90,7 @@ pub fn command(ui: &mut Ui, label: &str) -> Response {
 }
 
 pub fn command_with_keys(ui: &mut Ui, label: &str, keys: &[&str]) -> Response {
-    let response = row(ui, label, None, keys);
+    let response = row(ui, label, None, None, keys);
     if response.clicked() {
         ui.close();
     }
@@ -81,7 +98,34 @@ pub fn command_with_keys(ui: &mut Ui, label: &str, keys: &[&str]) -> Response {
 }
 
 pub fn checkbox(ui: &mut Ui, checked: &mut bool, label: &str) -> Response {
-    let mut response = row(ui, label, Some(*checked), &[]);
+    checkbox_row(ui, checked, label, None)
+}
+
+pub fn flag_checkbox(
+    ui: &mut Ui,
+    checked: &mut bool,
+    label: &str,
+    attribute: PlayerAttribute,
+) -> Response {
+    colored_checkbox(ui, checked, label, color_for_flag(attribute))
+}
+
+pub(super) fn colored_checkbox(
+    ui: &mut Ui,
+    checked: &mut bool,
+    label: &str,
+    colors: (Color32, Color32),
+) -> Response {
+    checkbox_row(ui, checked, label, Some(colors))
+}
+
+fn checkbox_row(
+    ui: &mut Ui,
+    checked: &mut bool,
+    label: &str,
+    colors: Option<(Color32, Color32)>,
+) -> Response {
+    let mut response = row(ui, label, Some(*checked), colors, &[]);
     if response.clicked() {
         *checked = !*checked;
         response.mark_changed();
@@ -91,7 +135,7 @@ pub fn checkbox(ui: &mut Ui, checked: &mut bool, label: &str) -> Response {
 
 /// Keep submenu labels in the same text column as commands and checkboxes.
 pub fn submenu<R>(ui: &mut Ui, label: &str, contents: impl FnOnce(&mut Ui) -> R) {
-    let response = row(ui, label, None, &[]);
+    let response = row(ui, label, None, None, &[]);
     let arrow_rect = egui::Rect::from_center_size(
         egui::pos2(response.rect.right() - 17.0, response.rect.center().y),
         egui::Vec2::splat(14.0),

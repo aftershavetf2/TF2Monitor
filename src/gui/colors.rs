@@ -37,6 +37,9 @@ pub const PANEL_FILL: Color32 = super::theme::PANEL;
 // pub const WIDGET_FILL: Color32 = DARK_BROWN_GRAY;
 pub const TEXT_COLOR: Color32 = Color32::from_gray(230);
 
+pub(super) const TF2BD_BADGE_COLORS: (Color32, Color32) =
+    (Color32::WHITE, Color32::from_rgb(82, 60, 122));
+
 /// Returns the (text color, background color) for a given PlayerAttribute.
 pub fn color_for_flag(player_attribute: PlayerAttribute) -> (Color32, Color32) {
     match player_attribute {

@@ -1,9 +1,14 @@
 use super::{
+    colors::TF2BD_BADGE_COLORS,
     menu_item,
     theme::{self, MenuTooltip},
 };
-use crate::{models::AppWin, tf2bd::models::PlayerAttribute, utils::print_image_data};
+use crate::{
+    models::AppWin, tf2::lobby::player_attribute_description, tf2bd::models::PlayerAttribute,
+};
 use eframe::egui::{Ui, ViewportCommand};
+
+const SHOW_TRANSLATE_CHAT: bool = false;
 
 /*
 Menu structure:
@@ -81,21 +86,32 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
 
         theme::menu_header(ui, "Actions", |ui| {
             theme::menu_contents(ui);
-            ui.add_enabled_ui(false, |ui| {
-                menu_item::checkbox(ui, &mut app_win.app_settings.translate_chat, "Translate Chat")
-                    .menu_tooltip("Translate chat messages to English using Google Translate");
-            });
+            if SHOW_TRANSLATE_CHAT {
+                ui.add_enabled_ui(false, |ui| {
+                    menu_item::checkbox(ui, &mut app_win.app_settings.translate_chat, "Translate Chat")
+                        .menu_tooltip("Translate chat messages to English using Google Translate");
+                });
+                ui.separator();
+            }
 
-            ui.separator();
-
-            if menu_item::checkbox(ui, &mut app_win.app_settings.kick_cheaters, "Kick Cheaters")
-                .changed()
+            if menu_item::flag_checkbox(
+                ui,
+                &mut app_win.app_settings.kick_cheaters,
+                "Kick Cheaters",
+                PlayerAttribute::Cheater,
+            )
+            .changed()
             {
                 app_win.updated_settings();
             }
 
-            if menu_item::checkbox(ui, &mut app_win.app_settings.kick_bots, "Kick Bots")
-                .changed()
+            if menu_item::flag_checkbox(
+                ui,
+                &mut app_win.app_settings.kick_bots,
+                "Kick Bots",
+                PlayerAttribute::Bot,
+            )
+            .changed()
             {
                 app_win.updated_settings();
             }
@@ -104,9 +120,14 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
 
             ui.label("Notify party about joining:");
 
-            if menu_item::checkbox(ui, &mut app_win.app_settings.notify_tf2bd, "TF2BD")
-                .menu_tooltip("Notify your party when a joining player matches the active TF2BD list filters.")
-                .changed()
+            if menu_item::colored_checkbox(
+                ui,
+                &mut app_win.app_settings.notify_tf2bd,
+                "TF2BD",
+                TF2BD_BADGE_COLORS,
+            )
+            .menu_tooltip("Notify your party when a joining player matches the active TF2BD list filters.")
+            .changed()
             {
                 app_win.updated_settings();
             }
@@ -125,9 +146,8 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
                     .app_settings
                     .party_notifications_for
                     .contains(&player_attribute);
-                if menu_item::checkbox(ui, &mut enabled, &format!("{:?}", player_attribute))
-                    .changed()
-                {
+                let (_, label) = player_attribute_description(player_attribute);
+                if menu_item::flag_checkbox(ui, &mut enabled, label, player_attribute).changed() {
                     app_win
                         .app_settings
                         .party_notifications_for
@@ -189,50 +209,22 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             menu_item::submenu(ui, "SourceBan Data", |ui| {
                 source_ban_data_menu(ui, app_win);
             });
-            ui.separator();
 
             if menu_item::command(ui, "TF2BD Player Lists").clicked() {
                 app_win.tf2bd_lists_window.open = true;
                 ui.close();
             }
 
-            if menu_item::command(ui, "DB Statistics").clicked() {
-                app_win.db_statistics_window_open = true;
-                ui.close();
-            }
+            ui.separator();
 
             if menu_item::command(ui, "Player Database").clicked() {
                 app_win.player_database_window_open = true;
                 ui.close();
             }
 
-            ui.separator();
-
-            if menu_item::command(ui, "Dump Debug Info")
-                .menu_tooltip("Dumps debug info to the console window, right now it's just the player avatars")
-                .clicked() {
-
-                    app_win.get_latest_lobby();
-
-                    let lobby = &app_win.lobby;
-                    let players = &lobby.players;
-
-                    log::info!("Dumping debug info for {} players", players.len());
-
-                    for player in players {
-                        if let Some(steam_info) = &player.steam_info {
-                            let other_url = &steam_info.avatar_thumb;
-                            // let other_url = "https://old.reddit.com/r/funnyvideos/";
-
-                            print_image_data(other_url);
-                        } else {
-                            log::info!(
-                                "Player {} has no steam info, skipping avatar dump",
-                                player.name
-                            );
-                        }
-                    }
-                    ui.close();
+            if menu_item::command(ui, "DB Statistics").clicked() {
+                app_win.db_statistics_window_open = true;
+                ui.close();
             }
         });
         super::title_bar::contents(ui, "TF2 Monitor");
