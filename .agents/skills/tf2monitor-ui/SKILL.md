@@ -21,6 +21,9 @@ views can reuse the same implementation.
 - Group related information and actions. Use placement, headings, and emphasis
   to make the most important information easy to find. Keep labels short and
   clear, and use tooltips for additional explanation.
+- Use US English title case for window titles, headings, tabs, buttons, and
+  menu items, such as `Fit to View`. Use sentence case for explanatory text,
+  tooltips, and error messages.
 - Use the shared typography roles in `src/gui/theme.rs`. Use `section_heading`
   for headings at the same level and `card_title` for titles inside cards.
 - Use subtle tonal differences between named theme surfaces to group related
