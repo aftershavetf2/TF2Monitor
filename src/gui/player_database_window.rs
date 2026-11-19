@@ -1,7 +1,7 @@
 use super::theme;
 use crate::{
-    db::queries::get_all_accounts,
-    models::{AppWin, steamid::SteamID},
+    db::{connection::DbPool, entities::Account, queries::get_all_accounts},
+    models::{AppWin, player_markings::MarkingsSnapshot, steamid::SteamID},
     tf2bd::models::PlayerAttribute,
 };
 use eframe::egui::{self, Grid, ScrollArea, TextEdit, Ui};
@@ -40,51 +40,83 @@ pub fn show_player_database_window(app_win: &mut AppWin, ctx: &egui::Context) {
 }
 
 fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
-    let mut conn = match app_win.db.get() {
-        Ok(conn) => conn,
-        Err(e) => {
-            ui.colored_label(
-                ui.visuals().error_fg_color,
-                format!("Database error: {}", e),
-            );
-            return;
-        }
-    };
-
-    let accounts = match get_all_accounts(&mut conn) {
+    let accounts = match load_cached_accounts(&app_win.db) {
         Ok(accounts) => accounts,
-        Err(e) => {
-            ui.colored_label(
-                ui.visuals().error_fg_color,
-                format!("Failed to load accounts: {}", e),
-            );
+        Err(error) => {
+            ui.colored_label(ui.visuals().error_fg_color, error);
             return;
         }
     };
 
-    drop(conn);
     let markings = app_win.markings.snapshot();
+    let players = merge_marked_players(accounts, &markings);
+    show_player_database_filters(ui, app_win);
+    show_player_database_results(ui, app_win, &players);
+}
+
+fn load_cached_accounts(db: &DbPool) -> Result<Vec<Account>, String> {
+    let mut conn = db
+        .get()
+        .map_err(|error| format!("Database error: {error}"))?;
+    get_all_accounts(&mut conn).map_err(|error| format!("Failed to load accounts: {error}"))
+}
+
+struct DatabasePlayer<'a> {
+    steamid: SteamID,
+    name: String,
+    flags: &'a [PlayerAttribute],
+}
+
+fn merge_marked_players(
+    accounts: Vec<Account>,
+    markings: &MarkingsSnapshot,
+) -> Vec<DatabasePlayer<'_>> {
     let cached_ids: HashSet<_> = accounts
         .iter()
         .map(|account| account.steam_id as u64)
         .collect();
     let mut players: Vec<_> = accounts
         .into_iter()
-        .map(|account| (account.steam_id as u64, account.name))
+        .map(|account| {
+            let id = account.steam_id as u64;
+            DatabasePlayer {
+                steamid: SteamID::from_u64(id),
+                name: account.name,
+                flags: markings
+                    .get(&id)
+                    .map_or(&[][..], |marking| marking.flags.as_slice()),
+            }
+        })
         .collect();
-    for (&id, marking) in markings.iter() {
-        if !cached_ids.contains(&id) {
-            let name = marking
-                .last_seen
-                .as_ref()
-                .and_then(|seen| seen.player_name.clone());
-            players.push((id, name.unwrap_or_else(|| id.to_string())));
+
+    for (&id, marking) in markings {
+        if cached_ids.contains(&id) {
+            continue;
         }
-    }
-    if players.len() > cached_ids.len() {
-        players.sort_unstable_by(|a, b| a.1.cmp(&b.1).then(a.0.cmp(&b.0)));
+        let name = marking
+            .last_seen
+            .as_ref()
+            .and_then(|seen| seen.player_name.clone())
+            .unwrap_or_else(|| id.to_string());
+        players.push(DatabasePlayer {
+            steamid: SteamID::from_u64(id),
+            name,
+            flags: &marking.flags,
+        });
     }
 
+    // Cached accounts already arrive in display order.
+    if players.len() > cached_ids.len() {
+        players.sort_unstable_by(|a, b| {
+            a.name
+                .cmp(&b.name)
+                .then_with(|| a.steamid.to_u64().cmp(&b.steamid.to_u64()))
+        });
+    }
+    players
+}
+
+fn show_player_database_filters(ui: &mut Ui, app_win: &mut AppWin) {
     theme::section_heading(ui, "Filters");
 
     if ui
@@ -122,15 +154,13 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
             app_win.player_database_page = 0;
         }
     });
+}
 
+fn show_player_database_results(ui: &mut Ui, app_win: &mut AppWin, players: &[DatabasePlayer<'_>]) {
+    let total_count = players.len();
     let filtered_players: Vec<_> = players
         .iter()
-        .filter(|(id, name)| {
-            let flags = markings
-                .get(id)
-                .map_or(&[][..], |marking| marking.flags.as_slice());
-            player_matches_filters(*id, name, flags, app_win)
-        })
+        .filter(|player| player_matches_filters(player, app_win))
         .collect();
 
     ui.add_space(ui.spacing().item_spacing.y);
@@ -139,7 +169,7 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
     let matching_count = filtered_players.len();
     if matching_count == 0 {
         app_win.player_database_page = 0;
-        ui.label(if players.is_empty() {
+        ui.label(if total_count == 0 {
             "No players in the database."
         } else {
             "No players match your filters."
@@ -152,7 +182,6 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
     let start = page * PAGE_SIZE;
     let end = (start + PAGE_SIZE).min(matching_count);
     let first = start + 1;
-    let total_count = players.len();
     let count = if matching_count == total_count {
         format!("Showing {first}–{end} of {total_count} players")
     } else {
@@ -164,7 +193,15 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
         |ui| show_pagination(ui, page, page_count),
     );
     app_win.player_database_page = selected_page;
+    show_player_grid(ui, app_win, page, &filtered_players[start..end]);
+}
 
+fn show_player_grid(
+    ui: &mut Ui,
+    app_win: &mut AppWin,
+    page: usize,
+    players: &[&DatabasePlayer<'_>],
+) {
     ScrollArea::both()
         .id_salt(("player_database_scroll", page))
         .auto_shrink([false, false])
@@ -188,33 +225,33 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
                     ui.strong("Flags");
                     ui.end_row();
 
-                    for (id, name) in &filtered_players[start..end] {
-                        let steamid = SteamID::from_u64(*id);
-                        let name = ui.add(egui::Label::new(name).sense(egui::Sense::click()));
-                        let steam_id =
-                            ui.add(egui::Label::new(id.to_string()).sense(egui::Sense::click()));
-                        if name.double_clicked() || steam_id.double_clicked() {
-                            app_win.open_player_details_window(steamid);
-                        }
-
-                        ui.horizontal_wrapped(|ui| {
-                            let flags = markings
-                                .get(id)
-                                .map_or(&[][..], |marking| marking.flags.as_slice());
-                            for flag in PLAYER_DATABASE_FILTERS {
-                                if flags.contains(&flag) {
-                                    super::markings::add_flag(ui, flag);
-                                }
-                            }
-                            if flags.is_empty() && !app_win.tf2bd_lists.has_match(steamid) {
-                                ui.weak("—");
-                            }
-                            super::markings::add_tf2bd_badge(ui, steamid, &app_win.tf2bd_lists);
-                        });
-                        ui.end_row();
+                    for player in players {
+                        show_player_row(ui, app_win, player);
                     }
                 });
         });
+}
+
+fn show_player_row(ui: &mut Ui, app_win: &mut AppWin, player: &DatabasePlayer<'_>) {
+    let name = ui.add(egui::Label::new(&player.name).sense(egui::Sense::click()));
+    let steam_id =
+        ui.add(egui::Label::new(player.steamid.to_u64().to_string()).sense(egui::Sense::click()));
+    if name.double_clicked() || steam_id.double_clicked() {
+        app_win.open_player_details_window(player.steamid);
+    }
+
+    ui.horizontal_wrapped(|ui| {
+        for flag in PLAYER_DATABASE_FILTERS {
+            if player.flags.contains(&flag) {
+                super::markings::add_flag(ui, flag);
+            }
+        }
+        if player.flags.is_empty() && !app_win.tf2bd_lists.has_match(player.steamid) {
+            ui.weak("—");
+        }
+        super::markings::add_tf2bd_badge(ui, player.steamid, &app_win.tf2bd_lists);
+    });
+    ui.end_row();
 }
 
 fn show_pagination(ui: &mut Ui, page: usize, page_count: usize) -> usize {
@@ -232,23 +269,20 @@ fn show_pagination(ui: &mut Ui, page: usize, page_count: usize) -> usize {
     page + usize::from(next) - usize::from(previous)
 }
 
-fn player_matches_filters(
-    steamid: u64,
-    name: &str,
-    flags: &[PlayerAttribute],
-    app_win: &AppWin,
-) -> bool {
+fn player_matches_filters(player: &DatabasePlayer<'_>, app_win: &AppWin) -> bool {
     let search = app_win.player_database_search.trim();
     if !search.is_empty()
-        && !name
+        && !player
+            .name
             .to_ascii_lowercase()
             .contains(&search.to_ascii_lowercase())
-        && !steamid.to_string().contains(search)
+        && !player.steamid.to_u64().to_string().contains(search)
     {
         return false;
     }
     app_win.player_database_filters.is_empty()
-        || flags
+        || player
+            .flags
             .iter()
             .any(|flag| app_win.player_database_filters.contains(flag))
 }
