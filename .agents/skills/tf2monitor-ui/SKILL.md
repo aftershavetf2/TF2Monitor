@@ -14,41 +14,48 @@ views can reuse the same implementation.
 ## Visual design
 
 - Keep text, icons, and control states legible against their backgrounds in all
-  supported themes. Pair meaningful colors with a label or icon, especially
-  for player flags and status indicators.
+  supported themes.
+  - Pair meaningful colors with a label or icon, especially for player flags
+    and status indicators.
 - Use the shared `flag_checkbox` helpers in `src/gui/theme.rs` and
   `src/gui/menu_item.rs` for checkboxes tied to a player flag.
-- Group related information and actions. Use placement, headings, and emphasis
-  to make the most important information easy to find. Keep labels short and
-  clear, and use tooltips for additional explanation.
-- Use US English title case for window titles, headings, tabs, buttons, and
-  menu items, such as `Fit to View`. Use sentence case for explanatory text,
-  tooltips, and error messages.
-- Use the shared typography roles in `src/gui/theme.rs`. Use `section_heading`
-  for headings at the same level and `card_title` for titles inside cards.
+- Group related information and actions.
+  - Use placement, headings, and emphasis to make the most important information
+    easy to find.
+- Keep labels short and clear.
+  - Use tooltips for additional explanation.
+  - Use US English title case for window titles, headings, tabs, buttons, and
+    menu items, such as `Fit to View`.
+  - Use sentence case for explanatory text, tooltips, and error messages.
+- Use the shared typography roles in `src/gui/theme.rs`.
+  - Use `section_heading` for headings at the same level.
+  - Use `card_title` for titles inside cards.
 - Use subtle tonal differences between named theme surfaces to group related
-  content and controls. Use cards for self-contained items and compact rows
-  where users need to compare values.
+  content and controls.
+  - Use cards for self-contained items.
+  - Use compact rows where users need to compare values.
 - Match button emphasis to the action's importance in the current view.
-  Keep repeated secondary actions easy to find with a quieter style.
-- Align related labels and controls along common edges. In the scoreboard,
-  align comparable values consistently across rows.
-- Follow existing padding and spacing patterns. Keep related items closer
-  together and leave more space between groups. Use dividers where spacing
-  alone leaves the boundary unclear.
-- Use the theme's floating scrollbars, as in Player Database. Keep them hidden
-  at rest and reveal them on hover. Use `theme::vertical_scroll_area_with_gutter`
-  when the expanded scrollbar could cover interactive controls.
+  - Keep repeated secondary actions easy to find with a quieter style.
+- Align related labels and controls along common edges.
+  - In the scoreboard, align comparable values consistently across rows.
+- Follow existing padding and spacing patterns.
+  - Keep related items closer together and leave more space between groups.
+  - Use dividers where spacing alone leaves the boundary unclear.
+- Use the theme's floating scrollbars, as in Player Database.
+  - Keep them hidden at rest and reveal them on hover.
+  - Use `theme::vertical_scroll_area_with_gutter` when the expanded scrollbar
+    could cover interactive controls.
 
 ## Responsiveness and CPU use
 
-- Run blocking I/O and long-running work off the UI thread. Brief, infrequent
-  operations triggered by an explicit user action may run synchronously if
-  they complete without a noticeable pause. Keep blocking work out of per-frame
-  rendering and periodic updates.
-- Review what runs each time egui builds the UI. Reuse expensive results across
-  frames and recompute them only when their inputs change. Keep CPU use low so
-  TF2Monitor does not interfere with gameplay.
+- Run blocking I/O and long-running work off the UI thread.
+  - Brief, infrequent operations triggered by an explicit user action may run
+    synchronously if they complete without a noticeable pause.
+  - Keep blocking work out of per-frame rendering and periodic updates.
+- Keep CPU use low so TF2Monitor does not interfere with gameplay.
+  - Review what runs each time egui builds the UI.
+  - Reuse expensive results across frames and recompute them only when their
+    inputs change.
 
 When you can run the app, open the affected view and check its layout,
 readability, and responsiveness.
