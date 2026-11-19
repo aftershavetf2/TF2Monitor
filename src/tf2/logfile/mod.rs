@@ -34,6 +34,8 @@ pub enum LogLine {
 
     LobbyDestroyed,
 
+    MapLoaded,
+
     Chat {
         name: String,
         message: String,

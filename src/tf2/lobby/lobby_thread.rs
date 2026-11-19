@@ -35,6 +35,7 @@ pub struct LobbyThread {
     bus: Arc<Mutex<AppBus>>,
     db: DbPool,
     saved_server_names: HashMap<SteamID, String>,
+    awaiting_map_after_lobby_reset: bool,
 
     text_translator: GoogleTranslator,
     translate_chat_enabled: bool,
@@ -72,6 +73,7 @@ impl LobbyThread {
             bus: Arc::clone(bus),
             db: db.clone(),
             saved_server_names: HashMap::new(),
+            awaiting_map_after_lobby_reset: false,
 
             text_translator: google_translator,
             translate_chat_enabled: settings.translate_chat,
@@ -290,8 +292,9 @@ impl LobbyThread {
                     crit,
                 } => self.kill(killer, victim, weapon, crit),
                 LogLine::Suicide { name } => self.suicide(name),
-                LogLine::LobbyCreated => self.new_lobby(),
-                LogLine::LobbyDestroyed => {}
+                LogLine::LobbyCreated => self.matchmaking_lobby_created(),
+                LogLine::LobbyDestroyed => self.awaiting_map_after_lobby_reset = false,
+                LogLine::MapLoaded => self.map_loaded(),
                 LogLine::Chat {
                     name,
                     message,
@@ -300,6 +303,31 @@ impl LobbyThread {
                 } => self.chat(name, message, dead, team),
             }
         }
+    }
+
+    fn matchmaking_lobby_created(&mut self) {
+        if self.awaiting_map_after_lobby_reset {
+            return;
+        }
+        self.new_lobby();
+        self.awaiting_map_after_lobby_reset = true;
+    }
+
+    fn map_loaded(&mut self) {
+        // Matchmaking can announce the same session before the map loads.
+        // Reset again if players scored on the previous map while waiting.
+        if std::mem::take(&mut self.awaiting_map_after_lobby_reset) {
+            let lobby = self.shared_lobby.get();
+            let has_scores = lobby
+                .players
+                .iter()
+                .chain(&lobby.recently_left_players)
+                .any(|player| player.kills != 0 || player.deaths != 0);
+            if !has_scores {
+                return;
+            }
+        }
+        self.new_lobby();
     }
 
     fn new_lobby(&mut self) {
@@ -515,6 +543,78 @@ impl LobbyThread {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lobby_log_signals_reset_scores_on_a_new_match_and_same_map_reload() {
+        use crate::{models::player_profile::test_app, tf2::logfile::line_parser::LogLineParser};
+
+        let app = test_app();
+        let mut worker = LobbyThread::new(&app.app_settings, &app.bus, &app.db);
+        let parser = LogLineParser::default();
+        let scored_player = Player {
+            name: "Player".into(),
+            kills: 7,
+            deaths: 4,
+            crit_kills: 2,
+            crit_deaths: 1,
+            kills_with: vec![PlayerKill {
+                weapon: "rocketlauncher".into(),
+                crit: true,
+            }],
+            ..Player::default()
+        };
+        let mut lobby = worker.shared_lobby.get();
+        lobby.players.push(scored_player.clone());
+        let initial_session = lobby.session_id;
+        worker.shared_lobby.set(lobby);
+
+        for line in [
+            "Lobby created",
+            concat!(
+                "Differing lobby received. Lobby: [A:1:123:456]/Match2/Lobby3 ",
+                "CurrentlyAssigned: [A:1:123:456]/Match1/Lobby3 ",
+                "ConnectedToMatchServer: 1 HasLobby: 1 AssignedMatchEnded: 0",
+            ),
+            "Map: pl_badwater",
+        ] {
+            app.bus
+                .lock()
+                .unwrap()
+                .send_logline(parser.parse_line(line).unwrap());
+        }
+        worker.process_logfile_bus();
+
+        let mut lobby = worker.shared_lobby.get();
+        assert_eq!(lobby.session_id, initial_session + 1);
+        let player = &lobby.recently_left_players[0];
+        assert_eq!(
+            (
+                player.kills,
+                player.deaths,
+                player.crit_kills,
+                player.crit_deaths
+            ),
+            (0, 0, 0, 0)
+        );
+        assert!(player.kills_with.is_empty());
+
+        lobby.players.push(scored_player);
+        worker.shared_lobby.set(lobby);
+        app.bus
+            .lock()
+            .unwrap()
+            .send_logline(parser.parse_line("Map: pl_badwater").unwrap());
+        worker.process_logfile_bus();
+        let lobby = worker.shared_lobby.get();
+        assert_eq!(lobby.session_id, initial_session + 2);
+        assert!(lobby.players.is_empty());
+        assert!(
+            lobby
+                .recently_left_players
+                .iter()
+                .all(|player| player.kills == 0 && player.deaths == 0)
+        );
+    }
 
     #[test]
     fn new_lobbies_have_distinct_sessions_even_on_the_same_day() {

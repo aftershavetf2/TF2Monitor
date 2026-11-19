@@ -7,6 +7,7 @@ pub struct LogLineParser {
     suicided_rx: Regex,
     chat_rx: Regex,
     differing_lobby_rx: Regex,
+    map_loaded_rx: Regex,
 }
 
 impl Default for LogLineParser {
@@ -23,9 +24,13 @@ impl LogLineParser {
             suicided_rx: Regex::new(r"^(.+?) suicided.$").unwrap(),
             chat_rx: Regex::new(r"^(.+?) :  (.+)$").unwrap(),
 
-            //         // Differing lobby received. Lobby: [A:1:3982432273:50775]/Match117694416/Lobby713780413559521 CurrentlyAssigned: [A:1:3982432273:50775]/Match117693976/Lobby713780413559521
-
-            differing_lobby_rx: Regex::new(r"^Differing lobby received\. Lobby: \[A:1:\d+:\d+\]/Match\d+/Lobby\d+ CurrentlyAssigned: \[A:1:\d+:\d+\]/Match\d+/Lobby\d+$").unwrap(),
+            differing_lobby_rx: Regex::new(concat!(
+                r"^Differing lobby received\. Lobby: \[A:1:\d+:\d+\]/Match\d+/Lobby\d+",
+                r" CurrentlyAssigned: (?:\[A:1:\d+:\d+\]|\[I:0:0\])/Match\d+/Lobby\d+",
+                r"(?: ConnectedToMatchServer: [01] HasLobby: [01] AssignedMatchEnded: [01])?$",
+            ))
+            .unwrap(),
+            map_loaded_rx: Regex::new(r"^Map: [A-Za-z0-9_./-]+$").unwrap(),
         }
     }
 
@@ -100,8 +105,12 @@ impl LogLineParser {
             return Some(LogLine::LobbyDestroyed);
         }
 
-        if let Some(_caps) = self.differing_lobby_rx.captures(line) {
+        if self.differing_lobby_rx.is_match(line) {
             return Some(LogLine::LobbyCreated);
+        }
+
+        if self.map_loaded_rx.is_match(line) {
+            return Some(LogLine::MapLoaded);
         }
 
         None
@@ -326,5 +335,29 @@ mod tests {
         let line = "Differing lobby received. Lobby: [A:1:3982432273:50775]/Match117694416/Lobby713780413559521 CurrentlyAssigned: [A:1:3982432273:50775]/Match117693976/Lobby713780413559521";
         let result = parser.parse_line(line).unwrap();
         assert_eq!(result, LogLine::LobbyCreated);
+
+        let line = concat!(
+            "11/19/2026 - 18:00:00: Differing lobby received. ",
+            "Lobby: [A:1:123:456]/Match2/Lobby3 CurrentlyAssigned: [I:0:0]/Match0/Lobby0 ",
+            "ConnectedToMatchServer: 0 HasLobby: 1 AssignedMatchEnded: 0",
+        );
+        assert_eq!(parser.parse_line(line), Some(LogLine::LobbyCreated));
+    }
+
+    #[test]
+    fn recognizes_map_loads_and_ignores_status_map_lines() {
+        let parser = LogLineParser::default();
+        assert_eq!(
+            parser.parse_line("Map: pl_badwater"),
+            Some(LogLine::MapLoaded)
+        );
+        assert_eq!(
+            parser.parse_line("11/19/2026 - 18:00:00: Map: workshop/pl_example.ugc123"),
+            Some(LogLine::MapLoaded),
+        );
+        assert_eq!(
+            parser.parse_line("map     : pl_badwater at: 0 x, 0 y, 0 z"),
+            None
+        );
     }
 }
