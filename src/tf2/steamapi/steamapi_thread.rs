@@ -10,7 +10,11 @@ use crate::db::entities::{Game, NewAccount, NewComment, NewFriendship, NewPlayti
 use crate::db::queries;
 use crate::{
     appbus::AppBus,
-    models::{app_settings::AppSettings, steamid::SteamID},
+    models::{
+        app_settings::AppSettings,
+        player_profile::{FetchStatus, PlayerProfile},
+        steamid::SteamID,
+    },
     tf2::{
         lobby::{AccountAge, Lobby, Player, PlayerSteamInfo, Tf2PlayMinutes},
         steamapi::SteamApiMsg,
@@ -44,7 +48,7 @@ pub struct SteamApiThread {
     detail_targets: HashMap<SteamID, Player>,
     detail_started: HashMap<SteamID, Instant>,
     detail_attempted: HashMap<SteamID, Instant>,
-    detail_status: HashMap<SteamID, crate::models::player_profile::FetchStatus>,
+    detail_status: HashMap<SteamID, FetchStatus>,
 }
 
 impl SteamApiThread {
@@ -99,7 +103,7 @@ impl SteamApiThread {
         self.bus.lock().unwrap().steamapi_bus.broadcast(msg);
     }
 
-    fn detail_state(&mut self, id: SteamID, status: crate::models::player_profile::FetchStatus) {
+    fn detail_state(&mut self, id: SteamID, status: FetchStatus) {
         if self.detail_status.get(&id) != Some(&status) {
             self.detail_status.insert(id, status.clone());
             self.bus.lock().unwrap().profile_events.broadcast(
@@ -120,7 +124,7 @@ impl SteamApiThread {
             self.bus.lock().unwrap().profile_events.broadcast(
                 crate::models::player_profile::ProfileEvent::FetchStatus(
                     id,
-                    crate::models::player_profile::FetchStatus::Failed,
+                    FetchStatus::Failed,
                 ),
             );
         }
@@ -128,8 +132,27 @@ impl SteamApiThread {
     }
 
     fn get_latest_lobby(&mut self) {
-        use crate::models::player_profile::FetchStatus;
         let requested = self.bus.lock().unwrap().profile_requests.clone();
+        self.sync_profile_requests(&requested);
+        if !self.steam_api.has_key() {
+            for id in requested {
+                self.detail_state(id, FetchStatus::Unavailable);
+            }
+            return;
+        }
+
+        let mut lobby = self.shared_lobby.get();
+        self.include_requested_profiles(&mut lobby, &requested);
+        self.fetch_summaries(&lobby);
+        self.fetch_steam_bans(&lobby);
+        self.fetch_friends(&lobby);
+        self.fetch_playtimes(&lobby);
+        self.fetch_comments(&lobby);
+        self.approximate_account_ages(&lobby);
+        self.update_profile_fetch_statuses(requested);
+    }
+
+    fn sync_profile_requests(&mut self, requested: &HashSet<SteamID>) {
         self.profile_dirty
             .borrow_mut()
             .retain(|id| requested.contains(id));
@@ -137,101 +160,94 @@ impl SteamApiThread {
         self.detail_started.retain(|id, _| requested.contains(id));
         self.detail_attempted.retain(|id, _| requested.contains(id));
         self.detail_status.retain(|id, _| requested.contains(id));
-        for id in &requested {
-            self.detail_started.entry(*id).or_insert_with(Instant::now);
-            if !self.detail_targets.contains_key(id) {
-                let name = self
-                    .db
-                    .get()
+        for &id in requested {
+            self.detail_started.entry(id).or_insert_with(Instant::now);
+            if !self.detail_targets.contains_key(&id) {
+                let target = self.new_profile_target(id);
+                self.detail_targets.insert(id, target);
+            }
+        }
+    }
+
+    fn new_profile_target(&self, id: SteamID) -> Player {
+        let name = self
+            .db
+            .get()
+            .ok()
+            .and_then(|mut conn| {
+                queries::get_account_by_steam_id(&mut conn, id.to_u64() as i64)
                     .ok()
-                    .and_then(|mut conn| {
-                        queries::get_account_by_steam_id(&mut conn, id.to_u64() as i64)
-                            .ok()
-                            .flatten()
-                    })
-                    .map_or_else(|| id.to_u64().to_string(), |a| a.name);
-                self.detail_targets.insert(
-                    *id,
-                    Player {
-                        steamid: *id,
-                        name,
-                        ..Default::default()
-                    },
-                );
-            }
+                    .flatten()
+            })
+            .map_or_else(|| id.to_u64().to_string(), |account| account.name);
+        Player {
+            steamid: id,
+            name,
+            ..Default::default()
         }
-        if !self.steam_api.has_key() {
-            for id in &requested {
-                self.detail_state(*id, FetchStatus::Unavailable);
+    }
+
+    /// Add offline profiles to the local fetch list and prioritize all requested profiles.
+    fn include_requested_profiles(&mut self, lobby: &mut Lobby, requested: &HashSet<SteamID>) {
+        for &id in requested {
+            if !self.detail_status.contains_key(&id) {
+                self.detail_state(id, FetchStatus::Loading);
             }
-            return;
-        }
-        let mut lobby = self.shared_lobby.get();
-        for id in &requested {
-            if !self.detail_status.contains_key(id) {
-                self.detail_state(*id, FetchStatus::Loading);
-            }
-            if lobby.get_player(None, Some(*id)).is_none()
+            if lobby.get_player(None, Some(id)).is_none()
                 && self
                     .detail_attempted
-                    .get(id)
+                    .get(&id)
                     .is_none_or(|at| at.elapsed() >= Duration::from_secs(5))
             {
-                lobby.players.push(self.detail_targets[id].clone());
-                self.detail_attempted.insert(*id, Instant::now());
+                lobby.players.push(self.detail_targets[&id].clone());
+                self.detail_attempted.insert(id, Instant::now());
             }
         }
         lobby
             .players
-            .sort_by_key(|p| !requested.contains(&p.steamid));
-        self.fetch_summaries(&lobby);
-        self.fetch_steam_bans(&lobby);
-        self.fetch_friends(&lobby);
-        self.fetch_playtimes(&lobby);
-        self.fetch_comments(&lobby);
-        self.approximate_account_ages(&lobby);
+            .sort_by_key(|player| !requested.contains(&player.steamid));
+    }
+
+    fn update_profile_fetch_statuses(&mut self, requested: HashSet<SteamID>) {
         for id in requested {
-            let player = self
-                .shared_lobby
-                .get()
+            let lobby = self.shared_lobby.get();
+            let player = lobby
                 .get_player(None, Some(id))
-                .cloned()
-                .unwrap_or_else(|| self.detail_targets[&id].clone());
-            let ready = player.steam_info.is_some()
+                .unwrap_or_else(|| &self.detail_targets[&id]);
+            let received_profile = player.steam_info.is_some()
                 && player.steam_bans.is_some()
                 && player.friends.is_some()
                 && player.tf2_play_minutes != Tf2PlayMinutes::Loading
                 && player.profile_comments.is_some();
             let changed = self.profile_dirty.borrow_mut().remove(&id);
-            if ready && (changed || self.detail_status.get(&id) == Some(&FetchStatus::Loading)) {
-                // Responses can arrive before persistence, or persistence can fail.
-                // Only committed, complete data may end the loading state successfully.
-                let complete = self
-                    .db
-                    .get()
-                    .ok()
-                    .and_then(|mut conn| {
-                        crate::models::player_profile::PlayerProfile::load(&mut conn, id).ok()
-                    })
-                    .is_some_and(|p| {
-                        p.steam_info.is_some()
-                            && p.bans.is_some()
-                            && p.friends.is_some()
-                            && p.comments.is_some()
-                            && p.playtime != Tf2PlayMinutes::Loading
-                    });
-                self.detail_state(
-                    id,
-                    if complete {
+            if received_profile {
+                if changed || self.detail_status.get(&id) == Some(&FetchStatus::Loading) {
+                    let status = if self.cached_profile_is_complete(id) {
                         FetchStatus::Ready
                     } else {
                         FetchStatus::Failed
-                    },
-                );
-            } else if !ready && self.detail_started[&id].elapsed() > Duration::from_secs(30) {
+                    };
+                    self.detail_state(id, status);
+                }
+            } else if self.detail_started[&id].elapsed() > Duration::from_secs(30) {
                 self.detail_state(id, FetchStatus::Failed);
             }
         }
+    }
+
+    /// Responses can arrive before writes finish, so readiness depends on the cache.
+    fn cached_profile_is_complete(&self, id: SteamID) -> bool {
+        self.db
+            .get()
+            .ok()
+            .and_then(|mut conn| PlayerProfile::load(&mut conn, id).ok())
+            .is_some_and(|profile| {
+                profile.steam_info.is_some()
+                    && profile.bans.is_some()
+                    && profile.friends.is_some()
+                    && profile.comments.is_some()
+                    && profile.playtime != Tf2PlayMinutes::Loading
+            })
     }
 
     fn fetch_summaries(&mut self, lobby: &Lobby) {
