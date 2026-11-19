@@ -1,8 +1,16 @@
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager, CustomizeConnection, Pool};
-use std::path::Path;
+use diesel::result::Error;
+use std::{
+    path::Path,
+    thread,
+    time::{Duration, Instant},
+};
 
 const DATABASE_FILE: &str = "appdata.sqlite";
+const SET_BUSY_TIMEOUT: &str = "PRAGMA busy_timeout = 15000";
+const WAL_RETRY_TIMEOUT: Duration = Duration::from_secs(15);
+const WAL_RETRY_INTERVAL: Duration = Duration::from_millis(100);
 
 pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 
@@ -14,15 +22,7 @@ impl CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for SqliteConnec
     fn on_acquire(&self, conn: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
         use diesel::sql_query;
 
-        // Enable WAL (Write-Ahead Logging) mode for better concurrent access
-        // This allows multiple readers and one writer simultaneously
-        sql_query("PRAGMA journal_mode = WAL")
-            .execute(conn)
-            .map_err(diesel::r2d2::Error::QueryError)?;
-
-        // Set busy timeout to 15 seconds (15000ms)
-        // SQLite will retry for this duration instead of immediately failing with "database is locked"
-        sql_query("PRAGMA busy_timeout = 15000")
+        sql_query(SET_BUSY_TIMEOUT)
             .execute(conn)
             .map_err(diesel::r2d2::Error::QueryError)?;
 
@@ -70,33 +70,65 @@ pub fn connect() -> Result<DbPool, Box<dyn std::error::Error>> {
         );
     }
 
-    // Migrate with a single connection before starting the pool or workers.
-    {
-        let mut conn = SqliteConnection::establish(DATABASE_FILE)?;
-        diesel::sql_query("PRAGMA busy_timeout = 15000").execute(&mut conn)?;
-        remove_legacy_sourcebans(&mut conn)?;
-        setup_schema(&mut conn)?;
-    }
-
-    // Connect to SQLite database
-    // SQLite will create the file if it doesn't exist
-    let database_url = DATABASE_FILE;
-    let manager = ConnectionManager::<SqliteConnection>::new(database_url);
-
-    // Build connection pool with optimized settings for concurrent access
-    let pool = r2d2::Pool::builder()
-        .max_size(10) // Increased from 5 to handle multiple concurrent threads
-        .min_idle(Some(2)) // Keep minimum 2 idle connections ready
-        .connection_timeout(std::time::Duration::from_secs(30)) // Wait up to 30s for a connection
-        .connection_customizer(Box::new(SqliteConnectionCustomizer)) // Apply WAL mode and other settings
-        .build(manager)?;
-
+    let pool = open_pool(DATABASE_FILE)?;
     log::info!(
         "Connected to database '{}' with WAL mode enabled",
         DATABASE_FILE
     );
-
     Ok(pool)
+}
+
+fn open_pool(database_url: &str) -> Result<DbPool, Box<dyn std::error::Error>> {
+    let mut conn = SqliteConnection::establish(database_url)?;
+    // WAL persists in the database. Configure it before creating pool connections.
+    enable_wal(&mut conn)?;
+    diesel::sql_query(SET_BUSY_TIMEOUT).execute(&mut conn)?;
+    remove_legacy_sourcebans(&mut conn)?;
+    setup_schema(&mut conn)?;
+
+    let manager = ConnectionManager::<SqliteConnection>::new(database_url);
+
+    // Keep the startup connection open until the pool is ready to avoid a last-close checkpoint.
+    Ok(r2d2::Pool::builder()
+        .max_size(10)
+        .min_idle(Some(2))
+        .connection_timeout(Duration::from_secs(30))
+        .connection_customizer(Box::new(SqliteConnectionCustomizer))
+        .build(manager)?)
+}
+
+fn enable_wal(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
+    #[derive(QueryableByName)]
+    struct JournalMode {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        journal_mode: String,
+    }
+
+    // SQLite can skip the busy handler when switching journal modes.
+    let deadline = Instant::now() + WAL_RETRY_TIMEOUT;
+    loop {
+        match diesel::sql_query("PRAGMA journal_mode = WAL").get_result::<JournalMode>(conn) {
+            Ok(mode) if mode.journal_mode == "wal" => return Ok(()),
+            Ok(mode) => {
+                return Err(format!(
+                    "Could not enable WAL. Journal mode is {}.",
+                    mode.journal_mode
+                )
+                .into());
+            }
+            // Diesel exposes SQLite's busy and locked errors through their messages.
+            Err(Error::DatabaseError(_, info))
+                if (info.message() == "database is locked"
+                    || info.message().starts_with("database table is locked"))
+                    && Instant::now() < deadline =>
+            {
+                thread::sleep(
+                    WAL_RETRY_INTERVAL.min(deadline.saturating_duration_since(Instant::now())),
+                );
+            }
+            Err(error) => return Err(format!("Could not enable WAL: {error}").into()),
+        }
+    }
 }
 
 /// Remove the obsolete cache and reclaim its pages once, outside a transaction.
@@ -407,6 +439,44 @@ fn migrate_comment_avatars(conn: &mut SqliteConnection) -> QueryResult<()> {
         .execute(conn)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod startup_tests {
+    use super::*;
+    use diesel::{connection::SimpleConnection, dsl::sql, sql_types::Bool};
+
+    #[test]
+    fn startup_retries_wal_setup_until_another_connection_releases_its_lock() {
+        let path = std::env::temp_dir().join(format!(
+            "tf2monitor-startup-lock-{}.sqlite",
+            std::process::id()
+        ));
+        let database_url = path.to_str().unwrap();
+        let mut blocker = SqliteConnection::establish(database_url).unwrap();
+        blocker
+            .batch_execute("PRAGMA journal_mode = DELETE; BEGIN IMMEDIATE;")
+            .unwrap();
+
+        let release = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(300));
+            blocker.batch_execute("ROLLBACK").unwrap();
+        });
+        let pool = open_pool(database_url);
+        release.join().unwrap();
+        let pool = pool.unwrap();
+        let mut conn = pool.get().unwrap();
+        let uses_wal = diesel::select(sql::<Bool>(
+            "(SELECT journal_mode = 'wal' FROM pragma_journal_mode)",
+        ))
+        .get_result::<bool>(&mut conn)
+        .unwrap();
+        assert!(uses_wal);
+
+        drop(conn);
+        drop(pool);
+        std::fs::remove_file(path).unwrap();
+    }
 }
 
 #[cfg(test)]
