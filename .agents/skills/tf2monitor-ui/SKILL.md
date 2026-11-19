@@ -25,7 +25,10 @@ terminology and layout patterns. Check `src/gui/theme.rs` and
 
 ## Responsiveness and CPU use
 
-- Run blocking I/O and other long-running work off the UI thread.
+- Run blocking I/O and long-running work off the UI thread. Brief, infrequent
+  operations triggered by an explicit user action may run synchronously if
+  they complete without a noticeable pause. Keep blocking work out of per-frame
+  rendering and periodic updates.
 - Review what runs each time egui builds the UI. Reuse expensive results across
   frames and recompute them only when their inputs change. Keep CPU use low so
   TF2Monitor does not interfere with gameplay.
