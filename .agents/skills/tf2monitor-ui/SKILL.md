@@ -17,6 +17,11 @@ terminology and layout patterns. Check `src/gui/theme.rs` and
 - Group related information and actions. Use placement, headings, and emphasis
   to make the most important information easy to find. Keep labels short and
   clear, and use tooltips for additional explanation.
+- Use subtle tonal differences between named theme surfaces to group related
+  content and controls. Use cards for self-contained items and compact rows
+  where users need to compare values.
+- Match button emphasis to the action's importance in the current view.
+  Keep repeated secondary actions easy to find with a quieter style.
 - Align related labels and controls along common edges. In the scoreboard,
   align comparable values consistently across rows.
 - Follow existing padding and spacing patterns. Keep related items closer
