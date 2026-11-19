@@ -176,11 +176,9 @@ pub fn add_player_details_for_steamid(app_win: &AppWin, ui: &mut Ui, steamid: St
         .get(&steamid)
         .filter(|s| s.session_id == app_win.lobby.session_id)
     {
-        ui.heading(if live.is_some() {
-            "Current session"
-        } else {
-            "Last seen in this session"
-        });
+        if live.is_none() {
+            ui.heading("Last seen in this session");
+        }
         add_player_kills(&session.kills_with, ui);
     } else {
         ui.label("Not on the current server");
@@ -258,7 +256,6 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
         }
     }
 
-    ui.heading("More Info:");
     ui.horizontal(|ui| {
         ui.scope(|ui| {
             ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89661D);
@@ -274,7 +271,6 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
 }
 
 fn add_player_kick_buttons(app_win: &AppWin, player: &Player, ui: &mut Ui) {
-    ui.heading("Kick Player:");
     ui.horizontal_wrapped(|ui| {
         ui.scope(|ui| {
             ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89161D);
@@ -402,7 +398,7 @@ mod tests {
         assert!(text.contains("Notes"));
         assert!(text.contains("Reason for flag"));
         assert!(text.contains("Not on the current server"));
-        assert!(!text.contains("Kick Player"));
+        assert!(!text.contains("Kick for "));
         assert!(!text.contains("not found"));
         assert!(!text.contains("Loading friends"));
     }
@@ -427,7 +423,7 @@ mod tests {
         app.shared_lobby.set(lobby.clone());
         app.get_latest_lobby();
         let text = render(&app, id);
-        assert!(text.contains("Kick Player"));
+        assert!(text.contains("Kick for "));
         assert!(text.contains("old session weapon"));
         assert_eq!(app.match_snapshots[&id].kills, 9);
         assert_eq!(app.match_snapshots[&id].deaths, 2);
@@ -435,7 +431,7 @@ mod tests {
         app.shared_lobby.set(lobby.clone());
         app.get_latest_lobby();
         let text = render(&app, id);
-        assert!(!text.contains("Kick Player"));
+        assert!(!text.contains("Kick for "));
         assert!(text.contains("Last seen in this session"));
         assert!(text.contains("old session weapon"));
         lobby.session_id += 1;
@@ -458,7 +454,7 @@ mod tests {
         app.shared_lobby.set(lobby);
         app.get_latest_lobby();
         let text = render(&app, id);
-        assert!(text.contains("Kick Player"));
+        assert!(text.contains("Kick for "));
         assert!(text.contains("new session weapon (crit)"));
         assert!(!text.contains("old session weapon"));
     }
