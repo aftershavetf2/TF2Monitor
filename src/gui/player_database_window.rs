@@ -31,6 +31,8 @@ pub fn show_player_database_window(app_win: &mut AppWin, ctx: &egui::Context) {
         .default_width(980.0)
         .default_height(700.0)
         .show(ctx, |ui| {
+            // Fill the height allocated by the resizable window, including empty results.
+            ui.set_min_height(ui.available_height());
             show_player_database_content(ui, app_win);
         });
 
@@ -280,9 +282,89 @@ fn player_matches_filters(player: &DatabasePlayer<'_>, app_win: &AppWin) -> bool
     {
         return false;
     }
-    app_win.player_database_filters.is_empty()
-        || player
-            .flags
-            .iter()
-            .any(|flag| app_win.player_database_filters.contains(flag))
+    app_win
+        .player_database_filters
+        .iter()
+        .all(|flag| player.flags.contains(flag))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::player_profile::{seed_account, test_app};
+
+    #[test]
+    fn database_window_keeps_the_height_set_by_the_user() {
+        let mut app = test_app();
+        app.player_database_window_open = true;
+        seed_account(&app, SteamID::from_u64(76561197960265729), "Player");
+
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let render = |app: &mut AppWin, events| {
+            let input = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1400.0, 1000.0),
+                )),
+                events,
+                ..Default::default()
+            };
+            super::super::tests::run_ui(&ctx, input, |_| {
+                show_player_database_window(app, &ctx);
+            });
+            let layer = ctx.top_layer_id().expect("Player Database window is open");
+            ctx.memory(|memory| memory.area_rect(layer.id))
+                .expect("Player Database window has bounds")
+        };
+
+        render(&mut app, vec![]);
+        let initial = render(&mut app, vec![]);
+        app.player_database_search = "no matching players".into();
+        let empty = render(&mut app, vec![]);
+        assert!((empty.height() - initial.height()).abs() < 1.0);
+
+        let bottom = empty.center_bottom();
+        let destination = bottom - egui::vec2(0.0, 160.0);
+        let button = |pos, pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        render(&mut app, vec![egui::Event::PointerMoved(bottom)]);
+        render(&mut app, vec![button(bottom, true)]);
+        render(&mut app, vec![egui::Event::PointerMoved(destination)]);
+        render(&mut app, vec![button(destination, false)]);
+        let resized = render(&mut app, vec![]);
+        assert!(resized.height() < empty.height() - 100.0);
+
+        app.player_database_search.clear();
+        let with_results = render(&mut app, vec![]);
+        assert!((with_results.height() - resized.height()).abs() < 1.0);
+    }
+
+    #[test]
+    fn flag_filter_requires_every_selected_flag() {
+        use PlayerAttribute::{Cheater, Cool, Suspicious};
+
+        let mut app = test_app();
+        let mut player = DatabasePlayer {
+            steamid: SteamID::from_u64(76561197960265729),
+            name: "Player".into(),
+            flags: &[],
+        };
+        assert!(player_matches_filters(&player, &app));
+
+        app.player_database_filters.extend([Cheater, Suspicious]);
+        assert!(!player_matches_filters(&player, &app));
+        player.flags = &[Cheater];
+        assert!(!player_matches_filters(&player, &app));
+        player.flags = &[Suspicious];
+        assert!(!player_matches_filters(&player, &app));
+        player.flags = &[Cheater, Suspicious];
+        assert!(player_matches_filters(&player, &app));
+        player.flags = &[Cheater, Suspicious, Cool];
+        assert!(player_matches_filters(&player, &app));
+    }
 }
