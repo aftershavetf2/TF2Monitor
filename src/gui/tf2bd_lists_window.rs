@@ -1,6 +1,8 @@
 use super::theme;
 use crate::{
-    models::AppWin, tf2::lobby::player_attribute_description, tf2bd::player_lists::ATTRIBUTES,
+    models::AppWin,
+    tf2::lobby::player_attribute_description,
+    tf2bd::player_lists::{ATTRIBUTES, ListSummary, PlayerLists},
 };
 use eframe::egui::{self, Ui};
 
@@ -56,12 +58,13 @@ pub struct ListsWindow {
 
 pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
     let window = &mut app_win.tf2bd_lists_window;
-    if !window.open {
+    let mut open = window.open;
+    if !open {
         return;
     }
 
     theme::window(ctx, "TF2BD Player Lists")
-        .open(&mut window.open)
+        .open(&mut open)
         .default_width(620.0)
         .show(ctx, |ui| {
             let lists = &mut app_win.tf2bd_lists;
@@ -70,210 +73,246 @@ pub fn show(app_win: &mut AppWin, ctx: &egui::Context) {
                 return;
             }
 
-            theme::section_heading(ui, "Add Lists");
-            let source_width = 260.0;
-            ui.add_enabled_ui(!lists.busy(), |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    let selected_name = window
-                        .known_list
-                        .map_or("Choose a known list", |index| KNOWN_LISTS[index].0);
-                    egui::ComboBox::from_id_salt("known_tf2bd_lists")
-                        .selected_text(selected_name)
-                        .width(source_width)
-                        .show_ui(ui, |ui| {
-                            for (index, &(name, url)) in KNOWN_LISTS.iter().enumerate() {
-                                if lists.has_source_url(url) {
-                                    ui.add_enabled(
-                                        false,
-                                        egui::Button::selectable(false, format!("{name} (added)")),
-                                    );
-                                } else {
-                                    ui.selectable_value(&mut window.known_list, Some(index), name)
-                                        .on_hover_text(url);
-                                }
-                            }
-                        });
-                    let selected_url = window
-                        .known_list
-                        .map(|index| KNOWN_LISTS[index].1)
-                        .filter(|url| !lists.has_source_url(url));
-                    if ui
-                        .add_enabled(selected_url.is_some(), egui::Button::new("Add"))
-                        .clicked()
-                        && let Some(url) = selected_url
-                    {
-                        window.error = lists.add_from_url(url).err();
-                    }
-
-                    let urls = KNOWN_LISTS.iter().map(|&(_, url)| url);
-                    let has_missing = urls.clone().any(|url| !lists.has_source_url(url));
-                    if ui
-                        .add_enabled(
-                            has_missing && !lists.busy(),
-                            theme::secondary_button("Add All"),
-                        )
-                        .clicked()
-                    {
-                        window.error = lists.add_from_urls(urls).err();
-                    }
-                });
-            });
-
-            ui.add_enabled_ui(!lists.busy(), |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    let response = ui.add(
-                        egui::TextEdit::singleline(&mut window.url)
-                            .hint_text("Player list URL")
-                            .desired_width(source_width),
-                    );
-                    let submit =
-                        response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-                    if ui
-                        .add_enabled(
-                            !window.url.trim().is_empty(),
-                            egui::Button::new("Add from URL"),
-                        )
-                        .clicked()
-                        || (submit && !window.url.trim().is_empty())
-                    {
-                        match lists.add_from_url(&window.url) {
-                            Ok(()) => {
-                                window.error = None;
-                                window.url.clear();
-                            }
-                            Err(error) => window.error = Some(error),
-                        }
-                    }
-                });
-            });
-            let import = &lists.import;
-            if import.total > 0 {
-                let completed = import.added + import.errors.len();
-                if completed < import.total && lists.busy() {
-                    ui.label(format!("Importing lists… {completed}/{}", import.total));
-                } else {
-                    ui.label(format!("Added {} of {} lists.", import.added, import.total));
-                }
-                if !import.errors.is_empty() {
-                    egui::CollapsingHeader::new(format!(
-                        "Failed imports ({})",
-                        import.errors.len()
-                    ))
-                    .default_open(import.total == 1)
-                    .show(ui, |ui| {
-                        for error in &import.errors {
-                            show_error(ui, error);
-                        }
-                    });
-                }
-            }
-            if let Some(error) = &window.error {
-                show_error(ui, error);
-            }
-
             let section_spacing = ui.spacing().item_spacing.y;
+            show_add_lists(ui, lists, window);
             ui.add_space(section_spacing);
-            theme::section_heading(ui, "TF2BD Badges");
-            let mut filters = lists.filters().to_vec();
-            let mut filters_changed = false;
-            ui.horizontal_wrapped(|ui| {
-                for attribute in ATTRIBUTES {
-                    let mut selected = filters.contains(&attribute);
-                    if theme::flag_checkbox(ui, &mut selected, attribute).changed() {
-                        filters_changed = true;
-                        if selected {
-                            filters.push(attribute);
-                        } else {
-                            filters.retain(|&value| value != attribute);
-                        }
-                    }
-                }
-            });
-            if filters_changed {
-                filters.sort_by_key(|attribute| {
-                    ATTRIBUTES.iter().position(|value| value == attribute)
-                });
-                window.error = lists.set_filters(filters).err();
-            }
+            show_badge_filters(ui, lists, &mut window.error);
+            ui.add_space(section_spacing);
+            show_installed_lists(ui, lists, &mut window.error);
+        });
+    window.open = open;
+}
 
-            ui.add_space(section_spacing);
-            let has_lists = lists.summaries().next().is_some();
-            ui.allocate_ui_with_layout(
-                egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
-                egui::Layout::right_to_left(egui::Align::Center),
-                |ui| {
-                    if ui
-                        .add_enabled(!lists.busy() && has_lists, egui::Button::new("Update All"))
-                        .clicked()
-                    {
-                        window.error = lists.update_all().err();
-                    }
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                        theme::section_heading(ui, "Installed Lists");
-                    });
-                },
-            );
-            if !has_lists {
-                ui.weak("No player lists added.");
-            }
-            let busy = lists.busy();
-            let mut change_enabled = None;
-            let mut remove = None;
-            theme::vertical_scroll_area_with_gutter(ui).show(ui, |ui| {
-                let card = egui::Frame::new()
-                    .fill(theme::CARD_FILL)
-                    .corner_radius(6)
-                    .inner_margin(10);
-                for (index, list) in lists.summaries().enumerate() {
-                    ui.push_id(list.filename, |ui| {
-                        card.show(ui, |ui| {
-                            ui.allocate_ui_with_layout(
-                                egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if ui
-                                        .add_enabled(!busy, theme::secondary_button("Remove"))
-                                        .clicked()
-                                    {
-                                        remove = Some(index);
-                                    }
-                                    let mut enabled = list.enabled;
-                                    if ui.checkbox(&mut enabled, "Enabled").changed() {
-                                        change_enabled = Some((index, enabled));
-                                    }
-                                    ui.with_layout(
-                                        egui::Layout::left_to_right(egui::Align::Center),
-                                        |ui| show_list_title(ui, list.title, list.url),
-                                    );
-                                },
-                            );
-                            if let Some((players, counts)) = list.counts {
-                                ui.label(format!("{players} unique SteamIDs"));
-                                ui.horizontal_wrapped(|ui| {
-                                    for (attribute, &count) in ATTRIBUTES.iter().zip(counts) {
-                                        ui.label(format!(
-                                            "{} {count}",
-                                            player_attribute_description(*attribute).1
-                                        ));
-                                    }
-                                });
-                            }
-                            if list.failed {
-                                show_error(ui, list.status);
-                            } else if !list.status.is_empty() {
-                                ui.label(list.status);
-                            }
-                        });
-                    });
+fn show_add_lists(ui: &mut Ui, lists: &mut PlayerLists, window: &mut ListsWindow) {
+    const SOURCE_WIDTH: f32 = 260.0;
+
+    theme::section_heading(ui, "Add Lists");
+    ui.add_enabled_ui(!lists.busy(), |ui| {
+        ui.horizontal_wrapped(|ui| show_known_lists(ui, lists, window, SOURCE_WIDTH));
+    });
+    ui.add_enabled_ui(!lists.busy(), |ui| {
+        ui.horizontal_wrapped(|ui| show_add_from_url(ui, lists, window, SOURCE_WIDTH));
+    });
+    show_import_status(ui, lists);
+    if let Some(error) = &window.error {
+        show_error(ui, error);
+    }
+}
+
+fn show_known_lists(
+    ui: &mut Ui,
+    lists: &mut PlayerLists,
+    window: &mut ListsWindow,
+    source_width: f32,
+) {
+    let selected_name = window
+        .known_list
+        .map_or("Choose a known list", |index| KNOWN_LISTS[index].0);
+    egui::ComboBox::from_id_salt("known_tf2bd_lists")
+        .selected_text(selected_name)
+        .width(source_width)
+        .show_ui(ui, |ui| {
+            for (index, &(name, url)) in KNOWN_LISTS.iter().enumerate() {
+                if lists.has_source_url(url) {
+                    ui.add_enabled(
+                        false,
+                        egui::Button::selectable(false, format!("{name} (added)")),
+                    );
+                } else {
+                    ui.selectable_value(&mut window.known_list, Some(index), name)
+                        .on_hover_text(url);
                 }
-            });
-            if let Some((index, enabled)) = change_enabled {
-                window.error = lists.set_enabled(index, enabled).err();
-            }
-            if let Some(index) = remove {
-                window.error = lists.remove(index).err();
             }
         });
+
+    let selected_url = window
+        .known_list
+        .map(|index| KNOWN_LISTS[index].1)
+        .filter(|url| !lists.has_source_url(url));
+    if ui
+        .add_enabled(selected_url.is_some(), egui::Button::new("Add"))
+        .clicked()
+        && let Some(url) = selected_url
+    {
+        window.error = lists.add_from_url(url).err();
+    }
+
+    let urls = KNOWN_LISTS.iter().map(|&(_, url)| url);
+    let has_missing = urls.clone().any(|url| !lists.has_source_url(url));
+    if ui
+        .add_enabled(
+            has_missing && !lists.busy(),
+            theme::secondary_button("Add All"),
+        )
+        .clicked()
+    {
+        window.error = lists.add_from_urls(urls).err();
+    }
+}
+
+fn show_add_from_url(
+    ui: &mut Ui,
+    lists: &mut PlayerLists,
+    window: &mut ListsWindow,
+    source_width: f32,
+) {
+    let response = ui.add(
+        egui::TextEdit::singleline(&mut window.url)
+            .hint_text("Player list URL")
+            .desired_width(source_width),
+    );
+    let has_url = !window.url.trim().is_empty();
+    let submitted_with_enter =
+        response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+    if ui
+        .add_enabled(has_url, egui::Button::new("Add from URL"))
+        .clicked()
+        || (submitted_with_enter && has_url)
+    {
+        match lists.add_from_url(&window.url) {
+            Ok(()) => {
+                window.error = None;
+                window.url.clear();
+            }
+            Err(error) => window.error = Some(error),
+        }
+    }
+}
+
+fn show_import_status(ui: &mut Ui, lists: &PlayerLists) {
+    let import = &lists.import;
+    if import.total == 0 {
+        return;
+    }
+
+    let completed = import.added + import.errors.len();
+    if completed < import.total && lists.busy() {
+        ui.label(format!("Importing lists… {completed}/{}", import.total));
+    } else {
+        ui.label(format!("Added {} of {} lists.", import.added, import.total));
+    }
+    if !import.errors.is_empty() {
+        egui::CollapsingHeader::new(format!("Failed imports ({})", import.errors.len()))
+            .default_open(import.total == 1)
+            .show(ui, |ui| {
+                for error in &import.errors {
+                    show_error(ui, error);
+                }
+            });
+    }
+}
+
+fn show_badge_filters(ui: &mut Ui, lists: &mut PlayerLists, error: &mut Option<String>) {
+    theme::section_heading(ui, "TF2BD Badges");
+    let mut filters = lists.filters().to_vec();
+    let mut filters_changed = false;
+    ui.horizontal_wrapped(|ui| {
+        for attribute in ATTRIBUTES {
+            let mut selected = filters.contains(&attribute);
+            if theme::flag_checkbox(ui, &mut selected, attribute).changed() {
+                filters_changed = true;
+                if selected {
+                    filters.push(attribute);
+                } else {
+                    filters.retain(|&value| value != attribute);
+                }
+            }
+        }
+    });
+    if filters_changed {
+        filters.sort_by_key(|attribute| ATTRIBUTES.iter().position(|value| value == attribute));
+        *error = lists.set_filters(filters).err();
+    }
+}
+
+fn show_installed_lists(ui: &mut Ui, lists: &mut PlayerLists, error: &mut Option<String>) {
+    let has_lists = lists.summaries().next().is_some();
+    ui.allocate_ui_with_layout(
+        egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
+        egui::Layout::right_to_left(egui::Align::Center),
+        |ui| {
+            if ui
+                .add_enabled(!lists.busy() && has_lists, egui::Button::new("Update All"))
+                .clicked()
+            {
+                *error = lists.update_all().err();
+            }
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                theme::section_heading(ui, "Installed Lists");
+            });
+        },
+    );
+    if !has_lists {
+        ui.weak("No player lists added.");
+    }
+
+    let busy = lists.busy();
+    let mut change_enabled = None;
+    let mut remove = None;
+    theme::vertical_scroll_area_with_gutter(ui).show(ui, |ui| {
+        let card = egui::Frame::new()
+            .fill(theme::CARD_FILL)
+            .corner_radius(6)
+            .inner_margin(10);
+        for (index, list) in lists.summaries().enumerate() {
+            let (enabled, remove_clicked) = ui
+                .push_id(list.filename, |ui| {
+                    card.show(ui, |ui| show_list_card(ui, &list, busy)).inner
+                })
+                .inner;
+            if let Some(enabled) = enabled {
+                change_enabled = Some((index, enabled));
+            }
+            if remove_clicked {
+                remove = Some(index);
+            }
+        }
+    });
+    if let Some((index, enabled)) = change_enabled {
+        *error = lists.set_enabled(index, enabled).err();
+    }
+    if let Some(index) = remove {
+        *error = lists.remove(index).err();
+    }
+}
+
+fn show_list_card(ui: &mut Ui, list: &ListSummary<'_>, busy: bool) -> (Option<bool>, bool) {
+    let actions = ui
+        .allocate_ui_with_layout(
+            egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
+            egui::Layout::right_to_left(egui::Align::Center),
+            |ui| {
+                let remove = ui
+                    .add_enabled(!busy, theme::secondary_button("Remove"))
+                    .clicked();
+                let mut enabled = list.enabled;
+                let changed = ui.checkbox(&mut enabled, "Enabled").changed();
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    show_list_title(ui, list.title, list.url);
+                });
+                (changed.then_some(enabled), remove)
+            },
+        )
+        .inner;
+
+    if let Some((players, counts)) = list.counts {
+        ui.label(format!("{players} unique SteamIDs"));
+        ui.horizontal_wrapped(|ui| {
+            for (attribute, &count) in ATTRIBUTES.iter().zip(counts) {
+                ui.label(format!(
+                    "{} {count}",
+                    player_attribute_description(*attribute).1
+                ));
+            }
+        });
+    }
+    if list.failed {
+        show_error(ui, list.status);
+    } else if !list.status.is_empty() {
+        ui.label(list.status);
+    }
+
+    actions
 }
 
 fn show_list_title(ui: &mut Ui, title: &str, url: &str) {
