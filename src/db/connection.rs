@@ -209,15 +209,6 @@ pub(crate) fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn st
     )
     .execute(conn)?;
 
-    diesel::sql_query(
-        "CREATE TABLE IF NOT EXISTS player_notes (
-            steam_id INTEGER PRIMARY KEY NOT NULL,
-            note TEXT NOT NULL,
-            updated_at INTEGER NOT NULL
-        )",
-    )
-    .execute(conn)?;
-
     // Add steam_bans_last_fetched column if it doesn't exist (for existing databases)
     diesel::sql_query("ALTER TABLE account ADD COLUMN steam_bans_last_fetched INTEGER")
         .execute(conn)
@@ -353,20 +344,6 @@ pub(crate) fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn st
         log::error!("Playtime table migration failed: {}", e);
     }
 
-    // Create player_flags table
-    diesel::sql_query(
-        "CREATE TABLE IF NOT EXISTS player_flags (
-            steam_id INTEGER NOT NULL,
-            flag_type TEXT NOT NULL,
-            source TEXT NOT NULL,
-            first_seen INTEGER NOT NULL,
-            last_seen INTEGER NOT NULL,
-            notified INTEGER NOT NULL,
-            PRIMARY KEY (steam_id, flag_type, source)
-        )",
-    )
-    .execute(conn)?;
-
     // Create steam_bans table
     // Note: steam_id is NOT a foreign key - we want to store bans for players
     // that may not yet exist in the account table
@@ -406,14 +383,6 @@ pub(crate) fn setup_schema(conn: &mut SqliteConnection) -> Result<(), Box<dyn st
         .execute(conn)?;
     diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_playtime_game ON playtime(game)")
         .execute(conn)?;
-    diesel::sql_query(
-        "CREATE INDEX IF NOT EXISTS idx_player_flags_steam_id ON player_flags(steam_id)",
-    )
-    .execute(conn)?;
-    diesel::sql_query(
-        "CREATE INDEX IF NOT EXISTS idx_player_flags_notified ON player_flags(notified)",
-    )
-    .execute(conn)?;
     diesel::sql_query("CREATE INDEX IF NOT EXISTS idx_steam_bans_steam_id ON steam_bans(steam_id)")
         .execute(conn)?;
 

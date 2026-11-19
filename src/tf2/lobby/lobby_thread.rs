@@ -106,10 +106,8 @@ impl LobbyThread {
     }
 
     fn process_app_events(&mut self) {
-        while let Ok(msg) = self.app_event_bus_rx.try_recv() {
-            if let AppEventMsg::UpdatedSettings(settings) = msg {
-                self.translate_chat_enabled = settings.translate_chat;
-            }
+        while let Ok(AppEventMsg::UpdatedSettings(settings)) = self.app_event_bus_rx.try_recv() {
+            self.translate_chat_enabled = settings.translate_chat;
         }
     }
 

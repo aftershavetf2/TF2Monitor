@@ -64,28 +64,29 @@ fn show_statistics_content(ui: &mut Ui, app_win: &AppWin) {
     }
 
     // Total accounts
-    show_stat(ui, "Total Players", get_total_accounts_count(&mut conn));
+    show_stat(ui, "Cached Players", get_total_accounts_count(&mut conn));
 
     ui.separator();
     ui.add_space(5.0);
     ui.heading("Player Flags");
     ui.add_space(5.0);
 
-    // Player flags - using the string representation from PlayerAttribute Debug
-    show_stat(ui, "Cheaters", get_player_flag_count(&mut conn, "Cheater"));
-    show_stat(ui, "Bots", get_player_flag_count(&mut conn, "Bot"));
-    show_stat(
-        ui,
-        "Suspicious",
-        get_player_flag_count(&mut conn, "Suspicious"),
-    );
-    show_stat(ui, "Toxic", get_player_flag_count(&mut conn, "Toxic"));
-    show_stat(
-        ui,
-        "Exploiter",
-        get_player_flag_count(&mut conn, "Exploiter"),
-    );
-    show_stat(ui, "Cool", get_player_flag_count(&mut conn, "Cool"));
+    use crate::tf2bd::models::PlayerAttribute;
+    let markings = app_win.markings.snapshot();
+    for (label, flag) in [
+        ("Cheaters", PlayerAttribute::Cheater),
+        ("Bots", PlayerAttribute::Bot),
+        ("Suspicious", PlayerAttribute::Suspicious),
+        ("Toxic", PlayerAttribute::Toxic),
+        ("Exploiter", PlayerAttribute::Exploiter),
+        ("Cool", PlayerAttribute::Cool),
+    ] {
+        let count = markings
+            .values()
+            .filter(|marking| marking.flags.contains(&flag))
+            .count();
+        show_stat(ui, label, Ok(count as i64));
+    }
 
     ui.separator();
     ui.add_space(5.0);

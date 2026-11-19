@@ -1,17 +1,22 @@
 use crate::{
-    models::app_settings::AppSettings,
     models::steamid::SteamID,
+    models::{
+        app_settings::AppSettings,
+        player_markings::{MarkingCommand, PlayerMarkings},
+    },
     tf2::{
         lobby::{Lobby, shared_lobby::SharedLobby},
         logfile::LogLine,
         rcon::G15DumpPlayerOutput,
         steamapi::SteamApiMsg,
     },
-    tf2bd::{Tf2bdMsg, models::PlayerAttribute, player_lists::SharedMatches},
+    tf2bd::{Tf2bdMsg, player_lists::SharedMatches},
 };
 use bus::Bus;
 
 pub struct AppBus {
+    pub markings: std::sync::Arc<PlayerMarkings>,
+    pub marking_commands: Option<std::sync::mpsc::Sender<MarkingCommand>>,
     pub profile_events: Bus<crate::models::player_profile::ProfileEvent>,
     pub profile_requests: std::collections::HashSet<SteamID>,
     pub ban_data: crate::ban_data::Control,
@@ -43,6 +48,8 @@ impl AppBus {
     pub fn new(self_steamid: crate::models::steamid::SteamID) -> Self {
         let initial_lobby = Lobby::new(self_steamid);
         Self {
+            markings: Default::default(),
+            marking_commands: None,
             profile_events: Bus::new(10000),
             profile_requests: Default::default(),
             ban_data: crate::ban_data::Control::default(),
@@ -70,12 +77,5 @@ impl AppBus {
 
 #[derive(Debug, Clone)]
 pub enum AppEventMsg {
-    /// Sets or removes a flag(Cheater, Exploiter, etc) for a SteamID
-    SetPlayerFlag {
-        steamid: SteamID,
-        name: String,
-        flag: PlayerAttribute,
-        enable: bool,
-    },
     UpdatedSettings(AppSettings),
 }

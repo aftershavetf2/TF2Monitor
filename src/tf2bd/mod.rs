@@ -1,6 +1,5 @@
 pub mod models;
 pub mod player_lists;
-pub mod ruleset_handler;
 pub mod tf2bd_thread;
 
 use crate::models::steamid::SteamID;

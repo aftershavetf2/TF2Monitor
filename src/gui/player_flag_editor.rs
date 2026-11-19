@@ -1,11 +1,16 @@
 use super::theme;
 use crate::{
-    appbus::AppEventMsg, models::AppWin, tf2::lobby::Player, tf2bd::models::PlayerAttribute,
+    models::{AppWin, player_markings::MarkingCommand},
+    tf2::lobby::Player,
+    tf2bd::models::PlayerAttribute,
 };
 use eframe::egui::Ui;
 
 pub fn add_player_flag_editor(app_win: &AppWin, ui: &mut Ui, player: &Player) {
     ui.heading("Flags:");
+    if let Some(error) = app_win.marking_error.borrow().as_ref() {
+        ui.colored_label(ui.visuals().error_fg_color, error);
+    }
     ui.horizontal_wrapped(|ui| {
         let player_attributes_to_show = vec![
             PlayerAttribute::Cool,
@@ -37,16 +42,12 @@ fn add_flag(
     player: &Player,
 ) {
     if theme::flag_checkbox(ui, &mut enable, player_attribute).changed() {
-        app_win
-            .bus
-            .lock()
-            .unwrap()
-            .app_event_bus
-            .broadcast(AppEventMsg::SetPlayerFlag {
-                steamid: player.steamid,
-                name: player.name.clone(),
-                flag: player_attribute,
-                enable,
-            });
+        let result = app_win.send_marking_command(MarkingCommand::SetFlag {
+            steamid: player.steamid,
+            name: player.name.clone(),
+            flag: player_attribute,
+            enable,
+        });
+        app_win.marking_error.replace(result.err());
     }
 }

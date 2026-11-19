@@ -1,10 +1,10 @@
 use diesel::prelude::*;
 
 use super::entities::{
-    Account, Comment, Friendship, Game, NewAccount, NewComment, NewFriendship, NewPlayerFlag,
-    NewPlaytime, NewSteamBan, PlayerFlag,
+    Account, Comment, Friendship, Game, NewAccount, NewComment, NewFriendship, NewPlaytime,
+    NewSteamBan,
 };
-use super::schema::{account, comments, friendship, player_flags, playtime, steam_bans};
+use super::schema::{account, comments, friendship, playtime, steam_bans};
 
 /// Get all friendships for a given steam_id.
 ///
@@ -341,59 +341,6 @@ pub fn get_playtime(
         .optional()
 }
 
-// ============================================================================
-// Player flag-related queries
-// ============================================================================
-
-/// Insert or update a player flag.
-/// If the flag already exists, updates last_seen timestamp.
-pub fn upsert_player_flag(
-    conn: &mut SqliteConnection,
-    new_flag: NewPlayerFlag,
-) -> Result<(), diesel::result::Error> {
-    use player_flags::dsl;
-
-    diesel::insert_into(player_flags::table)
-        .values(&new_flag)
-        .on_conflict((dsl::steam_id, dsl::flag_type, dsl::source))
-        .do_update()
-        .set(dsl::last_seen.eq(&new_flag.last_seen))
-        .execute(conn)?;
-    Ok(())
-}
-
-pub fn get_all_player_flags(
-    conn: &mut SqliteConnection,
-) -> Result<Vec<PlayerFlag>, diesel::result::Error> {
-    use player_flags::dsl;
-
-    player_flags::table
-        .order((dsl::steam_id.asc(), dsl::flag_type.asc(), dsl::source.asc()))
-        .load::<PlayerFlag>(conn)
-}
-
-/// Remove a player marking from every source, including legacy JSON imports.
-pub fn remove_player_flag(
-    conn: &mut SqliteConnection,
-    steam_id: i64,
-    flag_type: &str,
-) -> Result<(), diesel::result::Error> {
-    use player_flags::dsl;
-
-    diesel::delete(player_flags::table.filter(dsl::steam_id.eq(steam_id).and(
-        dsl::flag_type.eq_any([
-            flag_type,
-            if flag_type == "Toxic" {
-                "Racist"
-            } else {
-                flag_type
-            },
-        ]),
-    )))
-    .execute(conn)?;
-    Ok(())
-}
-
 //
 // Steam Bans queries
 //
@@ -436,22 +383,6 @@ pub fn get_total_accounts_count(conn: &mut SqliteConnection) -> Result<i64, dies
     account::table.select(count_star()).first::<i64>(conn)
 }
 
-/// Get count of players with a specific flag type (counts distinct steam_ids)
-pub fn get_player_flag_count(
-    conn: &mut SqliteConnection,
-    flag_type: &str,
-) -> Result<i64, diesel::result::Error> {
-    use player_flags::dsl;
-
-    let distinct_steam_ids: Vec<i64> = player_flags::table
-        .filter(dsl::flag_type.eq(flag_type))
-        .select(dsl::steam_id)
-        .distinct()
-        .load(conn)?;
-
-    Ok(distinct_steam_ids.len() as i64)
-}
-
 /// Get count of VAC banned players
 pub fn get_vac_banned_count(conn: &mut SqliteConnection) -> Result<i64, diesel::result::Error> {
     use diesel::dsl::count_star;
@@ -474,76 +405,4 @@ pub fn get_community_banned_count(
         .filter(dsl::community_banned.eq(true))
         .select(count_star())
         .first::<i64>(conn)
-}
-
-/// Personal notes belong to a SteamID, including players outside the current lobby.
-pub fn get_player_note(conn: &mut SqliteConnection, steam_id: i64) -> QueryResult<String> {
-    use super::schema::player_notes::dsl;
-    Ok(dsl::player_notes
-        .find(steam_id)
-        .select(dsl::note)
-        .first::<String>(conn)
-        .optional()?
-        .unwrap_or_default())
-}
-
-pub fn save_player_note(conn: &mut SqliteConnection, steam_id: i64, note: &str) -> QueryResult<()> {
-    use super::schema::player_notes::dsl;
-    if note.is_empty() {
-        diesel::delete(dsl::player_notes.find(steam_id)).execute(conn)?;
-    } else {
-        let values = (
-            dsl::steam_id.eq(steam_id),
-            dsl::note.eq(note),
-            dsl::updated_at.eq(chrono::Utc::now().timestamp()),
-        );
-        diesel::insert_into(dsl::player_notes)
-            .values(values)
-            .on_conflict(dsl::steam_id)
-            .do_update()
-            .set((
-                dsl::note.eq(note),
-                dsl::updated_at.eq(chrono::Utc::now().timestamp()),
-            ))
-            .execute(conn)?;
-    }
-    Ok(())
-}
-
-#[cfg(test)]
-mod player_note_tests {
-    use super::*;
-
-    #[test]
-    fn notes_survive_reopening_are_per_player_and_can_be_updated_and_cleared() {
-        let path = std::env::temp_dir().join(format!(
-            "tf2monitor-notes-{}-{}.sqlite",
-            std::process::id(),
-            chrono::Utc::now().timestamp_nanos_opt().unwrap()
-        ));
-        let path_str = path.to_str().unwrap();
-        {
-            let mut conn = SqliteConnection::establish(path_str).unwrap();
-            crate::db::connection::setup_schema(&mut conn).unwrap();
-            assert_eq!(get_player_note(&mut conn, 1).unwrap(), "");
-            save_player_note(&mut conn, 1, "Misstänkt beteende\nAnteckning med åäö 🎮").unwrap();
-            save_player_note(&mut conn, 2, "Another player").unwrap();
-        }
-        {
-            let mut conn = SqliteConnection::establish(path_str).unwrap();
-            // Existing-database startup must preserve notes.
-            crate::db::connection::setup_schema(&mut conn).unwrap();
-            assert_eq!(
-                get_player_note(&mut conn, 1).unwrap(),
-                "Misstänkt beteende\nAnteckning med åäö 🎮"
-            );
-            assert_eq!(get_player_note(&mut conn, 2).unwrap(), "Another player");
-            save_player_note(&mut conn, 1, "Updated reason").unwrap();
-            assert_eq!(get_player_note(&mut conn, 1).unwrap(), "Updated reason");
-            save_player_note(&mut conn, 1, "").unwrap();
-            assert_eq!(get_player_note(&mut conn, 1).unwrap(), "");
-            assert_eq!(get_player_note(&mut conn, 2).unwrap(), "Another player");
-        }
-        std::fs::remove_file(path).unwrap();
-    }
 }

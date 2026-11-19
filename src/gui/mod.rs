@@ -7,6 +7,7 @@ pub mod db_statistics_window;
 pub mod friendship_indicators;
 pub mod game_tab;
 pub mod kill_feed;
+pub(crate) mod marking_transfer;
 pub mod markings;
 pub mod menu_item;
 pub mod overview_tab;
@@ -130,6 +131,7 @@ impl eframe::App for AppWin {
         // Show player database window if open
         show_player_database_window(self, ctx);
         tf2bd_lists_window::show(self, ctx);
+        marking_transfer::show(self, ctx);
 
         // Show separate player detail windows
         show_player_details_windows(self, ctx);

@@ -1,8 +1,6 @@
-use super::{
-    Tf2bdMsg, models::PlayerAttribute, player_lists::SharedMatches, ruleset_handler::RulesetHandler,
-};
+use super::{Tf2bdMsg, models::PlayerAttribute, player_lists::SharedMatches};
 use crate::config::TF2BD_LOOP_DELAY;
-use crate::db::connection::DbPool;
+use crate::models::player_markings::PlayerMarkings;
 use crate::{
     appbus::{AppBus, AppEventMsg},
     models::{app_settings::AppSettings, steamid::SteamID},
@@ -16,25 +14,12 @@ use std::{
     time::Instant,
 };
 
-const FILENAME: &str = "playerlist.json";
-
 const VOTE_PERIOD_SECONDS: u64 = 10;
 
-pub fn start(
-    settings: &AppSettings,
-    bus: &Arc<Mutex<AppBus>>,
-    db: &DbPool,
-) -> thread::JoinHandle<()> {
+pub fn start(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> thread::JoinHandle<()> {
     let settings = settings.clone();
     let bus = Arc::clone(bus);
-    let db = db.clone();
-    thread::spawn(move || match Tf2bdThread::new(&settings, &bus, &db) {
-        Ok(mut worker) => worker.run(),
-        Err(error) => log::error!(
-            "Could not initialize database-backed player markings: {}",
-            error
-        ),
-    })
+    thread::spawn(move || Tf2bdThread::new(&settings, &bus).run())
 }
 
 struct Tf2bdThread {
@@ -44,7 +29,7 @@ struct Tf2bdThread {
 
     app_settings: AppSettings,
 
-    ruleset_handler: RulesetHandler,
+    markings: Arc<PlayerMarkings>,
 
     last_lobby_id: String,
     last_vote_time: Instant,
@@ -55,34 +40,23 @@ struct Tf2bdThread {
 }
 
 impl Tf2bdThread {
-    pub fn new(
-        settings: &AppSettings,
-        bus: &Arc<Mutex<AppBus>>,
-        db: &DbPool,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
-        let app_event_bus_rx = bus.lock().unwrap().app_event_bus.add_rx();
-        let tf2bd_matches = bus.lock().unwrap().tf2bd_matches.clone();
-
-        let ruleset_handler = RulesetHandler::new(FILENAME, db)?;
-
-        Ok(Self {
+    fn new(settings: &AppSettings, bus: &Arc<Mutex<AppBus>>) -> Self {
+        let mut events = bus.lock().unwrap();
+        Self {
             bus: Arc::clone(bus),
-            shared_lobby,
-            app_event_bus_rx,
-
+            shared_lobby: events.shared_lobby.clone(),
+            app_event_bus_rx: events.app_event_bus.add_rx(),
+            tf2bd_matches: events.tf2bd_matches.clone(),
             app_settings: settings.clone(),
-
-            ruleset_handler,
+            markings: events.markings.clone(),
 
             last_lobby_id: String::new(),
 
             last_vote_time: Instant::now(),
 
             local_notifications_seen: HashSet::new(),
-            tf2bd_matches,
             tf2bd_notifications_sent: HashSet::new(),
-        })
+        }
     }
 
     pub fn run(&mut self) {
@@ -91,7 +65,6 @@ impl Tf2bdThread {
         loop {
             self.process_app_event_bus();
 
-            self.ruleset_handler.sync_export();
             self.apply_rules_to_lobby();
             self.send_notifications();
 
@@ -106,61 +79,15 @@ impl Tf2bdThread {
     }
 
     fn process_app_event_bus(&mut self) {
-        while let Ok(app_event) = self.app_event_bus_rx.try_recv() {
-            match app_event {
-                AppEventMsg::SetPlayerFlag {
-                    steamid,
-                    name,
-                    flag,
-                    enable,
-                } => self.set_player_flag(steamid, &name, flag, enable),
-                AppEventMsg::UpdatedSettings(settings) => self.app_settings = settings,
-            }
+        while let Ok(AppEventMsg::UpdatedSettings(settings)) = self.app_event_bus_rx.try_recv() {
+            self.app_settings = settings;
         }
-    }
-
-    fn set_player_flag(
-        &mut self,
-        steamid: SteamID,
-        player_name: &str,
-        player_attribute: PlayerAttribute,
-        enable: bool,
-    ) {
-        log::info!(
-            "Setting player attribute {:?} for {} ({}) to {}",
-            player_attribute,
-            player_name,
-            steamid.to_u64(),
-            enable
-        );
-
-        if let Err(error) = self.ruleset_handler.set_player_flags(
-            steamid,
-            Some(player_name),
-            player_attribute,
-            enable,
-        ) {
-            log::error!(
-                "Failed to save player marking for {}: {}",
-                steamid.to_u64(),
-                error
-            );
-            return;
-        }
-        self.bus.lock().unwrap().profile_events.broadcast(
-            crate::models::player_profile::ProfileEvent::Changed(steamid),
-        );
-        let data = self.ruleset_handler.get_player_marking(&steamid);
-        self.send(Tf2bdMsg::Tf2bdPlayerMarking(steamid, data.cloned()));
     }
 
     fn apply_rules_to_lobby(&mut self) {
         let lobby = self.shared_lobby.get();
         for player in &lobby.players {
-            let data = self
-                .ruleset_handler
-                .get_player_marking(&player.steamid)
-                .cloned();
+            let data = self.markings.player_info(player.steamid);
             self.send(Tf2bdMsg::Tf2bdPlayerMarking(player.steamid, data));
         }
     }
@@ -256,15 +183,17 @@ impl Tf2bdThread {
             .notify_tf2bd
             .then(|| self.tf2bd_matches.snapshot());
 
+        let markings = self.markings.snapshot();
         for player in &lobby.players {
             let local_flags = if !self.local_notifications_seen.contains(&player.steamid)
-                && let Some(info) = self.ruleset_handler.get_player_marking(&player.steamid)
+                && let Some(info) = markings.get(&player.steamid.to_u64())
+                && !info.flags.is_empty()
             {
                 self.local_notifications_seen.insert(player.steamid);
-                info.attributes
+                info.flags
                     .iter()
                     .any(|attr| self.app_settings.party_notifications_for.contains(attr))
-                    .then_some(info.attributes.as_slice())
+                    .then_some(info.flags.as_slice())
             } else {
                 None
             };

@@ -1,47 +1,52 @@
 //! Shared per-player drafts for the details panel and floating details windows.
-use crate::{
-    db::queries,
-    models::{AppWin, steamid::SteamID},
+use crate::models::{
+    AppWin,
+    player_markings::{MarkingCommand, SaveResult},
+    steamid::SteamID,
 };
 use eframe::egui::{self, Ui};
+use std::sync::{
+    Arc, Mutex,
+    mpsc::{self, Receiver, TryRecvError},
+};
 
 #[derive(Clone, Default)]
 struct NoteEditor {
     text: String,
-    saved_text: String,
+    pending: Option<Arc<Mutex<Receiver<SaveResult>>>>,
     error: Option<String>,
 }
 
 pub(super) fn show(app: &AppWin, ui: &mut Ui, steamid: SteamID) {
     ui.heading("Notes");
     let key = egui::Id::unique(("player_note_draft", steamid.to_u64()));
-    let existing = ui.ctx().data(|data| data.get_temp::<NoteEditor>(key));
-    let mut editor = match existing {
-        Some(editor) => editor,
-        None => {
-            let result = (|| -> Result<String, Box<dyn std::error::Error>> {
-                let mut conn = app.db.get()?;
-                Ok(queries::get_player_note(
-                    &mut conn,
-                    steamid.to_u64() as i64,
-                )?)
-            })();
-            match result {
-                Ok(text) => NoteEditor {
-                    saved_text: text.clone(),
-                    text,
-                    error: None,
-                },
-                Err(error) => {
-                    ui.colored_label(
-                        ui.visuals().error_fg_color,
-                        format!("Could not load notes: {error}"),
-                    );
-                    return;
-                }
+    let mut editor = ui
+        .ctx()
+        .data(|data| data.get_temp::<NoteEditor>(key))
+        .unwrap_or_default();
+    if let Some(pending) = &editor.pending {
+        let result = pending.lock().expect("Note reply lock poisoned").try_recv();
+        match result {
+            Ok(result) => {
+                editor.pending = None;
+                editor.error = result.err();
             }
+            Err(TryRecvError::Disconnected) => {
+                editor.pending = None;
+                editor.error = Some("Player markings worker is unavailable.".into());
+            }
+            Err(TryRecvError::Empty) => {}
         }
-    };
+    }
+
+    let markings = app.markings.snapshot();
+    let saved = markings
+        .get(&steamid.to_u64())
+        .map_or("", |marking| marking.note.as_str());
+    if editor.pending.is_none() && editor.error.is_none() && editor.text != saved {
+        editor.text = saved.to_owned();
+    }
+
     let changed = ui
         .add(
             egui::TextEdit::multiline(&mut editor.text)
@@ -56,26 +61,26 @@ pub(super) fn show(app: &AppWin, ui: &mut Ui, steamid: SteamID) {
             ui.visuals().error_fg_color,
             format!("Notes not saved: {error}"),
         );
-        ui.button("Retry saving notes").clicked()
+        ui.add(super::theme::secondary_button("Retry Saving Notes"))
+            .clicked()
     } else {
         false
     };
-    if (changed || retry) && editor.text != editor.saved_text {
-        let result = (|| -> Result<(), Box<dyn std::error::Error>> {
-            let mut conn = app.db.get()?;
-            queries::save_player_note(&mut conn, steamid.to_u64() as i64, &editor.text)?;
-            Ok(())
-        })();
+    // Queue every edit in order, including a correction back to the previous saved text.
+    if changed || retry {
+        let (reply, receiver) = mpsc::channel();
+        let result = app.send_marking_command(MarkingCommand::SaveNote {
+            steamid,
+            note: editor.text.clone(),
+            reply,
+        });
         match result {
             Ok(()) => {
-                editor.saved_text = editor.text.clone();
+                editor.pending = Some(Arc::new(Mutex::new(receiver)));
                 editor.error = None;
             }
-            Err(error) => editor.error = Some(error.to_string()),
+            Err(error) => editor.error = Some(error),
         }
-    }
-    if editor.text == editor.saved_text {
-        editor.error = None;
     }
     ui.ctx().data_mut(|data| data.insert_temp(key, editor));
 }

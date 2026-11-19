@@ -9,3 +9,7 @@ playerlist - Copy.json
 
 /data/ban-data/
 /data/tf2bd/
+
+/player-markings.json
+/player-markings.lock
+/.tf2monitor-markings-*.tmp

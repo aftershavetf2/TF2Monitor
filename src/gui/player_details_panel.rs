@@ -381,19 +381,24 @@ mod tests {
     }
 
     #[test]
-    fn database_player_has_profile_flags_and_notes_without_lobby_membership() {
+    fn player_markings_and_notes_are_visible_without_cached_account_or_lobby_membership() {
+        use crate::tf2bd::models::PlayerAttribute;
+
         let mut app = test_app();
         let id = SteamID::from_u64(crate::models::steamid::MIN_STEAMID64 + 1);
-        seed_account(&app, id, "Offline account");
         app.profile_status.insert(id, FetchStatus::Unavailable);
-        crate::db::queries::save_player_note(
-            &mut app.db.get().unwrap(),
-            id.to_u64() as i64,
-            "Reason for flag",
-        )
-        .unwrap();
+        app.markings
+            .set_flag(id, "Offline player", PlayerAttribute::Cheater, true)
+            .unwrap();
+        app.markings
+            .save_note(id, "Reason for flag".into())
+            .unwrap();
         let text = render(&app, id);
-        assert!(text.contains("Offline account"));
+        assert!(text.contains("Offline player"));
+        assert_eq!(
+            app.player_profile(id).unwrap().flags,
+            [PlayerAttribute::Cheater]
+        );
         assert!(text.contains("Flags:"));
         assert!(text.contains("Notes"));
         assert!(text.contains("Reason for flag"));

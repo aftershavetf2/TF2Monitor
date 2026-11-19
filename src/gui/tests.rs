@@ -593,3 +593,40 @@ fn long_title_keeps_controls_visible_at_supported_scales() {
         });
     }
 }
+
+#[test]
+fn file_menu_opens_the_markings_import_dialog_with_merge_selected() {
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut app = crate::models::player_profile::test_app();
+    let mut frame = |events| {
+        run_ui(&ctx, input(events, 1.0, false, false), |root| {
+            egui::CentralPanel::default().show(root, |ui| {
+                super::top_menu::add_top_menu(ui, &mut app);
+            });
+            super::marking_transfer::show(&mut app, &ctx);
+        })
+    };
+    let label_center = |output: &egui::FullOutput, label| {
+        output.shapes.iter().find_map(|shape| match &shape.shape {
+            egui::Shape::Text(text) if text.galley.text() == label => {
+                Some(text.pos + text.galley.size() / 2.0)
+            }
+            _ => None,
+        })
+    };
+
+    let file = label_center(&frame(vec![]), "File").unwrap();
+    frame(pointer(file, true));
+    frame(pointer(file, false));
+    let menu = frame(vec![]);
+    assert!(label_center(&menu, "Export Player Markings...").is_some());
+    let import = label_center(&menu, "Import Player Markings...").unwrap();
+    frame(pointer(import, true));
+    frame(pointer(import, false));
+    let dialog = frame(vec![]);
+    assert!(label_center(&dialog, "Import Player Markings").is_some());
+    assert!(label_center(&dialog, "Replace All Existing Markings and Notes").is_some());
+    assert!(label_center(&dialog, "Import").is_some());
+    assert!(label_center(&dialog, "Replace All").is_none());
+}

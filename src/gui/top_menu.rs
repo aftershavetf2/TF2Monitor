@@ -40,6 +40,14 @@ pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
             }
 
             ui.separator();
+            if menu_item::command(ui, "Import Player Markings...").clicked() {
+                app_win.marking_transfer = Some(super::marking_transfer::Transfer::new(true));
+            }
+            if menu_item::command(ui, "Export Player Markings...").clicked() {
+                app_win.marking_transfer = Some(super::marking_transfer::Transfer::new(false));
+            }
+
+            ui.separator();
 
             if menu_item::command_with_keys(ui, "Quit", &[super::shortcut::command_label(), "Q"]).clicked() {
                 ui.ctx().send_viewport_cmd(ViewportCommand::Close);

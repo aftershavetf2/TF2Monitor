@@ -109,15 +109,6 @@ pub enum PlayerAttribute {
 }
 
 impl TF2BDPlayerList {
-    pub fn new() -> Self {
-        Self {
-            schema:  "https://raw.githubusercontent.com/PazerOP/tf2_bot_detector/master/schemas/v3/playerlist.schema.json".to_string(),
-            file_info: None,
-            rules: None,
-            players: Vec::new(),
-        }
-    }
-
     #[cfg(test)]
     pub fn from_json_str(json: &str) -> TF2BDPlayerList {
         serde_json::from_str(json).unwrap()

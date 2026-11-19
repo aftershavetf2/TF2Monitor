@@ -109,22 +109,6 @@ impl PlayerProfile {
             } else {
                 None
             };
-            let flags = schema::player_flags::table
-                .filter(schema::player_flags::steam_id.eq(id))
-                .select(schema::player_flags::flag_type)
-                .distinct()
-                .load::<String>(conn)?
-                .into_iter()
-                .filter_map(|f| match f.as_str() {
-                    "Cheater" => Some(PlayerAttribute::Cheater),
-                    "Bot" => Some(PlayerAttribute::Bot),
-                    "Cool" => Some(PlayerAttribute::Cool),
-                    "Suspicious" => Some(PlayerAttribute::Suspicious),
-                    "Exploiter" => Some(PlayerAttribute::Exploiter),
-                    "Toxic" | "Racist" => Some(PlayerAttribute::Toxic),
-                    _ => None,
-                })
-                .collect();
             Ok(Self {
                 steamid,
                 name: account.map_or_else(|| steamid.to_u64().to_string(), |a| a.name),
@@ -133,7 +117,7 @@ impl PlayerProfile {
                 playtime,
                 bans,
                 comments,
-                flags,
+                flags: Vec::new(),
             })
         })
     }
@@ -168,6 +152,7 @@ pub enum FetchStatus {
 
 #[derive(Clone, Debug)]
 pub enum ProfileEvent {
+    MarkingError(String),
     Changed(SteamID),
     FetchStatus(SteamID, FetchStatus),
     Reputation(crate::reputation::Reputation),

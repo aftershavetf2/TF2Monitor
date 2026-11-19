@@ -1,4 +1,5 @@
 pub mod app_settings;
+pub mod player_markings;
 pub mod player_profile;
 pub mod steamid;
 
@@ -22,6 +23,11 @@ pub struct AppWin {
     pub app_settings: AppSettings,
     pub active_tab: Tab,
     pub overview: OverviewState,
+
+    pub markings: Arc<player_markings::PlayerMarkings>,
+    marking_commands: Option<std::sync::mpsc::Sender<player_markings::MarkingCommand>>,
+    pub marking_error: std::cell::RefCell<Option<String>>,
+    pub marking_transfer: Option<crate::gui::marking_transfer::Transfer>,
 
     pub profiles: std::cell::RefCell<HashMap<SteamID, player_profile::PlayerProfile>>,
     pub profile_events: bus::BusReader<player_profile::ProfileEvent>,
@@ -71,8 +77,12 @@ impl AppWin {
         // Open settings window automatically if configuration is incomplete
         let settings_window_open = !settings.config_is_ok;
 
-        let profile_events = bus.lock().unwrap().profile_events.add_rx();
-        let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
+        let mut events = bus.lock().unwrap();
+        let profile_events = events.profile_events.add_rx();
+        let shared_lobby = events.shared_lobby.clone();
+        let markings = events.markings.clone();
+        let marking_commands = events.marking_commands.clone();
+        drop(events);
         Self {
             bus: Arc::clone(bus),
 
@@ -80,6 +90,10 @@ impl AppWin {
             active_tab: Tab::default(),
             overview: OverviewState::default(),
 
+            markings,
+            marking_commands,
+            marking_error: Default::default(),
+            marking_transfer: None,
             profiles: Default::default(),
             profile_events,
             profile_status: HashMap::new(),
@@ -112,13 +126,42 @@ impl AppWin {
         &self,
         steamid: SteamID,
     ) -> Result<player_profile::PlayerProfile, Box<dyn std::error::Error>> {
-        if let Some(profile) = self.profiles.borrow().get(&steamid) {
-            return Ok(profile.clone());
+        let cached = self.profiles.borrow().get(&steamid).cloned();
+        let mut profile = match cached {
+            Some(profile) => profile,
+            None => {
+                let mut conn = self.db.get()?;
+                let profile = player_profile::PlayerProfile::load(&mut conn, steamid)?;
+                self.profiles.borrow_mut().insert(steamid, profile.clone());
+                profile
+            }
+        };
+        let markings = self.markings.snapshot();
+        if let Some(marking) = markings.get(&steamid.to_u64()) {
+            profile.flags.clone_from(&marking.flags);
+            if profile.name == steamid.to_u64().to_string()
+                && let Some(name) = marking
+                    .last_seen
+                    .as_ref()
+                    .and_then(|seen| seen.player_name.as_ref())
+            {
+                profile.name.clone_from(name);
+            }
         }
-        let mut conn = self.db.get()?;
-        let profile = player_profile::PlayerProfile::load(&mut conn, steamid)?;
-        self.profiles.borrow_mut().insert(steamid, profile.clone());
         Ok(profile)
+    }
+
+    pub fn send_marking_command(
+        &self,
+        command: player_markings::MarkingCommand,
+    ) -> Result<(), String> {
+        let sender = self
+            .marking_commands
+            .as_ref()
+            .ok_or("Player markings worker is unavailable.")?;
+        sender
+            .send(command)
+            .map_err(|_| "Player markings worker is unavailable.".to_owned())
     }
 
     pub fn updated_settings(&mut self) {
@@ -150,6 +193,9 @@ impl AppWin {
         self.lobby = lobby;
         while let Ok(event) = self.profile_events.try_recv() {
             match event {
+                player_profile::ProfileEvent::MarkingError(error) => {
+                    self.marking_error.replace(Some(error));
+                }
                 player_profile::ProfileEvent::Changed(id) => {
                     self.profiles.borrow_mut().remove(&id);
                 }

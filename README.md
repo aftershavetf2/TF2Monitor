@@ -5,7 +5,7 @@
 An application to be run along when you are playing Team Fortress 2.
 
 - View public info about the players you play with:
-- Mark players with flags (Cheater, Bot, Suspicious, etc.) and save them to `playerlist.json`
+- Flag players and add personal notes. TF2Monitor saves both in `player-markings.json` and migrates existing markings and notes automatically. Use the File menu to import or export a JSON backup.
 - Automatically votekick cheaters and bots (configurable in settings)
 
 # Screenshot

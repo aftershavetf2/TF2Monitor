@@ -1,15 +1,11 @@
 use super::theme;
 use crate::{
-    db::{
-        entities::{Account, PlayerFlag},
-        queries::{get_all_accounts, get_all_player_flags},
-    },
-    models::AppWin,
-    tf2::lobby::player_attribute_description,
+    db::queries::get_all_accounts,
+    models::{AppWin, steamid::SteamID},
     tf2bd::models::PlayerAttribute,
 };
 use eframe::egui::{self, Grid, ScrollArea, TextEdit, Ui};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 const PAGE_SIZE: usize = 50;
 
@@ -66,18 +62,28 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
         }
     };
 
-    let player_flags = match get_all_player_flags(&mut conn) {
-        Ok(player_flags) => player_flags,
-        Err(e) => {
-            ui.colored_label(
-                ui.visuals().error_fg_color,
-                format!("Failed to load player flags: {}", e),
-            );
-            return;
+    drop(conn);
+    let markings = app_win.markings.snapshot();
+    let cached_ids: HashSet<_> = accounts
+        .iter()
+        .map(|account| account.steam_id as u64)
+        .collect();
+    let mut players: Vec<_> = accounts
+        .into_iter()
+        .map(|account| (account.steam_id as u64, account.name))
+        .collect();
+    for (&id, marking) in markings.iter() {
+        if !cached_ids.contains(&id) {
+            let name = marking
+                .last_seen
+                .as_ref()
+                .and_then(|seen| seen.player_name.clone());
+            players.push((id, name.unwrap_or_else(|| id.to_string())));
         }
-    };
-
-    let flags_by_steamid = group_flags_by_steamid(&player_flags);
+    }
+    if players.len() > cached_ids.len() {
+        players.sort_unstable_by(|a, b| a.1.cmp(&b.1).then(a.0.cmp(&b.0)));
+    }
 
     theme::section_heading(ui, "Filters");
 
@@ -117,18 +123,23 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
         }
     });
 
-    let filtered_accounts: Vec<&Account> = accounts
+    let filtered_players: Vec<_> = players
         .iter()
-        .filter(|account| account_matches_filters(account, &flags_by_steamid, app_win))
+        .filter(|(id, name)| {
+            let flags = markings
+                .get(id)
+                .map_or(&[][..], |marking| marking.flags.as_slice());
+            player_matches_filters(*id, name, flags, app_win)
+        })
         .collect();
 
     ui.add_space(ui.spacing().item_spacing.y);
     theme::section_heading(ui, "Results");
 
-    let matching_count = filtered_accounts.len();
+    let matching_count = filtered_players.len();
     if matching_count == 0 {
         app_win.player_database_page = 0;
-        ui.label(if accounts.is_empty() {
+        ui.label(if players.is_empty() {
             "No players in the database."
         } else {
             "No players match your filters."
@@ -141,7 +152,7 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
     let start = page * PAGE_SIZE;
     let end = (start + PAGE_SIZE).min(matching_count);
     let first = start + 1;
-    let total_count = accounts.len();
+    let total_count = players.len();
     let count = if matching_count == total_count {
         format!("Showing {first}–{end} of {total_count} players")
     } else {
@@ -177,20 +188,25 @@ fn show_player_database_content(ui: &mut Ui, app_win: &mut AppWin) {
                     ui.strong("Flags");
                     ui.end_row();
 
-                    for account in &filtered_accounts[start..end] {
-                        let steamid =
-                            crate::models::steamid::SteamID::from_u64(account.steam_id as u64);
-
-                        let name = ui.label(&account.name);
-                        let steam_id = ui.label(account.steam_id.to_string());
+                    for (id, name) in &filtered_players[start..end] {
+                        let steamid = SteamID::from_u64(*id);
+                        let name = ui.add(egui::Label::new(name).sense(egui::Sense::click()));
+                        let steam_id =
+                            ui.add(egui::Label::new(id.to_string()).sense(egui::Sense::click()));
                         if name.double_clicked() || steam_id.double_clicked() {
                             app_win.open_player_details_window(steamid);
                         }
 
                         ui.horizontal_wrapped(|ui| {
-                            if let Some(flags) = flags_by_steamid.get(&account.steam_id) {
-                                show_player_flags(ui, flags);
-                            } else if !app_win.tf2bd_lists.has_match(steamid) {
+                            let flags = markings
+                                .get(id)
+                                .map_or(&[][..], |marking| marking.flags.as_slice());
+                            for flag in PLAYER_DATABASE_FILTERS {
+                                if flags.contains(&flag) {
+                                    super::markings::add_flag(ui, flag);
+                                }
+                            }
+                            if flags.is_empty() && !app_win.tf2bd_lists.has_match(steamid) {
                                 ui.weak("—");
                             }
                             super::markings::add_tf2bd_badge(ui, steamid, &app_win.tf2bd_lists);
@@ -216,66 +232,23 @@ fn show_pagination(ui: &mut Ui, page: usize, page_count: usize) -> usize {
     page + usize::from(next) - usize::from(previous)
 }
 
-fn group_flags_by_steamid(player_flags: &[PlayerFlag]) -> HashMap<i64, HashSet<&str>> {
-    let mut grouped = HashMap::new();
-
-    for player_flag in player_flags {
-        grouped
-            .entry(player_flag.steam_id)
-            .or_insert_with(HashSet::new)
-            .insert(match player_flag.flag_type.as_str() {
-                "Racist" => "Toxic",
-                flag => flag,
-            });
-    }
-
-    grouped
-}
-
-fn account_matches_filters(
-    account: &Account,
-    flags_by_steamid: &HashMap<i64, HashSet<&str>>,
+fn player_matches_filters(
+    steamid: u64,
+    name: &str,
+    flags: &[PlayerAttribute],
     app_win: &AppWin,
 ) -> bool {
-    let search_text = app_win.player_database_search.trim();
-    if !search_text.is_empty() {
-        let search_text_lower = search_text.to_ascii_lowercase();
-        let name_matches = account
-            .name
+    let search = app_win.player_database_search.trim();
+    if !search.is_empty()
+        && !name
             .to_ascii_lowercase()
-            .contains(&search_text_lower);
-        let steamid_matches = account.steam_id.to_string().contains(search_text);
-
-        if !name_matches && !steamid_matches {
-            return false;
-        }
-    }
-
-    if app_win.player_database_filters.is_empty() {
-        return true;
-    }
-
-    let Some(player_flags) = flags_by_steamid.get(&account.steam_id) else {
+            .contains(&search.to_ascii_lowercase())
+        && !steamid.to_string().contains(search)
+    {
         return false;
-    };
-
-    app_win
-        .player_database_filters
-        .iter()
-        .any(|&filter| player_flags.contains(player_attribute_description(filter).1))
-}
-
-fn show_player_flags(ui: &mut Ui, flags: &HashSet<&str>) {
-    let mut flags: Vec<_> = flags.iter().copied().collect();
-    flags.sort_unstable();
-    for flag in flags {
-        let attribute = PLAYER_DATABASE_FILTERS
-            .into_iter()
-            .find(|&attribute| player_attribute_description(attribute).1 == flag);
-        if let Some(attribute) = attribute {
-            super::markings::add_flag(ui, attribute);
-        } else {
-            ui.label(flag);
-        }
     }
+    app_win.player_database_filters.is_empty()
+        || flags
+            .iter()
+            .any(|flag| app_win.player_database_filters.contains(flag))
 }
