@@ -46,15 +46,19 @@ const SOURCEBAN_WARNING_KEYWORDS: &[&str] = &[
 ];
 
 impl Reputation {
-    /// Match the reason across the entire history, regardless of ban status.
     pub fn has_warning_ban(&self) -> bool {
-        self.source_bans.iter().any(|ban| {
-            ban.record.reason.as_ref().is_some_and(|reason| {
-                let reason = reason.to_ascii_lowercase();
-                SOURCEBAN_WARNING_KEYWORDS
-                    .iter()
-                    .any(|keyword| reason.contains(keyword))
-            })
+        self.first_warning_ban().is_some()
+    }
+
+    /// Return the recorded reason and community for the first match in the ban history.
+    pub fn first_warning_ban(&self) -> Option<(&str, &str)> {
+        self.source_bans.iter().find_map(|ban| {
+            let reason = ban.record.reason.as_deref()?;
+            let lower_reason = reason.to_ascii_lowercase();
+            SOURCEBAN_WARNING_KEYWORDS
+                .iter()
+                .any(|keyword| lower_reason.contains(keyword))
+                .then_some((reason, ban.source.as_str()))
         })
     }
 }
@@ -175,7 +179,7 @@ mod tests {
             "Server CrAsH attempt",
         ] {
             reputation.source_bans[1].record.reason = Some(reason.into());
-            assert!(reputation.has_warning_ban(), "{reason}");
+            assert_eq!(reputation.first_warning_ban(), Some((reason, "Example")));
         }
         for reason in [None, Some(""), Some("Spam")] {
             reputation.source_bans[1].record.reason = reason.map(str::to_owned);

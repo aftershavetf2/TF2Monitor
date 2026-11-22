@@ -39,6 +39,7 @@ pub const TEXT_COLOR: Color32 = Color32::from_gray(230);
 
 pub(super) const TF2BD_BADGE_COLORS: (Color32, Color32) =
     (Color32::WHITE, Color32::from_rgb(82, 60, 122));
+pub(super) const SOURCEBAN_BADGE_COLORS: (Color32, Color32) = (Color32::BLACK, Color32::ORANGE);
 
 /// Returns the (text color, background color) for a given PlayerAttribute.
 pub fn color_for_flag(player_attribute: PlayerAttribute) -> (Color32, Color32) {

@@ -81,6 +81,9 @@ pub struct AppSettings {
     #[serde(default)]
     pub notify_tf2bd: bool,
 
+    #[serde(default)]
+    pub notify_sourcebans: bool,
+
     /// Flag indicating if configuration is complete and valid.
     /// Not saved to settings.json - computed at runtime.
     #[serde(skip)]
@@ -116,6 +119,7 @@ impl Default for AppSettings {
 
             party_notifications_for: default_party_notifications_for(),
             notify_tf2bd: false,
+            notify_sourcebans: false,
 
             config_is_ok: false,
         }

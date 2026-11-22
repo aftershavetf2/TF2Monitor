@@ -595,6 +595,75 @@ fn long_title_keeps_controls_visible_at_supported_scales() {
 }
 
 #[test]
+fn actions_menu_shows_serious_sourcebans_after_tf2bd_with_badge_colors() {
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    ctx.global_style_mut(|style| style.animation_time = 0.0);
+    let mut app = crate::models::player_profile::test_app();
+    app.app_settings.notify_sourcebans = true;
+    let mut frame = |events| {
+        run_ui(&ctx, input(events, 1.0, false, false), |root| {
+            egui::CentralPanel::default().show(root, |ui| {
+                super::top_menu::add_top_menu(ui, &mut app);
+            });
+        })
+    };
+    let actions = frame(vec![])
+        .shapes
+        .into_iter()
+        .find_map(|shape| match shape.shape {
+            egui::Shape::Text(text) if text.galley.text() == "Actions" => {
+                Some(text.pos + text.galley.size() / 2.0)
+            }
+            _ => None,
+        })
+        .unwrap();
+    frame(pointer(actions, true));
+    frame(pointer(actions, false));
+    let menu = frame(vec![]);
+    let mut rows: Vec<_> = menu
+        .shapes
+        .iter()
+        .filter_map(|shape| match &shape.shape {
+            egui::Shape::Text(text) => {
+                Some((text.pos.y + text.galley.size().y / 2.0, text.galley.text()))
+            }
+            _ => None,
+        })
+        .collect();
+    rows.sort_by(|a, b| a.0.total_cmp(&b.0));
+    assert!(
+        rows.windows(2)
+            .any(|pair| [pair[0].1, pair[1].1] == ["TF2BD", "Serious SourceBans"])
+    );
+    let (row_y, _) = rows
+        .iter()
+        .find(|(_, label)| *label == "Serious SourceBans")
+        .unwrap();
+    let (foreground, background) = super::colors::SOURCEBAN_BADGE_COLORS;
+    let checkbox = menu
+        .shapes
+        .iter()
+        .find_map(|shape| match &shape.shape {
+            egui::Shape::Rect(rect)
+                if rect.rect.size() == egui::Vec2::splat(theme::COLORED_CHECKBOX_SIZE)
+                    && rect.rect.y_range().contains(*row_y)
+                    && rect.fill == background =>
+            {
+                Some(rect.rect)
+            }
+            _ => None,
+        })
+        .expect("The SourceBans checkbox uses the SB badge background");
+    assert!(menu.shapes.iter().any(|shape| {
+        matches!(&shape.shape, egui::Shape::Path(path)
+            if path.points.len() == 3
+                && path.points.iter().all(|point| checkbox.contains(*point))
+                && path.stroke == egui::epaint::PathStroke::new(theme::CHECKMARK_STROKE.width, foreground))
+    }));
+}
+
+#[test]
 fn file_menu_opens_the_markings_import_dialog_with_merge_selected() {
     let ctx = egui::Context::default();
     theme::install(&ctx);

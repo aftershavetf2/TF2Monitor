@@ -1,5 +1,5 @@
 use super::{
-    colors::TF2BD_BADGE_COLORS,
+    colors::{SOURCEBAN_BADGE_COLORS, TF2BD_BADGE_COLORS},
     menu_item,
     theme::{self, MenuTooltip},
 };
@@ -127,6 +127,18 @@ fn add_party_notifications(ui: &mut Ui, app_win: &mut AppWin) {
         TF2BD_BADGE_COLORS,
     )
     .menu_tooltip("Notify your party when a joining player matches the active TF2BD list filters.")
+    .changed()
+    {
+        app_win.updated_settings();
+    }
+
+    if menu_item::colored_checkbox(
+        ui,
+        &mut app_win.app_settings.notify_sourcebans,
+        "Serious SourceBans",
+        SOURCEBAN_BADGE_COLORS,
+    )
+    .menu_tooltip("Notify your party when a joining player has a SourceBan with a warning keyword in its reason.")
     .changed()
     {
         app_win.updated_settings();

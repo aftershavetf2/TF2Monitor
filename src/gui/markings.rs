@@ -1,4 +1,4 @@
-use super::colors::{TF2BD_BADGE_COLORS, color_for_flag};
+use super::colors::{SOURCEBAN_BADGE_COLORS, TF2BD_BADGE_COLORS, color_for_flag};
 use crate::{
     tf2::lobby::{Player, player_attribute_description},
     models::steamid::SteamID,
@@ -88,11 +88,12 @@ pub(super) fn add_sourceban_badge(ui: &mut Ui, player: &Player) {
         let response = if warning {
             add_sourceban_warning(ui)
         } else {
+            let (foreground, background) = SOURCEBAN_BADGE_COLORS;
             colored_box(
                 ui,
                 "SB",
-                Color32::BLACK,
-                Color32::ORANGE,
+                foreground,
+                background,
                 FontId::proportional(BADGE_FONT_SIZE),
             )
         };
@@ -113,10 +114,11 @@ pub(super) fn add_sourceban_badge(ui: &mut Ui, player: &Player) {
 /// Keep the text and warning together inside a single badge.
 /// Paint the warning directly so it does not depend on font symbol coverage.
 fn add_sourceban_warning(ui: &mut Ui) -> Response {
+    let (foreground, background) = SOURCEBAN_BADGE_COLORS;
     let text = ui.painter().layout_no_wrap(
         "SB".into(),
         FontId::proportional(BADGE_FONT_SIZE),
-        Color32::BLACK,
+        foreground,
     );
     let icon_size = 12.0;
     let gap = 4.0;
@@ -130,7 +132,7 @@ fn add_sourceban_warning(ui: &mut Ui) -> Response {
     });
     if ui.is_rect_visible(rect) {
         ui.painter()
-            .rect_filled(rect, BADGE_CORNER_RADIUS, Color32::ORANGE);
+            .rect_filled(rect, BADGE_CORNER_RADIUS, background);
         let text_pos = egui::pos2(
             rect.left() + BADGE_PADDING.x,
             rect.center().y - text.size().y / 2.0,
@@ -142,7 +144,7 @@ fn add_sourceban_warning(ui: &mut Ui) -> Response {
             ),
             egui::Vec2::splat(icon_size),
         );
-        ui.painter().galley(text_pos, text, Color32::BLACK);
+        ui.painter().galley(text_pos, text, foreground);
         let center_x = triangle.center().x;
         ui.painter().add(egui::Shape::convex_polygon(
             vec![
@@ -150,20 +152,20 @@ fn add_sourceban_warning(ui: &mut Ui) -> Response {
                 triangle.right_bottom(),
                 triangle.left_bottom(),
             ],
-            Color32::ORANGE,
-            egui::Stroke::new(1.0, Color32::BLACK),
+            background,
+            egui::Stroke::new(1.0, foreground),
         ));
         ui.painter().line_segment(
             [
                 egui::pos2(center_x, triangle.top() + icon_size * 0.35),
                 egui::pos2(center_x, triangle.top() + icon_size * 0.65),
             ],
-            egui::Stroke::new(1.4, Color32::BLACK),
+            egui::Stroke::new(1.4, foreground),
         );
         ui.painter().circle_filled(
             egui::pos2(center_x, triangle.top() + icon_size * 0.84),
             0.8,
-            Color32::BLACK,
+            foreground,
         );
     }
     response

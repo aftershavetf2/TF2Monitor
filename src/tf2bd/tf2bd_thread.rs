@@ -37,6 +37,7 @@ struct Tf2bdThread {
     local_notifications_seen: HashSet<SteamID>,
     tf2bd_matches: SharedMatches,
     tf2bd_notifications_sent: HashSet<SteamID>,
+    sourceban_notifications_sent: HashSet<SteamID>,
 }
 
 impl Tf2bdThread {
@@ -56,6 +57,7 @@ impl Tf2bdThread {
 
             local_notifications_seen: HashSet::new(),
             tf2bd_notifications_sent: HashSet::new(),
+            sourceban_notifications_sent: HashSet::new(),
         }
     }
 
@@ -175,6 +177,7 @@ impl Tf2bdThread {
             log::info!("New lobby detected: {}", lobby.lobby_id);
             self.local_notifications_seen.clear();
             self.tf2bd_notifications_sent.clear();
+            self.sourceban_notifications_sent.clear();
             self.last_lobby_id = lobby.lobby_id.clone();
         }
 
@@ -213,10 +216,27 @@ impl Tf2bdThread {
                 Vec::new()
             };
 
-            if let Some(command) = party_notification(&player.name, local_flags, &source_matches) {
+            let sourceban_warning = self.take_sourceban_warning(player);
+            if let Some(command) = party_notification(
+                &player.name,
+                local_flags,
+                &source_matches,
+                sourceban_warning,
+            ) {
                 self.bus.lock().unwrap().send_rcon_cmd(&command);
             }
         }
+    }
+
+    fn take_sourceban_warning<'a>(&mut self, player: &'a Player) -> Option<(&'a str, &'a str)> {
+        if !self.app_settings.notify_sourcebans
+            || self.sourceban_notifications_sent.contains(&player.steamid)
+        {
+            return None;
+        }
+        let warning = player.reputation.as_ref()?.first_warning_ban()?;
+        self.sourceban_notifications_sent.insert(player.steamid);
+        Some(warning)
     }
 }
 
@@ -224,8 +244,9 @@ fn party_notification(
     player_name: &str,
     local_flags: Option<&[PlayerAttribute]>,
     source_matches: &[(&str, Vec<PlayerAttribute>)],
+    sourceban_warning: Option<(&str, &str)>,
 ) -> Option<String> {
-    if local_flags.is_none() && source_matches.is_empty() {
+    if local_flags.is_none() && source_matches.is_empty() && sourceban_warning.is_none() {
         return None;
     }
     let mut message = format!("Player {player_name}");
@@ -251,8 +272,14 @@ fn party_notification(
         }
         message.push_str(&format!(" is marked as {flags:?}"));
     }
+    if let Some((reason, community)) = sourceban_warning {
+        if local_flags.is_some() || !source_matches.is_empty() {
+            message.push_str(" and");
+        }
+        message.push_str(&format!(" has SourceBans: {reason} on {community}"));
+    }
 
-    // Names come from the game server and remote lists; keep them inside one chat command.
+    // Keep player names, list names, and ban details inside one chat command.
     let message = message.replace(
         |c: char| c.is_control() || matches!(c, '"' | ';' | '\\' | '\u{2028}' | '\u{2029}'),
         " ",
@@ -289,6 +316,7 @@ mod tests {
                     ("List A - 2026-11-18 11:28:14", vec![Cheater, Suspicious]),
                     ("List B - EU", vec![Bot]),
                 ],
+                None,
             )
             .as_deref(),
             Some(
@@ -299,26 +327,85 @@ mod tests {
             party_notification(
                 "Example",
                 Some(&[Bot]),
-                &[("List A - 2026-11-18", vec![Cheater])]
+                &[("List A - 2026-11-18", vec![Cheater])],
+                None,
             )
             .as_deref(),
             Some(
                 r#"say_party "Player Example matched TF2BD: List A (Cheater) and is marked as [Bot]""#
             ),
         );
-        assert_eq!(party_notification("Example", None, &[]), None);
+        assert_eq!(party_notification("Example", None, &[], None), None);
     }
 
     #[test]
-    fn party_notification_keeps_untrusted_names_inside_the_chat_message() {
+    fn party_notification_keeps_untrusted_names_and_ban_details_inside_the_chat_message() {
         assert_eq!(
             party_notification(
                 "Example\";\n",
                 None,
-                &[("List\\A\r", vec![PlayerAttribute::Bot])]
+                &[("List\\A\r", vec![PlayerAttribute::Bot])],
+                Some(("aimbotting\n", "Skial\";")),
             )
             .as_deref(),
-            Some(r#"say_party "Player Example    matched TF2BD: List A  (Bot)""#),
+            Some(
+                r#"say_party "Player Example    matched TF2BD: List A  (Bot) and has SourceBans: aimbotting  on Skial  ""#
+            ),
         );
+    }
+
+    #[test]
+    fn sourceban_notification_waits_for_a_warning_and_sends_once_per_lobby() {
+        let bus = Arc::new(Mutex::new(AppBus::default()));
+        let mut commands = bus.lock().unwrap().rcon_bus.add_rx();
+        let mut thread = Tf2bdThread::new(&AppSettings::default(), &bus);
+        let steamid = SteamID::from_u64(76561197960265729);
+        let mut lobby = thread.shared_lobby.get();
+        lobby.players.push(Player {
+            steamid,
+            name: "Example".into(),
+            ..Player::default()
+        });
+        let mut record = crate::ban_data::tests::ban();
+        record.reason = Some("aimbotting".into());
+        let reputation = crate::reputation::Reputation {
+            steamid,
+            source_bans: vec![crate::reputation::SourceBan {
+                source: "Skial".into(),
+                record,
+            }],
+            complete: true,
+        };
+        lobby.players[0].reputation = Some(reputation.clone());
+        thread.shared_lobby.set(lobby.clone());
+        thread.send_notifications();
+        assert!(commands.try_recv().is_err());
+
+        let settings = AppSettings {
+            notify_sourcebans: true,
+            ..AppSettings::default()
+        };
+        bus.lock()
+            .unwrap()
+            .app_event_bus
+            .broadcast(AppEventMsg::UpdatedSettings(settings));
+        thread.process_app_event_bus();
+        lobby.players[0].reputation = None;
+        thread.shared_lobby.set(lobby.clone());
+        thread.send_notifications();
+        assert!(commands.try_recv().is_err());
+
+        lobby.players[0].reputation = Some(reputation);
+        thread.shared_lobby.set(lobby.clone());
+        thread.send_notifications();
+        let expected = r#"say_party "Player Example has SourceBans: aimbotting on Skial""#;
+        assert_eq!(commands.try_recv().unwrap(), expected);
+        thread.send_notifications();
+        assert!(commands.try_recv().is_err());
+
+        lobby.lobby_id = "next lobby".into();
+        thread.shared_lobby.set(lobby);
+        thread.send_notifications();
+        assert_eq!(commands.try_recv().unwrap(), expected);
     }
 }
