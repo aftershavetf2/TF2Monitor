@@ -180,6 +180,12 @@ pub fn coverage(conn: &mut SqliteConnection) -> Result<Option<bool>> {
     ))
 }
 
+pub fn count_bans(conn: &mut SqliteConnection) -> QueryResult<i64> {
+    diesel::sql_query("SELECT count(*) AS value FROM bans")
+        .get_result::<Number>(conn)
+        .map(|row| row.value)
+}
+
 pub fn lookup(conn: &mut SqliteConnection, steam_id: i64) -> Result<Vec<StoredBan>> {
     Ok(diesel::sql_query("SELECT communities.name AS source, bans.record FROM bans
         JOIN communities ON communities.id=bans.community_id WHERE steam_id=? ORDER BY communities.name")
@@ -232,6 +238,7 @@ mod tests {
     fn snapshots_replace_history_and_reject_bad_data_without_losing_previous_bans() {
         let mut conn = open(Path::new(":memory:")).unwrap();
         assert_eq!(coverage(&mut conn).unwrap(), None);
+        assert_eq!(count_bans(&mut conn).unwrap(), 0);
         let mut other = community();
         other.id = "other".into();
         expect_communities(&mut conn, &[community(), other]).unwrap();
@@ -273,10 +280,12 @@ mod tests {
         let mut removed = record.clone();
         removed.removed_at = Some("2026-11-01".into());
         import(&mut conn, &community, &[removed]).unwrap();
+        assert_eq!(count_bans(&mut conn).unwrap(), 1);
         let found = lookup(&mut conn, record.steam_id().unwrap()).unwrap();
         assert_eq!(found.len(), 1);
         assert!(found[0].record.contains("2026-11-01"));
         retain_communities(&mut conn, &[]).unwrap();
+        assert_eq!(count_bans(&mut conn).unwrap(), 0);
         assert!(
             lookup(&mut conn, record.steam_id().unwrap())
                 .unwrap()

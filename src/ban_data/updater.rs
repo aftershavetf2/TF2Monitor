@@ -122,16 +122,20 @@ fn download(
     result
 }
 
-fn update(conn: &mut SqliteConnection, directory: &Path, control: &Control) -> Result<String> {
+fn update(
+    conn: &mut SqliteConnection,
+    directory: &Path,
+    control: &Control,
+) -> Result<(String, usize)> {
     let client = Client::builder()
         .user_agent(concat!("TF2Monitor/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(120))
         .build()?;
     let (release, base, manifest) = release_manifest(&client)?;
-    apply_manifest(conn, directory, control, &client, &base, &manifest)?;
+    let imported = apply_manifest(conn, directory, control, &client, &base, &manifest)?;
     storage::record_success(conn, Utc::now().timestamp(), &release)?;
-    Ok(release)
+    Ok((release, imported))
 }
 
 fn apply_manifest(
@@ -141,10 +145,11 @@ fn apply_manifest(
     client: &Client,
     base: &reqwest::Url,
     manifest: &Manifest,
-) -> Result<()> {
+) -> Result<usize> {
     manifest.validate()?;
     storage::expect_communities(conn, &manifest.communities)?;
     control.changed();
+    let mut imported = 0;
     for community in &manifest.communities {
         control.message(format!("Checking {}...", community.name));
         if storage::content_hash(conn, &community.id)?.as_deref() == Some(&community.sha256) {
@@ -161,12 +166,13 @@ fn apply_manifest(
         )?;
         control.message(format!("Importing {}...", community.name));
         storage::import(conn, community, &bans)?;
+        imported += 1;
         control.changed();
     }
     // Only prune communities after every manifest entry has succeeded.
     storage::retain_communities(conn, &manifest.communities)?;
     control.changed();
-    Ok(())
+    Ok(imported)
 }
 
 pub fn run(mut conn: SqliteConnection, directory: std::path::PathBuf, control: Control) {
@@ -181,11 +187,18 @@ pub fn run(mut conn: SqliteConnection, directory: std::path::PathBuf, control: C
             }
         };
         if control.begin(due(state.last_attempt, now)) {
+            log::info!("Checking for new ban data");
             // Persist the attempt before making any network requests (also on failure).
             let result = storage::record_attempt(&mut conn, now)
                 .and_then(|()| update(&mut conn, &directory, &control));
             let message = match result {
-                Ok(release) => format!("Ban data is up to date ({release})"),
+                Ok((release, imported)) => {
+                    let message = format!(
+                        "Ban data check completed for release {release} with {imported} snapshot imports"
+                    );
+                    log::info!("{message}");
+                    message
+                }
                 Err(error) => {
                     let message = format!("Ban data check failed: {error}");
                     log::warn!("{message}");
@@ -195,6 +208,10 @@ pub fn run(mut conn: SqliteConnection, directory: std::path::PathBuf, control: C
                     message
                 }
             };
+            match storage::count_bans(&mut conn) {
+                Ok(count) => log::info!("Local SourceBans database contains {count} ban records"),
+                Err(error) => log::warn!("Could not count local SourceBans records: {error}"),
+            }
             control.finish(message, storage::state(&mut conn).ok());
         }
         std::thread::sleep(Duration::from_millis(500));
@@ -342,7 +359,9 @@ mod tests {
             data_format_version: 2,
             communities: vec![community],
         };
-        apply_manifest(&mut conn, &directory, &control, &client, &base, &manifest).unwrap();
+        let imported =
+            apply_manifest(&mut conn, &directory, &control, &client, &base, &manifest).unwrap();
+        assert_eq!(imported, 1);
         let id = ban().steam_id().unwrap();
         assert_eq!(storage::lookup(&mut conn, id).unwrap().len(), 1);
         community = manifest.communities.into_iter().next().unwrap();
@@ -395,7 +414,7 @@ mod tests {
             communities: vec![community],
         };
         // No HTTP listener exists: success proves the unchanged data was not fetched.
-        apply_manifest(
+        let imported = apply_manifest(
             &mut conn,
             &directory,
             &Control::default(),
@@ -404,6 +423,7 @@ mod tests {
             &manifest,
         )
         .unwrap();
+        assert_eq!(imported, 0);
         assert_eq!(storage::coverage(&mut conn).unwrap(), Some(false));
         drop(conn);
         fs::remove_dir_all(directory).unwrap();
@@ -416,15 +436,17 @@ mod tests {
         let mut conn = storage::open(&directory.join("bans.sqlite")).unwrap();
         let control = Control::default();
         storage::record_attempt(&mut conn, Utc::now().timestamp()).unwrap();
-        let release = update(&mut conn, &directory, &control).unwrap();
+        let (release, imported) = update(&mut conn, &directory, &control).unwrap();
+        assert!(imported > 0);
         assert!(storage::coverage(&mut conn).unwrap().is_some());
         assert_eq!(
             storage::state(&mut conn).unwrap().release.as_deref(),
             Some(release.as_str())
         );
         let first_revision = control.revision();
-        let repeated = update(&mut conn, &directory, &control).unwrap();
+        let (repeated, imported) = update(&mut conn, &directory, &control).unwrap();
         assert_eq!(release, repeated);
+        assert_eq!(imported, 0);
         // Only metadata/finalization invalidates the cache; no community imports.
         assert_eq!(control.revision() - first_revision, 2);
         assert!(!directory.join("example.json.gz.part").exists());
