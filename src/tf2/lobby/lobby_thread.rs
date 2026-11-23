@@ -1,4 +1,5 @@
 use super::LobbyKill;
+use super::chat_translation::ChatTranslation;
 use super::shared_lobby::SharedLobby;
 use super::{LobbyChat, Player, PlayerKill};
 use crate::config::LOBBY_LOOP_DELAY;
@@ -9,7 +10,11 @@ use crate::tf2bd::Tf2bdMsg;
 use crate::{
     appbus::{AppBus, AppEventMsg},
     db::{connection::DbPool, queries},
-    models::{app_settings::AppSettings, player_profile::ProfileEvent, steamid::SteamID},
+    models::{
+        app_settings::{AppSettings, TranslationOptions},
+        player_profile::ProfileEvent,
+        steamid::SteamID,
+    },
     tf2::logfile::LogLine,
 };
 use bus::BusReader;
@@ -20,7 +25,6 @@ use std::{
     sync::{Arc, Mutex},
     thread::{self, sleep},
 };
-use translators::{GoogleTranslator, Translator};
 
 /// The number of seconds a player can be in the recently_left_players collection
 const RECENTLY_LEFT_TIMEOUT_REMOVAL_SECONDS: i64 = 90;
@@ -37,8 +41,8 @@ pub struct LobbyThread {
     saved_server_names: HashMap<SteamID, String>,
     awaiting_map_after_lobby_reset: bool,
 
-    text_translator: GoogleTranslator,
-    translate_chat_enabled: bool,
+    chat_translation: ChatTranslation,
+    translation_options: Option<TranslationOptions>,
 }
 
 /// Start the background thread for the lobby module
@@ -61,8 +65,6 @@ impl LobbyThread {
         let app_event_bus_rx = bus.lock().unwrap().app_event_bus.add_rx();
         let shared_lobby = bus.lock().unwrap().shared_lobby.clone();
 
-        let google_translator = GoogleTranslator::default();
-
         Self {
             logfile_bus_rx,
             steamapi_bus_rx,
@@ -75,8 +77,8 @@ impl LobbyThread {
             saved_server_names: HashMap::new(),
             awaiting_map_after_lobby_reset: false,
 
-            text_translator: google_translator,
-            translate_chat_enabled: settings.translate_chat,
+            chat_translation: ChatTranslation::default(),
+            translation_options: settings.chat_translation_options(),
         }
     }
 
@@ -89,10 +91,9 @@ impl LobbyThread {
             let mut lobby = self.shared_lobby.get();
             lobby.update_friendships();
 
+            self.chat_translation
+                .update(&mut lobby, self.translation_options);
             self.shared_lobby.set(lobby);
-            if self.translate_chat_enabled {
-                self.translate_chat();
-            }
 
             sleep(LOBBY_LOOP_DELAY);
         }
@@ -109,7 +110,13 @@ impl LobbyThread {
 
     fn process_app_events(&mut self) {
         while let Ok(AppEventMsg::UpdatedSettings(settings)) = self.app_event_bus_rx.try_recv() {
-            self.translate_chat_enabled = settings.translate_chat;
+            let options = settings.chat_translation_options();
+            if options.map(|options| options.model)
+                != self.translation_options.map(|options| options.model)
+            {
+                self.chat_translation.retry_worker();
+            }
+            self.translation_options = options;
         }
     }
 
@@ -374,6 +381,7 @@ impl LobbyThread {
 
         lobby.players.clear();
         lobby.chat.clear();
+        self.chat_translation.reset_lobby();
         lobby.kill_feed.clear();
 
         self.shared_lobby.set(lobby);
@@ -498,52 +506,6 @@ impl LobbyThread {
         }
 
         lobby.recently_left_players = recently_left_to_keep;
-
-        self.shared_lobby.set(lobby);
-    }
-
-    fn translate_chat(&mut self) {
-        let mut lobby = self.shared_lobby.get();
-
-        // Step 1: Collect messages that need translation (hold lock briefly)
-        let messages_to_translate: Vec<(usize, String)> = {
-            lobby
-                .chat
-                .iter()
-                .enumerate()
-                .filter_map(|(idx, chat)| {
-                    if chat.translated_message.is_none() {
-                        Some((idx, chat.message.clone()))
-                    } else {
-                        None
-                    }
-                })
-                .collect()
-        };
-
-        // Step 2: Do the expensive translation work WITHOUT holding the lock
-        let translations: Vec<(usize, String)> = messages_to_translate
-            .into_iter()
-            .filter_map(|(idx, message)| {
-                self.text_translator
-                    .translate_sync(&message, "en", "")
-                    .map(|translated| (idx, translated))
-                    .map_err(|e| {
-                        log::error!("Error translating chat message: {:?}", e);
-                        e
-                    })
-                    .ok()
-            })
-            .collect();
-
-        // Step 3: Update the lobby with translations
-        if !translations.is_empty() {
-            for (idx, translated) in translations {
-                if let Some(chat) = lobby.chat.get_mut(idx) {
-                    chat.translated_message = Some(translated);
-                }
-            }
-        }
 
         self.shared_lobby.set(lobby);
     }
@@ -756,32 +718,57 @@ mod tests {
 
     #[test]
     fn chat_translation_follows_saved_settings_and_live_updates() {
+        use crate::models::app_settings::{TranslationMode, TranslationModel};
+
         let mut settings = AppSettings::default();
         assert!(!settings.translate_chat);
         let mut saved = serde_json::to_value(&settings).unwrap();
-        saved.as_object_mut().unwrap().remove("translate_chat");
-        assert!(
-            !serde_json::from_value::<AppSettings>(saved)
-                .unwrap()
-                .translate_chat
+        let fields = saved.as_object_mut().unwrap();
+        fields.remove("translate_chat");
+        fields.remove("chat_translation_mode");
+        fields.remove("chat_translation_model");
+        let older_settings: AppSettings = serde_json::from_value(saved).unwrap();
+        assert!(!older_settings.translate_chat);
+        assert_eq!(older_settings.chat_translation_mode, TranslationMode::Fast);
+        assert_eq!(
+            older_settings.chat_translation_model,
+            TranslationModel::Standard
         );
 
         settings.translate_chat = true;
+        settings.chat_translation_mode = TranslationMode::Beam;
+        settings.chat_translation_model = TranslationModel::Large;
         let saved = serde_json::to_string(&settings).unwrap();
         let mut settings: AppSettings = serde_json::from_str(&saved).unwrap();
         let bus = Arc::new(Mutex::new(AppBus::new(settings.self_steamid64)));
         let app = crate::models::player_profile::test_app();
         let mut lobby_thread = LobbyThread::new(&settings, &bus, &app.db);
-        assert!(lobby_thread.translate_chat_enabled);
+        assert_eq!(
+            lobby_thread.translation_options,
+            Some(TranslationOptions {
+                mode: TranslationMode::Beam,
+                model: TranslationModel::Large,
+            })
+        );
 
-        for enabled in [false, true, false] {
+        for (enabled, model, mode) in [
+            (true, TranslationModel::Standard, TranslationMode::Beam),
+            (true, TranslationModel::Standard, TranslationMode::Fast),
+            (false, TranslationModel::Large, TranslationMode::Fast),
+            (true, TranslationModel::Large, TranslationMode::Fast),
+        ] {
             settings.translate_chat = enabled;
+            settings.chat_translation_model = model;
+            settings.chat_translation_mode = mode;
             bus.lock()
                 .unwrap()
                 .app_event_bus
                 .broadcast(AppEventMsg::UpdatedSettings(settings.clone()));
             lobby_thread.process_app_events();
-            assert_eq!(lobby_thread.translate_chat_enabled, enabled);
+            assert_eq!(
+                lobby_thread.translation_options,
+                enabled.then_some(TranslationOptions { mode, model })
+            );
         }
     }
 }

@@ -29,6 +29,28 @@ pub const DEFAULT_LOG_FILENAME: &str =
 
 pub const DEFAULT_LAUNCH_OPTIONS: &str = "-usercon -high +developer 1 +contimes 0 +ip 0.0.0.0 +net_start  +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -console -g15 -novid -nojoy -nosteamcontroller -nohltv -particles 1 -console";
 
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TranslationMode {
+    #[default]
+    Fast,
+    Beam,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TranslationModel {
+    #[default]
+    Standard,
+    Large,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TranslationOptions {
+    pub mode: TranslationMode,
+    pub model: TranslationModel,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppSettings {
     pub log_filename: String,
@@ -67,6 +89,10 @@ pub struct AppSettings {
 
     #[serde(default)]
     pub translate_chat: bool,
+    #[serde(default)]
+    pub chat_translation_mode: TranslationMode,
+    #[serde(default)]
+    pub chat_translation_model: TranslationModel,
 
     // Auto actions
     #[serde(default = "bool::default")]
@@ -113,6 +139,8 @@ impl Default for AppSettings {
             show_ping: false,
             show_weapons: true,
             translate_chat: false,
+            chat_translation_mode: TranslationMode::default(),
+            chat_translation_model: TranslationModel::default(),
 
             kick_cheaters: false,
             kick_bots: true,
@@ -127,6 +155,13 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
+    pub fn chat_translation_options(&self) -> Option<TranslationOptions> {
+        self.translate_chat.then_some(TranslationOptions {
+            mode: self.chat_translation_mode,
+            model: self.chat_translation_model,
+        })
+    }
+
     /// Tries to load the preferences.rust_bot_detector.json file from the current directory.
     /// If the file don't exist, use default values.
     pub fn load_or_default() -> Self {

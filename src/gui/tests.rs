@@ -43,6 +43,49 @@ fn commands(output: &egui::FullOutput) -> &[ViewportCommand] {
 }
 
 #[test]
+fn translate_chat_submenu_aligns_the_toggle_modes_and_models() {
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut app = crate::models::player_profile::test_app();
+    let mut frame = |events| {
+        run_ui(&ctx, input(events, 1.0, false, false), |root| {
+            egui::CentralPanel::default()
+                .show(root, |ui| super::top_menu::add_top_menu(ui, &mut app));
+        })
+    };
+    let label_rect = |output: &egui::FullOutput, label| {
+        output.shapes.iter().find_map(|shape| match &shape.shape {
+            egui::Shape::Text(text) if text.galley.text() == label => {
+                Some(Rect::from_min_size(text.pos, text.galley.size()))
+            }
+            _ => None,
+        })
+    };
+
+    let actions = label_rect(&frame(vec![]), "Actions").unwrap().center();
+    frame(pointer(actions, true));
+    frame(pointer(actions, false));
+    let submenu = label_rect(&frame(vec![]), "Translate Chat").unwrap().center();
+    frame(vec![Event::PointerMoved(submenu)]);
+    let output = frame(vec![]);
+    let toggle = label_rect(&output, "Enable Translation").unwrap();
+    let mut previous = toggle;
+    for label in [
+        "Translation Mode",
+        "Fast",
+        "More Accurate",
+        "Model Size",
+        "Standard (310 MB)",
+        "Large (596 MB)",
+    ] {
+        let row = label_rect(&output, label).unwrap_or_else(|| panic!("Missing {label}"));
+        assert!((row.left() - toggle.left()).abs() < 0.5, "{label} is misaligned");
+        assert!(row.top() >= previous.bottom(), "{label} is out of order");
+        previous = row;
+    }
+}
+
+#[test]
 fn tab_indicator_moves_along_the_baseline_when_switching_views() {
     use super::tabs::{self, Tab};
 

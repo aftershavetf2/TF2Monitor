@@ -106,21 +106,13 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
             },
         );
 
-        let is_translated = chat_row.translated_message.is_some()
-            && chat_row.translated_message != Some(chat_row.message.clone());
-
-        // The chat message
-        if is_translated {
+        if app_win.app_settings.translate_chat
+            && let Some(translation) = chat_row.translated_message.as_deref()
+            && !translation.is_empty()
+            && translation != chat_row.message
+        {
             job.append(
-                " ",
-                0.0,
-                TextFormat {
-                    color: Color32::from_rgb(210, 210, 210),
-                    ..Default::default()
-                },
-            );
-            job.append(
-                format!("({})", chat_row.translated_message.as_ref().unwrap()).as_str(),
+                &format!(" ({translation})"),
                 0.0,
                 TextFormat {
                     color: Color32::from_rgb(255, 255, 255),
@@ -139,4 +131,34 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
             app_win.set_selected_player(chat_row.steamid);
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::gui::{tests::run_ui, theme};
+    use eframe::egui::{self, Shape};
+
+    #[test]
+    fn chat_displays_translations_only_when_enabled() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let mut app = crate::models::player_profile::test_app();
+        let chat = LobbyChat {
+            player_name: "Player".into(),
+            message: "Hej".into(),
+            translated_message: Some("Hello".into()),
+            ..Default::default()
+        };
+
+        for (enabled, expected) in [(true, "Player: Hej (Hello)"), (false, "Player: Hej")] {
+            app.app_settings.translate_chat = enabled;
+            let output = run_ui(&ctx, egui::RawInput::default(), |ui| {
+                add_chat_row(ui, &mut app, &chat);
+            });
+            assert!(output.shapes.iter().any(|shape| {
+                matches!(&shape.shape, Shape::Text(text) if text.galley.text() == expected)
+            }));
+        }
+    }
 }

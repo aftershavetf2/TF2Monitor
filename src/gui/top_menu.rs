@@ -4,11 +4,14 @@ use super::{
     theme::{self, MenuTooltip},
 };
 use crate::{
-    models::AppWin, tf2::lobby::player_attribute_description, tf2bd::models::PlayerAttribute,
+    models::{
+        AppWin,
+        app_settings::{TranslationMode, TranslationModel},
+    },
+    tf2::lobby::player_attribute_description,
+    tf2bd::models::PlayerAttribute,
 };
 use eframe::egui::{Ui, ViewportCommand};
-
-const SHOW_TRANSLATE_CHAT: bool = false;
 
 pub fn add_top_menu(ui: &mut Ui, app_win: &mut AppWin) {
     theme::menu_bar().ui(ui, |ui| {
@@ -78,17 +81,8 @@ fn add_view_menu(ui: &mut Ui, app_win: &mut AppWin) {
 
 fn add_actions_menu(ui: &mut Ui, app_win: &mut AppWin) {
     theme::menu_contents(ui);
-    if SHOW_TRANSLATE_CHAT {
-        ui.add_enabled_ui(false, |ui| {
-            menu_item::checkbox(
-                ui,
-                &mut app_win.app_settings.translate_chat,
-                "Translate Chat",
-            )
-            .menu_tooltip("Translate chat messages to English using Google Translate");
-        });
-        ui.separator();
-    }
+    menu_item::submenu(ui, "Translate Chat", |ui| add_translation_menu(ui, app_win));
+    ui.separator();
 
     if menu_item::flag_checkbox(
         ui,
@@ -115,6 +109,46 @@ fn add_actions_menu(ui: &mut Ui, app_win: &mut AppWin) {
     ui.separator();
 
     add_party_notifications(ui, app_win);
+}
+
+fn add_translation_menu(ui: &mut Ui, app_win: &mut AppWin) {
+    theme::menu_contents(ui);
+    let enabled = menu_item::checkbox(
+        ui,
+        &mut app_win.app_settings.translate_chat,
+        "Enable Translation",
+    )
+    .menu_tooltip(
+        "Translate chat messages to English on this computer. Downloads the selected model on first use.",
+    );
+    ui.separator();
+    menu_item::information(ui, |ui| {
+        theme::section_heading(ui, "Translation Mode");
+    });
+
+    let mode = &mut app_win.app_settings.chat_translation_mode;
+    let fast = menu_item::radio_value(ui, mode, TranslationMode::Fast, "Fast")
+        .menu_tooltip("Translate messages with less processing and lower latency.");
+    let accurate = menu_item::radio_value(ui, mode, TranslationMode::Beam, "More Accurate")
+        .menu_tooltip("Compare multiple candidate translations. This can take longer.");
+
+    ui.separator();
+    menu_item::information(ui, |ui| {
+        theme::section_heading(ui, "Model Size");
+    });
+
+    let model = &mut app_win.app_settings.chat_translation_model;
+    let standard =
+        menu_item::radio_value(ui, model, TranslationModel::Standard, "Standard (310 MB)")
+            .menu_tooltip("Uses about 310 MB of RAM for model weights.");
+    let large = menu_item::radio_value(ui, model, TranslationModel::Large, "Large (596 MB)")
+        .menu_tooltip("Can improve translations. Uses about 1.2 GB of RAM for model weights and takes longer.");
+    if [enabled, fast, accurate, standard, large]
+        .iter()
+        .any(|response| response.changed())
+    {
+        app_win.updated_settings();
+    }
 }
 
 fn add_party_notifications(ui: &mut Ui, app_win: &mut AppWin) {

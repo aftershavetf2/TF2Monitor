@@ -5,6 +5,13 @@ edition = "2024"
 rust-version = "1.95"
 
 [dependencies]
+anyhow = "1.0"
+candle-core = "0.11.1"
+candle-nn = "0.11.1"
+candle-transformers = "0.11.1"
+hf-hub = { version = "1.0.0", features = ["blocking"] }
+sentencepiece-rs = "0.2.2"
+unicode-segmentation = "1.13.3"
 regex = "1.13.1"
 bus = "2.4.1"
 once_cell = "1.21.4"
@@ -39,7 +46,6 @@ egui_extras = { version = "0.37.0", features = ["all_loaders"] }
 image = { version = "0.25.10", default-features = false, features = ["jpeg"] }
 
 reqwest = { version = "0.13.5", features = ["blocking", "json"] }
-translators = { version = "0.2.1", features = ["google"] }
 
 scraper = "0.29.0"
 
