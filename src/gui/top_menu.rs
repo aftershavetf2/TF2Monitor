@@ -138,11 +138,20 @@ fn add_translation_menu(ui: &mut Ui, app_win: &mut AppWin) {
     });
 
     let model = &mut app_win.app_settings.chat_translation_model;
-    let standard =
-        menu_item::radio_value(ui, model, TranslationModel::Standard, "Standard (310 MB)")
-            .menu_tooltip("Uses about 310 MB of RAM for model weights.");
-    let large = menu_item::radio_value(ui, model, TranslationModel::Large, "Large (596 MB)")
-        .menu_tooltip("Can improve translations. Uses about 1.2 GB of RAM for model weights and takes longer.");
+    let standard = menu_item::radio_value(
+        ui,
+        model,
+        TranslationModel::Standard,
+        "Standard (310 MB, ~310 MB RAM)",
+    )
+    .menu_tooltip("RAM estimate is for model weights. Loading and translating can use more.");
+    let large = menu_item::radio_value(
+        ui,
+        model,
+        TranslationModel::Large,
+        "Large (596 MB, ~1.2 GB RAM)",
+    )
+    .menu_tooltip("Can improve translations and takes longer. RAM estimate is for model weights.");
     if [enabled, fast, accurate, standard, large]
         .iter()
         .any(|response| response.changed())

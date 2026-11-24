@@ -75,8 +75,8 @@ fn translate_chat_submenu_aligns_the_toggle_modes_and_models() {
         "Fast",
         "More Accurate",
         "Model Size",
-        "Standard (310 MB)",
-        "Large (596 MB)",
+        "Standard (310 MB, ~310 MB RAM)",
+        "Large (596 MB, ~1.2 GB RAM)",
     ] {
         let row = label_rect(&output, label).unwrap_or_else(|| panic!("Missing {label}"));
         assert!((row.left() - toggle.left()).abs() < 0.5, "{label} is misaligned");

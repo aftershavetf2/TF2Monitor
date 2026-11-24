@@ -3,6 +3,7 @@ use crate::models::app_settings::{TranslationModel, TranslationOptions};
 use std::{
     sync::mpsc::{self, Receiver, Sender, TryRecvError},
     thread,
+    time::Instant,
 };
 
 #[derive(Default)]
@@ -165,10 +166,19 @@ fn translate_request(
             }
         }
     };
-    let translation = match translator.translate(&request.message, request.options.mode) {
-        Ok(translation) => Some(translation),
+    let mode = request.options.mode;
+    let started = Instant::now();
+    let result = translator.translate(&request.message, mode);
+    let elapsed_ms = started.elapsed().as_millis();
+    let translation = match result {
+        Ok(translation) => {
+            log::info!("Translated a chat message in {elapsed_ms} ms ({model:?}, {mode:?})");
+            Some(translation)
+        }
         Err(error) => {
-            log::warn!("Could not translate a chat message: {error:#}");
+            log::warn!(
+                "Could not translate a chat message after {elapsed_ms} ms ({model:?}, {mode:?}): {error:#}"
+            );
             None
         }
     };
