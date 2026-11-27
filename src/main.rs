@@ -27,8 +27,8 @@ fn main() -> Result<(), eframe::Error> {
     let settings = AppSettings::load_or_default();
     let bus = Arc::new(Mutex::new(AppBus::new(settings.self_steamid64)));
 
-    let (marking_commands, markings_worker) = models::player_markings::start(&db, &bus)
-        .expect("Failed to load player-markings.json");
+    let (marking_commands, markings_worker) =
+        models::player_markings::start(&db, &bus).expect("Failed to load player-markings.json");
 
     tf2::start(&settings, &bus, &db);
     tf2bd::tf2bd_thread::start(&settings, &bus);

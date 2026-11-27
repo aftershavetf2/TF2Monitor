@@ -65,7 +65,9 @@ fn translate_chat_submenu_aligns_the_toggle_modes_and_models() {
     let actions = label_rect(&frame(vec![]), "Actions").unwrap().center();
     frame(pointer(actions, true));
     frame(pointer(actions, false));
-    let submenu = label_rect(&frame(vec![]), "Translate Chat").unwrap().center();
+    let submenu = label_rect(&frame(vec![]), "Translate Chat")
+        .unwrap()
+        .center();
     frame(vec![Event::PointerMoved(submenu)]);
     let output = frame(vec![]);
     let toggle = label_rect(&output, "Enable Translation").unwrap();
@@ -79,7 +81,10 @@ fn translate_chat_submenu_aligns_the_toggle_modes_and_models() {
         "Large (596 MB, ~1.2 GB RAM)",
     ] {
         let row = label_rect(&output, label).unwrap_or_else(|| panic!("Missing {label}"));
-        assert!((row.left() - toggle.left()).abs() < 0.5, "{label} is misaligned");
+        assert!(
+            (row.left() - toggle.left()).abs() < 0.5,
+            "{label} is misaligned"
+        );
         assert!(row.top() >= previous.bottom(), "{label} is out of order");
         previous = row;
     }
@@ -492,7 +497,9 @@ fn native_and_menu_checkboxes_share_the_theme_frame() {
         .shapes
         .iter()
         .filter_map(|shape| match &shape.shape {
-            egui::Shape::Rect(rect) if rect.rect.size() == egui::Vec2::splat(theme::CHECKBOX_SIZE) => {
+            egui::Shape::Rect(rect)
+                if rect.rect.size() == egui::Vec2::splat(theme::CHECKBOX_SIZE) =>
+            {
                 Some((rect.fill, rect.stroke, rect.corner_radius))
             }
             _ => None,

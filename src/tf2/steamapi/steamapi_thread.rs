@@ -122,10 +122,7 @@ impl SteamApiThread {
                 .broadcast(crate::models::player_profile::ProfileEvent::Changed(id));
         } else {
             self.bus.lock().unwrap().profile_events.broadcast(
-                crate::models::player_profile::ProfileEvent::FetchStatus(
-                    id,
-                    FetchStatus::Failed,
-                ),
+                crate::models::player_profile::ProfileEvent::FetchStatus(id, FetchStatus::Failed),
             );
         }
         result

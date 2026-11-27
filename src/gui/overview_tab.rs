@@ -371,7 +371,11 @@ pub fn show(app_win: &mut AppWin, ui: &mut Ui) {
         |ui| ui.add(theme::secondary_button("Fit to View")).clicked(),
     );
     let lists = &app_win.tf2bd_lists;
-    let (players, edges) = graph(&app_win.lobby, app_win.overview.include_flagged_players, lists);
+    let (players, edges) = graph(
+        &app_win.lobby,
+        app_win.overview.include_flagged_players,
+        lists,
+    );
     let card_width = players
         .iter()
         .map(|player| required_card_width(ui, player, lists))
@@ -708,8 +712,9 @@ mod tests {
                         ..Default::default()
                     },
                     |root| {
-                        egui::CentralPanel::default()
-                            .show(root, |ui| paint_player_label(ui, &player, card, &PlayerLists::default()));
+                        egui::CentralPanel::default().show(root, |ui| {
+                            paint_player_label(ui, &player, card, &PlayerLists::default())
+                        });
                     },
                 );
                 let texts: Vec<_> = output

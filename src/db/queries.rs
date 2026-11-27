@@ -102,10 +102,8 @@ pub fn upsert_account(
         .on_conflict(account::steam_id)
         .do_update()
         .set((
-            dsl::name.eq(
-                diesel::dsl::case_when(dsl::name_from_server, dsl::name)
-                    .otherwise(diesel::upsert::excluded(dsl::name)),
-            ),
+            dsl::name.eq(diesel::dsl::case_when(dsl::name_from_server, dsl::name)
+                .otherwise(diesel::upsert::excluded(dsl::name))),
             dsl::created_date.eq(&new_account.created_date),
             dsl::avatar_thumb_url.eq(&new_account.avatar_thumb_url),
             dsl::avatar_full_url.eq(&new_account.avatar_full_url),

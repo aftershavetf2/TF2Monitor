@@ -1,7 +1,7 @@
 use super::colors::{SOURCEBAN_BADGE_COLORS, TF2BD_BADGE_COLORS, color_for_flag};
 use crate::{
-    tf2::lobby::{Player, player_attribute_description},
     models::steamid::SteamID,
+    tf2::lobby::{Player, player_attribute_description},
     tf2bd::{models::PlayerAttribute, player_lists::PlayerLists},
 };
 use eframe::egui::{self, Color32, FontId, Response, Sense, TextStyle, Ui};
