@@ -77,7 +77,10 @@ impl ChatTranslation {
                 if pending.session_id == lobby.session_id
                     && let Some(chat) = lobby.chat.get_mut(pending.row)
                 {
-                    chat.translated_message = translation;
+                    chat.translated_message = translation.filter(|translation| {
+                        !translation.is_empty()
+                            && translation.to_lowercase() != chat.message.to_lowercase()
+                    });
                     self.next_row = pending.row + 1;
                 }
             }
@@ -261,5 +264,20 @@ mod tests {
         translation.update(&mut lobby, Some(standard));
         assert_eq!(lobby.chat[0].translated_message.as_deref(), Some("Thanks"));
         assert_eq!(incoming.try_recv(), Err(TryRecvError::Empty));
+
+        for (message, translated) in [("thanks", "Thanks"), ("RÄTT", "rätt")] {
+            lobby.chat.push(LobbyChat {
+                message: message.into(),
+                ..Default::default()
+            });
+            translation.update(&mut lobby, Some(standard));
+            assert_eq!(incoming.try_recv().unwrap().message, message);
+            outgoing
+                .send(TranslationResult::Completed(Some(translated.into())))
+                .unwrap();
+            translation.update(&mut lobby, Some(standard));
+            assert_eq!(lobby.chat.last().unwrap().translated_message, None);
+            assert_eq!(incoming.try_recv(), Err(TryRecvError::Empty));
+        }
     }
 }

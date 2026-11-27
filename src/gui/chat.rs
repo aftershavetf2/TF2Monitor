@@ -108,8 +108,6 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
 
         if app_win.app_settings.translate_chat
             && let Some(translation) = chat_row.translated_message.as_deref()
-            && !translation.is_empty()
-            && translation != chat_row.message
         {
             job.append(
                 &format!(" ({translation})"),
