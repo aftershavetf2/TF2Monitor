@@ -69,6 +69,10 @@ impl SteamID {
     pub fn rep_tf_url(&self) -> String {
         format!("https://rep.tf/{}", self.0)
     }
+
+    pub fn shadefall_url(&self) -> String {
+        format!("https://shadefall.net/archive/{}", self.0)
+    }
 }
 
 #[cfg(test)]

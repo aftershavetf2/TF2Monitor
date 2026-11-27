@@ -256,15 +256,16 @@ fn add_player_community_links(player: &Player, ui: &mut Ui) {
         }
     }
 
-    ui.horizontal(|ui| {
-        ui.scope(|ui| {
-            ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89661D);
+    ui.scope(|ui| {
+        ui.style_mut().visuals.widgets.inactive.weak_bg_fill = hex_to_rgb(0x89661D);
 
+        ui.horizontal_wrapped(|ui| {
             // ui.label("View on");
             make_link(ui, player.steamid.steam_community_url(), "Steam");
             make_link(ui, player.steamid.steam_history_url(), "SteamHistory");
             // make_link(ui, player.steamid.steam_rep_url(), "SteamRep");
             // make_link(ui, player.steamid.steam_id_url(), "SteamID");
+            make_link(ui, player.steamid.shadefall_url(), "Shadefall");
             make_link(ui, player.steamid.rep_tf_url(), "Rep.TF");
         });
     });
@@ -402,6 +403,7 @@ mod tests {
         assert!(text.contains("Flags:"));
         assert!(text.contains("Notes"));
         assert!(text.contains("Reason for flag"));
+        assert!(text.contains("SteamHistory\nShadefall\nRep.TF"));
         assert!(text.contains("Not on the current server"));
         assert!(!text.contains("Kick for "));
         assert!(!text.contains("not found"));
