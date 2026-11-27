@@ -1,6 +1,8 @@
 use crate::models::AppWin;
 use eframe::egui::{Color32, Pos2, Stroke, Ui};
 
+pub(super) const FRIENDSHIP_ENDPOINT_RADIUS: f32 = 3.0;
+
 pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
     let indicator_color = Color32::WHITE;
     let stroke = Stroke::new(0.6f32 + 1.0 / ui.ctx().pixels_per_point(), indicator_color);
@@ -47,9 +49,10 @@ pub fn add_friendship_indicators(app_win: &mut AppWin, ui: &mut Ui) {
 }
 
 fn draw_curve(ui: &mut Ui, start_pos: Pos2, end_pos: Pos2, stroke: &Stroke, dir: bool) {
-    let r = 3.0f32;
-    ui.painter().circle_filled(start_pos, r, stroke.color);
-    ui.painter().circle_filled(end_pos, r, stroke.color);
+    for position in [start_pos, end_pos] {
+        ui.painter()
+            .circle_filled(position, FRIENDSHIP_ENDPOINT_RADIUS, stroke.color);
+    }
 
     if start_pos.x != end_pos.x {
         // These are lines that are between players in different teams

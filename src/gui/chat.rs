@@ -109,8 +109,9 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
         if app_win.app_settings.translate_chat
             && let Some(translation) = chat_row.translated_message.as_deref()
         {
+            job.append(" ", 0.0, TextFormat::default());
             job.append(
-                &format!(" ({translation})"),
+                &format!("({translation})"),
                 0.0,
                 TextFormat {
                     color: Color32::from_rgb(255, 255, 255),
@@ -135,7 +136,10 @@ fn add_chat_row(ui: &mut Ui, app_win: &mut AppWin, chat_row: &LobbyChat) {
 mod tests {
     use super::*;
     use crate::gui::{tests::run_ui, theme};
-    use eframe::egui::{self, Shape};
+    use eframe::{
+        egui::{self, Shape},
+        epaint::text::ByteRangeExt,
+    };
 
     #[test]
     fn chat_displays_translations_only_when_enabled() {
@@ -154,9 +158,25 @@ mod tests {
             let output = run_ui(&ctx, egui::RawInput::default(), |ui| {
                 add_chat_row(ui, &mut app, &chat);
             });
-            assert!(output.shapes.iter().any(|shape| {
-                matches!(&shape.shape, Shape::Text(text) if text.galley.text() == expected)
-            }));
+            let job = output
+                .shapes
+                .iter()
+                .find_map(|shape| match &shape.shape {
+                    Shape::Text(text) if text.galley.text() == expected => Some(&text.galley.job),
+                    _ => None,
+                })
+                .expect("Expected chat text to be displayed");
+            let highlighted: Vec<_> = job
+                .sections
+                .iter()
+                .filter(|section| section.format.background != Color32::TRANSPARENT)
+                .map(|section| &job.text[section.byte_range.as_usize()])
+                .collect();
+            if enabled {
+                assert_eq!(highlighted, ["(Hello)"]);
+            } else {
+                assert!(highlighted.is_empty());
+            }
         }
     }
 }

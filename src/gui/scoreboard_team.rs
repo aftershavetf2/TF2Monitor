@@ -1,6 +1,7 @@
 use super::{
     account_age::add_account_age,
     colors::{TEAM_BLU_COLOR, TEAM_RED_COLOR},
+    friendship_indicators::FRIENDSHIP_ENDPOINT_RADIUS,
     markings::add_reputation,
     player_class_symbol::add_player_class_symbol,
     player_tooltip::add_player_tooltip,
@@ -431,7 +432,8 @@ fn add_team_symbol(app_win: &mut AppWin, ui: &mut Ui, self_steamid: SteamID, pla
     ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
         ui.horizontal(|ui| {
             let response = add_player_class_symbol(ui, player);
-            let pos = response.rect.center();
+            let pos =
+                response.rect.left_center() - egui::vec2(FRIENDSHIP_ENDPOINT_RADIUS + 1.0, 0.0);
             app_win.friendship_positions.insert(player.steamid, pos);
 
             if app_win
