@@ -2,7 +2,7 @@ use crate::tf2::{
     lobby::Player,
     weapon_classes::{PlayerClass, weapon_class},
 };
-use eframe::egui::{self, Align2, Color32, FontFamily, FontId, Response, Sense, Ui};
+use eframe::egui::{self, Align2, Color32, FontId, Image, Response, Sense, Ui};
 
 const KILL_LOOKBACK: usize = 5;
 const SYMBOL_SIZE: f32 = 25.0;
@@ -16,8 +16,7 @@ fn inferred_class(player: &Player) -> Option<PlayerClass> {
         .find_map(|kill| weapon_class(&kill.weapon))
 }
 
-/// Draw an estimated class in white, or `?` when the last five kills
-/// contain no unambiguous weapon. This is not a live class observation.
+/// Draw the estimated class based on the most recent unambiguous weapon.
 pub fn add_player_class_symbol(ui: &mut Ui, player: &Player) -> Response {
     let class = inferred_class(player);
     let (rect, response) = ui.allocate_exact_size(egui::Vec2::splat(SYMBOL_SIZE), Sense::hover());
@@ -28,37 +27,50 @@ pub fn add_player_class_symbol(ui: &mut Ui, player: &Player) -> Response {
     response
         .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), &tooltip));
     if ui.is_rect_visible(rect) {
-        let (symbol, font) = match class {
-            Some(class) => (
-                class_glyph(class),
-                FontId::new(22.0, FontFamily::Name("TF2 Classes".into())),
-            ),
-            None => ("?", FontId::proportional(20.0)),
-        };
-        ui.painter().text(
-            rect.center(),
-            Align2::CENTER_CENTER,
-            symbol,
-            font,
-            Color32::WHITE,
-        );
+        if let Some(class) = class {
+            Image::new(class_icon_url(class)).paint_at(ui, rect);
+        } else {
+            ui.painter().text(
+                rect.center(),
+                Align2::CENTER_CENTER,
+                "?",
+                FontId::proportional(20.0),
+                Color32::WHITE,
+            );
+        }
     }
     response.on_hover_text(tooltip)
 }
 
-// Codepoints from Qixalite/tf2-classfont. These render TF2 class silhouettes,
-// not emoji, when drawn using the dedicated TF2 Classes font family.
-fn class_glyph(class: PlayerClass) -> &'static str {
+fn class_icon_url(class: PlayerClass) -> &'static str {
     match class {
-        PlayerClass::Scout => "\u{1f407}",
-        PlayerClass::Soldier => "\u{1f4a5}",
-        PlayerClass::Pyro => "\u{1f525}",
-        PlayerClass::Demoman => "\u{1f4a3}",
-        PlayerClass::Heavy => "\u{1f4aa}",
-        PlayerClass::Engineer => "\u{1f527}",
-        PlayerClass::Medic => "\u{1f497}",
-        PlayerClass::Sniper => "\u{1f3b7}",
-        PlayerClass::Spy => "\u{1f4e6}",
+        PlayerClass::Scout => {
+            "https://wiki.teamfortress.com/w/images/thumb/a/ad/Leaderboard_class_scout.png/48px-Leaderboard_class_scout.png"
+        }
+        PlayerClass::Soldier => {
+            "https://wiki.teamfortress.com/w/images/thumb/9/96/Leaderboard_class_soldier.png/48px-Leaderboard_class_soldier.png"
+        }
+        PlayerClass::Pyro => {
+            "https://wiki.teamfortress.com/w/images/thumb/8/80/Leaderboard_class_pyro.png/48px-Leaderboard_class_pyro.png"
+        }
+        PlayerClass::Demoman => {
+            "https://wiki.teamfortress.com/w/images/thumb/4/47/Leaderboard_class_demoman.png/48px-Leaderboard_class_demoman.png"
+        }
+        PlayerClass::Heavy => {
+            "https://wiki.teamfortress.com/w/images/thumb/5/5a/Leaderboard_class_heavy.png/48px-Leaderboard_class_heavy.png"
+        }
+        PlayerClass::Engineer => {
+            "https://wiki.teamfortress.com/w/images/thumb/1/12/Leaderboard_class_engineer.png/48px-Leaderboard_class_engineer.png"
+        }
+        PlayerClass::Medic => {
+            "https://wiki.teamfortress.com/w/images/thumb/e/e5/Leaderboard_class_medic.png/48px-Leaderboard_class_medic.png"
+        }
+        PlayerClass::Sniper => {
+            "https://wiki.teamfortress.com/w/images/thumb/f/fe/Leaderboard_class_sniper.png/48px-Leaderboard_class_sniper.png"
+        }
+        PlayerClass::Spy => {
+            "https://wiki.teamfortress.com/w/images/thumb/3/33/Leaderboard_class_spy.png/48px-Leaderboard_class_spy.png"
+        }
     }
 }
 
@@ -66,6 +78,33 @@ fn class_glyph(class: PlayerClass) -> &'static str {
 mod tests {
     use super::*;
     use crate::tf2::lobby::PlayerKill;
+    use egui::load::{ImageLoadResult, ImageLoader, ImagePoll, LoadError, SizeHint};
+    use std::sync::Arc;
+
+    struct SoldierIconLoader;
+
+    impl ImageLoader for SoldierIconLoader {
+        fn id(&self) -> &str {
+            "test_soldier_icon"
+        }
+
+        fn load(&self, _: &egui::Context, uri: &str, _: SizeHint) -> ImageLoadResult {
+            if uri
+                != "https://wiki.teamfortress.com/w/images/thumb/9/96/Leaderboard_class_soldier.png/48px-Leaderboard_class_soldier.png"
+            {
+                return Err(LoadError::NotSupported);
+            }
+            Ok(ImagePoll::Ready {
+                image: Arc::new(egui::ColorImage::filled([48, 48], Color32::WHITE)),
+            })
+        }
+
+        fn forget(&self, _: &str) {}
+        fn forget_all(&self) {}
+        fn byte_size(&self) -> usize {
+            0
+        }
+    }
 
     fn player(weapons: &[&str]) -> Player {
         Player {
@@ -81,21 +120,22 @@ mod tests {
     }
 
     #[test]
-    fn embedded_font_contains_all_nine_class_symbols() {
-        use PlayerClass::*;
+    fn scoreboard_draws_the_class_image_and_marks_unknown_classes() {
         let ctx = egui::Context::default();
         super::super::theme::install(&ctx);
-        ctx.run_pass(Default::default(), |ctx| {
-            ctx.fonts_mut(|fonts| {
-                let font = FontId::new(22.0, FontFamily::Name("TF2 Classes".into()));
-                for class in [
-                    Scout, Soldier, Pyro, Demoman, Heavy, Engineer, Medic, Sniper, Spy,
-                ] {
-                    assert!(fonts.has_glyphs(&font, class_glyph(class)), "{class:?}");
-                }
-            });
-        })
-        .drop_without_applying_deltas();
+        ctx.add_image_loader(Arc::new(SoldierIconLoader));
+        let output = super::super::tests::run_ui(&ctx, Default::default(), |ui| {
+            let known = add_player_class_symbol(ui, &player(&["rocketlauncher"]));
+            let unknown = add_player_class_symbol(ui, &player(&[]));
+            assert_eq!(known.rect.size(), egui::Vec2::splat(SYMBOL_SIZE));
+            assert_eq!(unknown.rect.size(), known.rect.size());
+        });
+        assert!(output.shapes.iter().any(|shape| {
+            matches!(&shape.shape, egui::Shape::Rect(rect) if rect.brush.is_some())
+        }));
+        assert!(output.shapes.iter().any(|shape| {
+            matches!(&shape.shape, egui::Shape::Text(text) if text.galley.text() == "?")
+        }));
     }
 
     #[test]

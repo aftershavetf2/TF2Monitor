@@ -85,16 +85,6 @@ pub(super) fn panel_separator(ctx: &egui::Context, response: &egui::Response, ed
 
 pub(crate) fn install(ctx: &egui::Context) {
     let mut fonts = FontDefinitions::default();
-    fonts.font_data.insert(
-        "TF2 Classes".into(),
-        Arc::new(FontData::from_static(include_bytes!(
-            "../../assets/fonts/tf2-classfont/tf2-classfont.ttf"
-        ))),
-    );
-    fonts.families.insert(
-        FontFamily::Name("TF2 Classes".into()),
-        vec!["TF2 Classes".into()],
-    );
     for (name, data) in [
         ("Inter", INTER_REGULAR),
         ("Noto Sans Symbols 2", NOTO_SANS_SYMBOLS_2),
