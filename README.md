@@ -47,7 +47,7 @@ After that you go to the folder where this `README.md` file is located with a co
 Add these launch options to TF2:
 
 ```
--usercon +developer 1 +contimes 0 +ip 0.0.0.0 +net_start +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +net_start +con_timestamp 1 -condebug -conclearlog -g15 
+-usercon +developer 1 +contimes 0 +ip 0.0.0.0 +net_start +sv_rcon_whitelist_address 127.0.0.1 +rcon_password rconpwd +hostport 40434 +con_timestamp 1 -condebug -conclearlog -g15 
 ```
 
 ## Common Problems
@@ -111,13 +111,3 @@ There are already several similar applications like this one. Some of them has b
   - Windows only AFAIK.
   - There are also forks with fixes and updates:
     - https://github.com/surepy/tf2_bot_detector
-
-# Publish a release from VS Code
-
-With Python 3 and Git available, commit the changes you want to release and open the repository in VS Code.
-Run **Tasks: Run Task** from the Command Palette and choose **Release: Bump patch and publish**.
-The task bumps the patch version in `Cargo.toml` and `Cargo.lock`, commits it, and pushes the current branch and matching `v<version>` tag to `origin`.
-The Rust (Windows) workflow runs the tests, builds the Windows ZIP, and publishes it to GitHub Releases.
-
-If the push fails after the version commit, rerun the task after resolving the Git error to retry the same version.
-If the tag was pushed and the build failed, rerun the workflow in GitHub Actions.
